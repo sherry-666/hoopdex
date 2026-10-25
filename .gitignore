@@ -1,0 +1,10 @@
+.venv/
+.pgdata/
+__pycache__/
+*.egg-info/
+logs/
+web/node_modules/
+web/dist/
+.claude/
+.DS_Store
+*.tsbuildinfo

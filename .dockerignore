@@ -1,0 +1,9 @@
+.venv
+.pgdata
+logs
+**/__pycache__
+*.egg-info
+web/node_modules
+web/dist
+.claude
+.git

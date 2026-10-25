@@ -1,0 +1,204 @@
+import argparse
+import datetime as dt
+import logging
+import sys
+
+from ballstats import catalog, db
+from ballstats.collector import Collector, result_rows
+
+log = logging.getLogger("ballstats")
+GROUPS = ("season", "games", "players")
+OPTIONAL_GROUPS = ("careers", "history")   # run only when asked for
+HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
+
+
+def current_season(today: dt.date | None = None) -> str:
+    today = today or dt.date.today()
+    start = today.year if today.month >= 10 else today.year - 1
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def run_jobs(collector: Collector, jobs: list[catalog.Job], label: str, refresh: bool) -> None:
+    log.info("%s: %d requests", label, len(jobs))
+    for i, job in enumerate(jobs, 1):
+        collector.fetch(job.endpoint, job.params, max_age_h=job.max_age_h, refresh=refresh)
+        if i % 25 == 0 or i == len(jobs):
+            log.info("%s: %d/%d  %s", label, i, len(jobs), collector.stats)
+
+
+def cmd_collect(args) -> int:
+    conn = db.connect()
+    db.init_schema(conn)
+    collector = Collector(conn)
+    groups = set(args.groups.split(","))
+
+    finder = catalog.game_finder_job(args.season, args.season_type)
+    body = collector.fetch(finder.endpoint, finder.params, max_age_h=finder.max_age_h)
+    if body is None:
+        log.error("could not load the game list; is stats.nba.com reachable?")
+        return 1
+    # Team-level rows: two per game; WL is empty until the game is final.
+    game_ids = sorted({r["GAME_ID"] for r in result_rows(body) if r.get("WL")})
+    log.info("%s %s: %d finished games", args.season, args.season_type, len(game_ids))
+
+    if "season" in groups:
+        run_jobs(collector, catalog.season_jobs(args.season, args.season_type),
+                 "season", args.refresh)
+    if "games" in groups:
+        run_jobs(collector, catalog.game_jobs(game_ids), "games", args.refresh)
+    if "players" in groups:
+        base = collector.fetch("LeagueDashPlayerStats", {
+            "season": args.season, "season_type_all_star": args.season_type,
+            "per_mode_detailed": "Totals", "measure_type_detailed_defense": "Base",
+        }, max_age_h=catalog.SEASON_MAX_AGE_H)
+        roster = sorted({(r["TEAM_ID"], r["PLAYER_ID"]) for r in result_rows(base or {})})
+        run_jobs(collector, catalog.player_jobs(args.season, args.season_type, roster),
+                 "players", args.refresh)
+    if "history" in groups:
+        start = int(args.season[:4])
+        seasons = [f"{y}-{(y + 1) % 100:02d}" for y in range(HISTORY_FROM, start + 1)]
+        run_jobs(collector, catalog.history_jobs(seasons, args.season), "history", args.refresh)
+    if "careers" in groups:
+        # Everyone on this season's league list plus everyone the app already shows.
+        allp = collector.fetch("CommonAllPlayers", {"season": args.season, "league_id": "00",
+                                                    "is_only_current_season": 1}, max_age_h=catalog.SEASON_MAX_AGE_H)
+        ids = {r["PERSON_ID"] for r in result_rows(allp or {})}
+        ids |= {r[0] for r in conn.execute("SELECT DISTINCT player_id FROM feat.player_stats")}
+        run_jobs(collector, catalog.career_jobs(sorted(ids)), "careers", args.refresh)
+
+    log.info("done: %s", collector.stats)
+    return 0 if collector.stats["failed"] == 0 else 2
+
+
+def cmd_status(args) -> int:
+    conn = db.connect()
+    rows = conn.execute(
+        """
+        SELECT endpoint,
+               count(*) FILTER (WHERE status = 'ok')    AS ok,
+               count(*) FILTER (WHERE status = 'error') AS error,
+               max(fetched_at)                          AS last_fetch
+        FROM raw.raw_response
+        WHERE params ->> 'season' = %(s)s OR params ->> 'season_nullable' = %(s)s
+           OR params ? 'game_id'
+        GROUP BY endpoint ORDER BY endpoint
+        """,
+        {"s": args.season},
+    ).fetchall()
+    print(f"{'endpoint':32} {'ok':>6} {'error':>6}  last fetch")
+    for endpoint, ok, error, last in rows:
+        print(f"{endpoint:32} {ok:>6} {error:>6}  {last:%Y-%m-%d %H:%M}")
+    return 0
+
+
+def cmd_roles(args) -> int:
+    from ballstats import features, roles, views  # heavy imports only when needed
+
+    conn = db.connect()
+    db.init_schema(conn)
+    if args.all:
+        seasons = [r[0] for r in conn.execute(
+            "SELECT DISTINCT params->>'season' FROM raw.raw_response WHERE endpoint = 'LeagueDashPtStats'"
+            " AND status = 'ok' ORDER BY 1")]
+        reference = args.reference or args.season
+        print(f"rebuilding {seasons} on the {reference} model:", views.rebuild_all(conn, reference, seasons))
+        return 0
+    info, off, de = features.build(conn, args.season)
+    reference = args.reference or args.season
+    if reference != args.season:
+        # Fit on the reference season, then project this season onto that model so the
+        # roles carry the same meaning; the explorer views stay with the reference season.
+        ref_info, ref_off, ref_de = features.build(conn, reference)
+        for side, X, ref_X in (("offense", off, ref_off), ("defense", de, ref_de)):
+            fit = roles.project(roles.fit_side(side, ref_X, ref_info["min"], reference), X, info["min"])
+            print(f"{side}: projected {len(fit.weights)} players of {args.season} onto {fit.model_version} ({reference}),"
+                  f" {int(fit.in_fit.sum())} with {roles.MIN_MINUTES}+ minutes")
+            if not args.dry_run:
+                roles.store(conn, args.season, fit)
+    else:
+        for side, X in (("offense", off), ("defense", de)):
+            fit = roles.fit_side(side, X, info["min"], args.season)
+            print(roles.report(fit, info, args.season))
+            print()
+            if not args.dry_run:
+                roles.store(conn, args.season, fit)
+                views.store_side(conn, args.season, fit, X, info["min"])
+    if not args.dry_run:
+        views.store_stats(conn, args.season, info, off, de)
+    return 0
+
+
+def cmd_ratings(args) -> int:
+    from ballstats import ratings
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("ratings:", ratings.compute(conn))
+    return 0
+
+
+def cmd_teams(args) -> int:
+    from ballstats import teams
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("teams:", teams.compute(conn))
+    return 0
+
+
+def cmd_parse(args) -> int:
+    from ballstats import core
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("careers:", core.parse_careers(conn))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="ballstats")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("init-db", help="create the raw schema")
+
+    collect = sub.add_parser("collect", help="fetch one season into raw.raw_response")
+    collect.add_argument("--season", default=current_season())
+    collect.add_argument("--season-type", default="Regular Season",
+                         choices=["Regular Season", "Playoffs", "PlayIn"])
+    collect.add_argument("--groups", default=",".join(GROUPS),
+                         help=f"comma-separated subset of {','.join(GROUPS + OPTIONAL_GROUPS)}")
+    collect.add_argument("--refresh", action="store_true",
+                         help="refetch even requests that are cached and fresh")
+
+    status = sub.add_parser("status", help="per-endpoint counts for a season")
+    status.add_argument("--season", default=current_season())
+
+    sub.add_parser("parse", help="parse raw responses into the core tables (players, seasons, careers)")
+    sub.add_parser("ratings", help="compute season OVR and peak / career ratings")
+    sub.add_parser("teams", help="team style profiles and team-building styles (after roles and ratings)")
+
+    roles_p = sub.add_parser("roles", help="fit role families and archetype mixes for a season")
+    roles_p.add_argument("--season", default=current_season())
+    roles_p.add_argument("--reference", help="fit on this season and project --season onto it")
+    roles_p.add_argument("--all", action="store_true",
+                         help="every season with tracking data on the --reference model, plus the career view")
+    roles_p.add_argument("--dry-run", action="store_true", help="print the report, store nothing")
+
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+                        stream=sys.stdout)
+
+    if args.command == "init-db":
+        print("applied:", ", ".join(db.init_schema(db.connect())))
+        return 0
+    if args.command == "collect":
+        return cmd_collect(args)
+    if args.command == "roles":
+        return cmd_roles(args)
+    if args.command == "parse":
+        return cmd_parse(args)
+    if args.command == "ratings":
+        return cmd_ratings(args)
+    if args.command == "teams":
+        return cmd_teams(args)
+    return cmd_status(args)

@@ -1,0 +1,23 @@
+[project]
+name = "ballstats"
+version = "0.1.0"
+description = "NBA player analytics and prediction platform"
+requires-python = ">=3.11"
+dependencies = [
+    "nba_api>=1.12",
+    "psycopg[binary,pool]>=3.2",
+    "scikit-learn>=1.5",
+    "pandas>=2.2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ballstats*"]
+
+[tool.setuptools.package-data]
+ballstats = ["sql/*.sql", "role_names.json", "team_styles.json"]
