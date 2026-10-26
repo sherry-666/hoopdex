@@ -17,7 +17,7 @@ function StyleTable({ styles, pick, onPick }: { styles: TeamStyle[]; pick: numbe
   };
   return (
     <details className="panel" style={{ padding: "10px 14px" }}>
-      <summary style={{ cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种建队思路的特征")}</summary>
+      <summary style={{ cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种进攻体系的特征")}</summary>
       <p className="note" style={{ margin: "8px 0" }}>{t("每格是这一类球队的平均值，单位是相对当季联盟的标准差（σ）：红色高于联盟，蓝色低于联盟。点列名筛选球队。")}</p>
       <div className="table-box">
         <table className="data" style={{ minWidth: 560 }}>
@@ -138,7 +138,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
   return (
     <>
       <p className="note" style={{ maxWidth: "80ch", margin: 0 }}>
-        {t("建队思路看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
+        {t("进攻体系看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
         {t("「球员构成」是轮换 9 人的打法原型按分钟加权。")}{" "}
         {t("交易过的球员算在他最后效力的球队。")}{" "}
         {t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}

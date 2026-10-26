@@ -5,11 +5,12 @@ Run: .venv/bin/uvicorn ballstats.api:app --port 8000
 
 import re
 from functools import lru_cache
+from urllib.parse import urlencode
 from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -56,7 +57,8 @@ def seasons() -> list[dict]:
     rows = q(
         """
         SELECT s.season, count(*) AS players, count(*) FILTER (WHERE s.minutes >= %s) AS qualified,
-               EXISTS (SELECT 1 FROM feat.player_view v WHERE v.season = s.season) AS has_views
+               EXISTS (SELECT 1 FROM feat.player_view v WHERE v.season = s.season) AS has_views,
+               EXISTS (SELECT 1 FROM feat.team_profile tp WHERE tp.season = s.season) AS has_teams
         FROM feat.player_stats s WHERE s.season <> 'career' GROUP BY s.season ORDER BY s.season DESC
         """, (roles.MIN_MINUTES,))
     for r in rows:
@@ -204,7 +206,7 @@ def career_rating_for(player_id: int) -> dict | None:
 
 @app.get("/api/teams/{season}")
 def team_view(season: str) -> dict:
-    """Team-building styles and every team's rotation profile for one season."""
+    """Offensive systems and every team's rotation profile for one season."""
     styles = q("SELECT style_id, name, description, centroid FROM feat.team_style ORDER BY style_id")
     teams = q("SELECT p.team, p.style_id, p.defense_tag, p.off_mix, p.def_mix, p.off_z, p.avg_ovr, p.rotation_minutes,"
               " p.core, p.ovr, p.off, p.def, p.ortg, p.drtg, s.features AS system FROM feat.team_profile p"
@@ -273,7 +275,14 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
     if path == "/roles":
         return seo.roles_lab(lang, explicit)
     if path == "/players":
-        return seo.roster(lang, season, player_list(season), params.get("tab") == "teams", bool(explicit))
+        return seo.roster(lang, season, player_list(season), bool(explicit))
+    if path == "/teams":
+        team_seasons = [r["season"] for r in seasons() if r["has_teams"]]
+        if explicit and explicit not in team_seasons:
+            return seo.not_found(lang, path)
+        if not explicit and season not in team_seasons:
+            season = team_seasons[0]
+        return seo.teams(lang, season, bool(explicit), team_view(season))
     if m := re.fullmatch(r"/players/(\d+)", path):
         pid = int(m.group(1))
         played = player_seasons(pid)
@@ -295,7 +304,7 @@ def robots(request: Request) -> PlainTextResponse:
 
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap(request: Request) -> Response:
-    pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/players", {"tab": "teams"})]
+    pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/teams", {})]
     ids = q("SELECT DISTINCT player_id FROM feat.player_stats WHERE season <> 'career' ORDER BY player_id")
     pages += [(f"/players/{r['player_id']}", {}) for r in ids]
     return Response(seo.sitemap(site_base(request), pages), media_type="application/xml")
@@ -322,6 +331,10 @@ if WEB_DIST.is_dir():
         if path and target.is_file():
             return FileResponse(target)
         params = dict(request.query_params)
+        if path.rstrip("/") == "players" and params.get("tab") == "teams":
+            # Teams used to be a tab on the roster.
+            keep = {k: v for k, v in params.items() if k in ("season", "lang")}
+            return RedirectResponse("/teams" + (f"?{urlencode(keep)}" if keep else ""), status_code=301)
         lang = "en" if params.get("lang") == "en" else "zh"
         page = page_for("/" + path.rstrip("/"), params, lang) if path else page_for("/", params, lang)
         return HTMLResponse(seo.render(index_html(), page, lang, site_base(request)), status_code=page.status)

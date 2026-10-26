@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useDefaultSeason, usePlayers, useSeasons } from "../api";
 import { Failed, Loading, PlayerCard, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { teamName } from "../teams";
-import TeamsTab from "./TeamsTab";
 
 type SortKey = "ovr" | "off" | "def" | "minutes" | "pts_36" | "ts_pct" | "usg_pct";
 const SORTS: Record<SortKey, string> = { ovr: "综合评分", off: "进攻评分", def: "防守评分", minutes: "上场分钟", pts_36: "得分 / 36", ts_pct: "真实命中率", usg_pct: "使用率" };
@@ -20,7 +19,6 @@ export default function Roster() {
   const season = params.get("season") ?? defaultSeason;
   const team = params.get("team") ?? "";
   const query = params.get("q") ?? "";
-  const tab = params.get("tab") === "teams" ? "teams" : "players";
   const players = usePlayers(season);
   const [family, setFamily] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("ovr");
@@ -49,6 +47,9 @@ export default function Roster() {
       .sort((a, b) => ((b[sort] ?? -1) as number) - ((a[sort] ?? -1) as number));
   }, [players.data, query, family, team, sort, showLow, earlySeason]);
 
+  // Teams used to be a tab here; old links go to their own page.
+  if (params.get("tab") === "teams") return <Navigate to={`/teams${params.get("season") ? `?season=${params.get("season")}` : ""}`} replace />;
+
   return (
     <>
       <section className="panel halftone" style={{ background: "var(--pop-blue)", color: "var(--on-blue)", borderColor: "#111" }}>
@@ -56,13 +57,8 @@ export default function Roster() {
         <p style={{ margin: "6px 0 0" }}>{t("{season} 赛季的全部球员。搜名字或球队，按进攻大类筛选。", { season: season ?? "" })}</p>
       </section>
       <div className="row">
-        <div className="seg" role="tablist" aria-label={t("球员名册")}>
-          <button type="button" role="tab" aria-selected={tab === "players"} aria-pressed={tab === "players"} onClick={() => setParam("tab", "")}>{lang === "en" ? "Players" : "球员"}</button>
-          <button type="button" role="tab" aria-selected={tab === "teams"} aria-pressed={tab === "teams"} onClick={() => setParam("tab", "teams")}>{lang === "en" ? "Teams" : "球队"}</button>
-        </div>
         <SeasonSelect value={season} seasons={seasons.data} onChange={(s) => setParam("season", s)} />
       </div>
-      {tab === "teams" ? <TeamsTab season={season} early={earlySeason} /> : (<>
       <div className="row">
         <input className="search" type="search" placeholder={t("Stephen Curry、DEN……")} aria-label={t("搜索球员或球队")} value={query}
           onChange={(e) => setParam("q", e.target.value)} />
@@ -104,7 +100,6 @@ export default function Roster() {
           <button type="button" className="btn primary" onClick={() => setLimit(limit + PAGE)}>{t("再看 {n} 位", { n: Math.min(PAGE, rows.length - limit) })}</button>
         </div>
       )}
-      </>)}
     </>
   );
 }

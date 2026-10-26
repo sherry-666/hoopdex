@@ -41,6 +41,18 @@ export function OffDef({ off, def, size = 15 }: { off: number | null | undefined
   return <span style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>{cell("off", off)}{cell("def", def)}</span>;
 }
 
+const TIERS: [number, string, string, string][] = [
+  [96, "opal", "银河蛋白石", "Galaxy opal"], [92, "diamond", "钻石", "Diamond"], [87, "amethyst", "紫晶", "Amethyst"],
+  [80, "gold", "金", "Gold"], [70, "silver", "银", "Silver"], [0, "bronze", "铜", "Bronze"],
+];
+
+/** A rating number dressed in its 2K-style card tier: the higher, the fancier. */
+export function TierNumber({ value, digits = 0 }: { value: number; digits?: number }) {
+  const { lang } = useLang();
+  const [, cls, zh, en] = TIERS.find(([min]) => value >= min)!;
+  return <span className={`tier-num tier-${cls}`} title={lang === "zh" ? zh : en}>{value.toFixed(digits)}</span>;
+}
+
 const pct1 = (v: number) => `${(v * 100).toFixed(1)}%`;
 const signed = (v: number, d = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(d)}`;
 
@@ -63,10 +75,11 @@ function ComponentRow({ title, weight, z, detail }: { title: string; weight: num
   );
 }
 
-function Trend({ lines, season, career, metric }: { lines: CareerLine[]; season?: string; career: CareerRating | null; metric: RatingKey }) {
+function Trend({ lines, season, metric }: { lines: CareerLine[]; season?: string; metric: RatingKey }) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(0);
+  const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     if (!box.current) return;
     const ro = new ResizeObserver(([e]) => setW(Math.round(e.contentRect.width)));
@@ -78,34 +91,38 @@ function Trend({ lines, season, career, metric }: { lines: CareerLine[]; season?
   const lo = 40, hi = 100;
   const x = (i: number) => m.l + (pts.length < 2 ? (w - m.l - m.r) / 2 : (i / (pts.length - 1)) * (w - m.l - m.r));
   const y = (v: number) => m.t + ((hi - v) / (hi - lo)) * (h - m.t - m.b);
-  const peakIdx = career && metric === "ovr" ? [pts.findIndex((p) => p.season === career.peak_from), pts.findIndex((p) => p.season === career.peak_to)] : [-1, -1];
   const step = Math.max(1, Math.ceil(pts.length / Math.max(2, Math.floor(w / 70))));
   const sel = pts.findIndex((p) => p.season === season);
   // Axis labels: the selected season always, others on a stride, never right next to the selected one.
   const showLabel = (i: number) => i === sel || ((i % step === 0 || i === pts.length - 1) && (sel < 0 || Math.abs(i - sel) >= Math.max(2, step)));
   return (
-    <div ref={box} style={{ minHeight: h }}>
+    <div ref={box} style={{ minHeight: h, position: "relative" }}>
       {w > 0 && pts.length > 0 && (
-        <svg viewBox={`0 0 ${w} ${h}`} width="100%" role="img" aria-label={t("各赛季评分")}>
+        <svg viewBox={`0 0 ${w} ${h}`} width="100%" role="img" aria-label={t("各赛季评分")}
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const px = ((e.clientX - r.left) / r.width) * w;
+            let best = 0;
+            pts.forEach((_p, i) => { if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i; });
+            setHover(best);
+          }}
+          onPointerLeave={() => setHover(null)}>
           {[50, 60, 70, 80, 90, 100].map((v) => (
             <g key={v}>
               <line x1={m.l} x2={w - m.r} y1={y(v)} y2={y(v)} stroke="var(--rule)" />
               <text x={m.l - 6} y={y(v)} textAnchor="end" dominantBaseline="middle" fontSize="11" fill="var(--muted)">{v}</text>
             </g>
           ))}
-          {peakIdx[0] >= 0 && peakIdx[1] >= 0 && (
-            <rect x={x(peakIdx[0]) - 8} width={x(peakIdx[1]) - x(peakIdx[0]) + 16} y={m.t} height={h - m.t - m.b}
-              fill="var(--pop-yellow)" opacity="0.35" />
+          {hover != null && (
+            <line x1={x(hover)} x2={x(hover)} y1={m.t} y2={h - m.b} stroke="var(--ink)" strokeDasharray="3 3" opacity="0.5" />
           )}
           <polyline fill="none" stroke="var(--ink)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
             points={pts.map((p, i) => `${x(i)},${y(p.v)}`).join(" ")} />
           {pts.map((p, i) => (
             <g key={p.season}>
-              <circle cx={x(i)} cy={y(p.v)} r={p.season === season ? 7 : 4.5}
-                fill={p.season === season ? "var(--pop-red)" : p.ovr_qualified ? "var(--panel)" : "var(--rule)"}
-                stroke="var(--ink)" strokeWidth="2">
-                <title>{`${p.season} · ${RATING_SHORT[metric].en} ${p.v}`}</title>
-              </circle>
+              <circle cx={x(i)} cy={y(p.v)} r={p.season === season ? 7 : hover === i ? 6.5 : 4.5}
+                fill={p.season === season ? "var(--pop-red)" : hover === i ? "var(--pop-yellow)" : p.ovr_qualified ? "var(--panel)" : "var(--rule)"}
+                stroke="var(--ink)" strokeWidth="2" />
               {showLabel(i) && (
                 <text x={x(i)} y={h - 10} textAnchor="middle" fontSize="11" fill={p.season === season ? "var(--ink)" : "var(--muted)"}
                   fontWeight={p.season === season ? 700 : 400}>{p.season!.slice(2)}</text>
@@ -118,6 +135,18 @@ function Trend({ lines, season, career, metric }: { lines: CareerLine[]; season?
             </g>
           ))}
         </svg>
+      )}
+      {hover != null && pts[hover] && (
+        <div role="status" style={{
+          position: "absolute", pointerEvents: "none", top: Math.max(0, (y(pts[hover].v) / h) * (box.current?.clientHeight ?? h) - 54),
+          left: `${(x(hover) / w) * 100}%`, transform: `translateX(${x(hover) > w * 0.75 ? "-100%" : x(hover) < w * 0.25 ? "0" : "-50%"})`,
+          background: "var(--panel)", border: "2px solid var(--ink)", boxShadow: "2px 2px 0 var(--ink)", padding: "4px 8px",
+          whiteSpace: "nowrap", fontSize: "var(--size-caption)",
+        }}>
+          <b>{pts[hover].season}</b>{pts[hover].team ? ` · ${pts[hover].team}` : ""}
+          <span style={{ fontFamily: "var(--font-latin)", fontSize: 18, marginLeft: 8 }}>{pts[hover].v}</span>
+          <span className="note"> {t(RATING_LABEL[metric])}</span>
+        </div>
       )}
     </div>
   );
@@ -162,11 +191,11 @@ function Breakdown({ metric, rating }: { metric: RatingKey; rating: SeasonRating
   );
 }
 
-function Score({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Score({ label, value, digits = 0, sub }: { label: string; value: number; digits?: number; sub?: string }) {
   return (
     <div>
       <span className="note">{label}</span>
-      <div style={{ fontFamily: "var(--font-latin)", fontSize: 30, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: "var(--font-latin)", fontSize: 30, lineHeight: 1 }}><TierNumber value={value} digits={digits} /></div>
       {sub && <span className="note">{sub}</span>}
     </div>
   );
@@ -186,18 +215,18 @@ export function RatingPanel({ rating, career, lines, season }: {
       <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", marginTop: 14 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="row" style={{ gap: 18, flexWrap: "wrap", alignItems: "center" }}>
-            {rating ? <Burst value={String(rating.ovr)} label={t("{season} 综合评分", { season: season ?? "" })} /> : <p className="note">{t("这个赛季还没有评分。")}</p>}
+            {rating ? <Burst value={<TierNumber value={rating.ovr} />} label={t("{season} 综合评分", { season: season ?? "" })} /> : <p className="note">{t("这个赛季还没有评分。")}</p>}
             {rating && (
               <div style={{ display: "grid", gap: 8 }}>
-                <Score label={t("进攻评分")} value={String(rating.off)} />
-                <Score label={t("防守评分")} value={String(rating.def)} />
+                <Score label={t("进攻评分")} value={rating.off} />
+                <Score label={t("防守评分")} value={rating.def} />
               </div>
             )}
             {career && (
               <div style={{ display: "grid", gap: 6 }}>
-                <Score label={t("巅峰评分")} value={career.peak.toFixed(1)}
+                <Score label={t("巅峰评分")} value={career.peak} digits={1}
                   sub={career.peak_from === career.peak_to ? career.peak_from : `${career.peak_from} – ${career.peak_to}`} />
-                <Score label={t("生涯评分")} value={career.career.toFixed(1)}
+                <Score label={t("生涯评分")} value={career.career} digits={1}
                   sub={t("{n} 个赛季，其中 {q} 季满 500 分钟", { n: career.seasons, q: career.qualified_seasons })} />
               </div>
             )}
@@ -219,9 +248,9 @@ export function RatingPanel({ rating, career, lines, season }: {
         </div>
         <div>
           <div className="note" style={{ marginBottom: 6 }}>
-            {metric === "ovr" ? t("各赛季评分（黄色区域是巅峰三季）") : t("各赛季{k}评分", { k: t(RATING_LABEL[metric]) })}
+            {metric === "ovr" ? t("各赛季评分") : t("各赛季{k}评分", { k: t(RATING_LABEL[metric]) })}
           </div>
-          <Trend lines={lines} season={season} career={career} metric={metric} />
+          <Trend lines={lines} season={season} metric={metric} />
           {career && metric !== "ovr" && peakOf[metric] != null && (
             <p className="note" style={{ margin: "6px 0 0" }}>
               {t("{k}巅峰 {p}，生涯 {c}", { k: t(RATING_LABEL[metric]), p: peakOf[metric]!.toFixed(1), c: careerOf[metric]!.toFixed(1) })}
@@ -239,6 +268,7 @@ export function RatingPanel({ rating, career, lines, season }: {
           <li>{t("按上场时间做收缩：分钟越少，越向替补水平靠拢，避免几场比赛就打出 95 分。")}</li>
           <li>{t("换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。三项评分各自独立计算，综合评分不是攻守的平均。")}</li>
           <li>{t("巅峰评分 = 生涯中连续三个满 500 分钟赛季的最高平均；生涯评分 = 70% 巅峰 + 30% 各赛季按分钟加权的平均。")}</li>
+          <li>{t("数字的颜色是 2K 式卡牌等级：铜（70 以下）、银（70+）、金（80+）、紫晶（87+）、钻石（92+）、银河蛋白石（96+）。")}</li>
         </ol>
         <p className="note" style={{ marginTop: 10 }}>{t("这是第一版（只用 box score）。它偏爱篮板多、出手效率高的内线；防守尤其难从 box score 看出来，换防、协防和限制投篮都看不到。之后会换成考虑队友和对手的影响力模型（RAPM）。每个赛季都在当季内排名，所以不同年代可以直接比较。")}</p>
       </details>

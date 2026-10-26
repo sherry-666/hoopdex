@@ -48,6 +48,10 @@ NAMES_EN = {
 }
 
 
+STYLE_EN = {"外线单打": "Perimeter Iso", "跑动传切": "Motion Offense", "内线枢纽": "Interior Hub Offense",
+            "冲击转换": "Drive and Run", "持球挡拆": "Ball-screen Creator"}
+
+
 def team_name(abbr: str | None, lang: str) -> str:
     if not abbr:
         return ""
@@ -126,7 +130,7 @@ def _link(path: str, text: str, lang: str, query: dict | None = None) -> str:
 def _nav(lang: str) -> str:
     zh = lang == "zh"
     items = [("/", "首页" if zh else "Home"), ("/roles", "定位实验室" if zh else "Role Lab"),
-             ("/players", "球员名册" if zh else "Player Roster")]
+             ("/players", "球员名册" if zh else "Player Roster"), ("/teams", "球队体系" if zh else "Team Systems")]
     other = _link("/", "English", "en") if zh else _link("/", "中文", "zh")
     return "<nav>" + " · ".join(_link(p, t, lang) for p, t in items) + f" · {other}</nav>"
 
@@ -164,20 +168,33 @@ def roles_lab(lang: str, season: str | None) -> Page:
     return Page(200, title, desc, "/roles", {"season": season} if season else {}, body=body)
 
 
-def roster(lang: str, season: str, players: list[dict], teams_tab: bool, explicit_season: bool) -> Page:
+def roster(lang: str, season: str, players: list[dict], explicit_season: bool) -> Page:
     zh = lang == "zh"
-    query = ({"season": season} if explicit_season else {}) | ({"tab": "teams"} if teams_tab else {})
-    if teams_tab:
-        title = f"{'NBA 球队建队思路' if zh else 'NBA team-building styles'} {season} · {SITE_NAME}"
-        desc = (f"{season} 赛季每支 NBA 球队的主力轮换、打法原型构成和建队思路。" if zh else
-                f"Every NBA team's rotation, archetype mix and team-building style for {season}.")
-    else:
-        title = f"{'NBA 球员名册' if zh else 'NBA player roster'} {season} · {SITE_NAME}"
-        desc = (f"{season} 赛季全部 NBA 球员：打法原型、2K 式能力值和每 36 分钟数据。" if zh else
-                f"Every NBA player of {season}: archetypes, 2K-style ratings and per-36 stats.")
+    query = {"season": season} if explicit_season else {}
+    title = f"{'NBA 球员名册' if zh else 'NBA player roster'} {season} · {SITE_NAME}"
+    desc = (f"{season} 赛季全部 NBA 球员：打法原型、2K 式能力值和每 36 分钟数据。" if zh else
+            f"Every NBA player of {season}: archetypes, 2K-style ratings and per-36 stats.")
     body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
             f"<main><p>{html.escape(desc)}</p>{_player_list(players, season, lang, 200)}</main>")
     return Page(200, title, desc, "/players", query, body=body)
+
+
+def teams(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
+    zh = lang == "zh"
+    title = f"{'NBA 球队进攻体系' if zh else 'NBA team offensive systems'} {season} · {SITE_NAME}"
+    desc = (f"{season} 赛季每支 NBA 球队的进攻体系、球队评分（综合、进攻、防守）和主力轮换。" if zh else
+            f"Every NBA team's offensive system, team ratings (overall, offense, defense) and rotation for {season}.")
+    style_names = {s["style_id"]: s["name"] for s in view["styles"]}
+    items = []
+    for t in view["teams"]:
+        style = style_names.get(t["style_id"]) or ""
+        if not zh:
+            style = STYLE_EN.get(style, style)
+        rating = f"{'评分' if zh else 'rating'} {t['ovr']}" if t.get("ovr") is not None else ""
+        items.append(f"<li>{html.escape(team_name(t['team'], lang))} · {html.escape(style)} · {html.escape(rating)}</li>")
+    body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
+            f"<main><p>{html.escape(desc)}</p><ul>{''.join(items)}</ul></main>")
+    return Page(200, title, desc, "/teams", {"season": season} if explicit_season else {}, body=body)
 
 
 def player(lang: str, season: str, explicit_season: bool, p: dict) -> Page:

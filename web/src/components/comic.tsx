@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import { Power, SeasonInfo, seriesColor } from "../api";
 import { POWERS_EN, useLang } from "../i18n";
@@ -37,7 +37,7 @@ export function Portrait({ id, name, archetype, size = 220 }: { id: number; name
   );
 }
 
-export function Burst({ value, label, tone = "red" }: { value: string; label: string; tone?: "red" | "yellow" | "blue" }) {
+export function Burst({ value, label, tone = "red" }: { value: ReactNode; label: string; tone?: "red" | "yellow" | "blue" }) {
   return (
     <div className={`burst pop-in ${tone === "red" ? "" : tone}`}>
       <span className="num">{value}</span>

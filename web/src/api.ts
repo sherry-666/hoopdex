@@ -60,7 +60,7 @@ export interface CareerRating {
   peak: number; peak_from: string; peak_to: string; avg_ovr: number; career: number;
   off_career: number | null; off_peak: number | null; def_career: number | null; def_peak: number | null; seasons: number; qualified_seasons: number;
 }
-export interface SeasonInfo { season: string; players: number; qualified: number; has_views: boolean; in_progress: boolean }
+export interface SeasonInfo { season: string; players: number; qualified: number; has_views: boolean; has_teams: boolean; in_progress: boolean }
 export interface CareerLine {
   season?: string; team?: string; age?: number | null;
   gp: number; gs: number | null; min: number | null; fgm: number; fga: number; fg3m: number; fg3a: number;

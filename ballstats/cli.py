@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("parse", help="parse raw responses into the core tables (players, seasons, careers)")
     sub.add_parser("ratings", help="compute season OVR and peak / career ratings")
-    sub.add_parser("teams", help="team style profiles and team-building styles (after roles and ratings)")
+    sub.add_parser("teams", help="team style profiles and offensive systems (after roles and ratings)")
 
     roles_p = sub.add_parser("roles", help="fit role families and archetype mixes for a season")
     roles_p.add_argument("--season", default=current_season())

@@ -4,7 +4,7 @@ Per team and season, the rotation is its NUM_ROTATION players with the most minu
 (a traded player counts for the team he finished with). The team's style is the
 minutes-weighted average of their archetype mixes, offense and defense.
 
-Team-building styles come from how the team runs its offense (team_features: play-type
+Offensive systems (team styles) come from how the team runs its offense (team_features: play-type
 mix, ball movement, touches, shot diet, pace), standardized within each season so the
 league's drift toward threes doesn't split teams by era. k-means is fitted on every
 complete season since 2015-16 and applied to all. Styles are still a continuum

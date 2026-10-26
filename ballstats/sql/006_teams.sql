@@ -1,4 +1,4 @@
--- Team-building styles (ballstats/teams.py).
+-- Team offensive systems and profiles (ballstats/teams.py).
 
 CREATE TABLE IF NOT EXISTS feat.team_style (
     style_id       integer PRIMARY KEY,

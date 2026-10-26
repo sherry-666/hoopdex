@@ -73,7 +73,7 @@ const UI_EN: Record<string, string> = {
   "在场表现": "On-court", "他在场时球队每 100 回合净胜 {net} 分": "Team net {net} points per 100 possessions with him on the floor",
   "样本权重 {w}（{min} 分钟）：样本越少，评分越向替补水平靠拢。": "Sample weight {w} ({min} min): the smaller the sample, the closer to replacement level.",
   "本赛季还早，按 {s} 赛季的标准换算。": "It's early in the season, so the scale comes from {s}.",
-  "各赛季评分": "Rating by season", "各赛季评分（黄色区域是巅峰三季）": "Rating by season (yellow: peak three seasons)",
+  "各赛季评分": "Rating by season",
   "评分是怎么算的？": "How is the rating built?",
   "每个赛季用联盟官方的全员数据，算三项指标：综合贡献（PIE，占场上统计事件的份额）、得分效率与量（使用率 × 真实命中率高出联盟的部分，再加上球权本身的价值）、在场表现（他在场时球队的净效率，按上场时间打折，因为它受队友影响很大）。":
     "Each season, from the league's full player tables, three measures: contribution (PIE, his share of box-score events), scoring volume and efficiency (usage times true shooting above league average, plus credit for usage itself) and on-court (team net rating with him playing, discounted by minutes because teammates drive much of it).",
@@ -93,9 +93,10 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
-  "建队思路": "Team-building style",
+  "进攻体系": "Offensive system", "球队体系": "Team Systems",
+  "{season} 赛季每支球队怎么打：进攻体系、球队评分和主力轮换。": "How every team plays in {season}: offensive system, team ratings and rotation.",
   "进攻特点（相对当季联盟）": "Offensive traits (vs league that season)", "球员构成": "Player makeup",
-  "5 种建队思路的特征": "What defines the 5 team styles", "特征": "Feature",
+  "5 种进攻体系的特征": "What defines the 5 offensive systems", "特征": "Feature",
   "战术类型占比": "Play-type mix", "传球与触球": "Passing and touches", "出手与节奏": "Shots and pace",
   "每格是这一类球队的平均值，单位是相对当季联盟的标准差（σ）：红色高于联盟，蓝色低于联盟。点列名筛选球队。":
     "Each cell is the style's average, in standard deviations from that season's league (σ): red is above the league, blue below. Click a column name to filter teams.",
@@ -104,11 +105,13 @@ const UI_EN: Record<string, string> = {
   "进攻经由低位和肘区展开：背身、手递手和中距离多，三分少，节奏偏慢。": "Offense runs through the post and elbows: post-ups, handoffs and midrange, fewer threes, slower pace.",
   "突破多、节奏快，转换进攻和篮下出手多，外线配定点投篮；中距离和急停少。": "Drives and pace: transition and rim attempts with spot-up shooters; little midrange or pull-up shooting.",
   "挡拆持球为主，每次触球时间长、运球多，急停中投多；传球和接球投篮少。": "Ball-screen heavy: long touches, many dribbles and pull-up midrange; few passes or catch-and-shoot looks.",
-  "建队思路看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。":
-    "Team styles describe how a team plays: play-type mix (pick-and-roll, isolation, cuts, post-ups…), passing and touches, drives, shot locations and pace, each against that season's league, clustered into 5 styles using every team since 2015-16. Styles are a continuum; a label means closest to, not a strict camp.",
+  "进攻体系看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。":
+    "Offensive systems describe how a team plays: play-type mix (pick-and-roll, isolation, cuts, post-ups…), passing and touches, drives, shot locations and pace, each against that season's league, clustered into 5 systems using every team since 2015-16. Systems are a continuum; a label means closest to, not a strict camp.",
   "「球员构成」是轮换 9 人的打法原型按分钟加权。": "Player makeup is the rotation's 9 players' archetypes, weighted by minutes.", "轮换 OVR": "Rotation OVR",
   // offense / defense ratings
-  "综合": "Overall", "进攻评分": "Offense rating", "防守评分": "Defense rating", "评分类型": "Rating type",
+  "综合": "Overall", "进攻评分": "Offense rating",
+  "数字的颜色是 2K 式卡牌等级：铜（70 以下）、银（70+）、金（80+）、紫晶（87+）、钻石（92+）、银河蛋白石（96+）。":
+    "Number colours follow 2K-style card tiers: bronze (under 70), silver (70+), gold (80+), amethyst (87+), diamond (92+), galaxy opal (96+).", "防守评分": "Defense rating", "评分类型": "Rating type",
   "攻": "OFF", "守": "DEF", "组织": "Playmaking", "进攻篮板": "Offensive rebounding", "在场进攻": "On-court offense",
   "防守篮板": "Defensive rebounding", "在场防守": "On-court defense",
   "助攻率 {ast}，失误率 {tov}": "Assist rate {ast}, turnover ratio {tov}", "进攻篮板率 {v}": "Offensive rebound rate {v}",
@@ -129,8 +132,6 @@ const UI_EN: Record<string, string> = {
   "球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。":
     "Team ratings (overall, offense, defense) are half the rotation's player ratings (minutes-weighted) and half the team's actual net rating, points scored and points allowed per 100 possessions, each ranked among that season's 30 teams; 80 is league average.",
   "主力轮换": "Main rotation", "{n} 支球队": "{n} teams",
-  "按每队上场时间最多的 9 名球员，把他们的打法原型按分钟加权，得出球队的风格；再把风格相近的球队归成 5 种建队思路。打法是连续的，归类表示「最接近」，不是严格的派系。":
-    "Each team's style is the minutes-weighted archetype mix of its 9 players with the most minutes; teams with similar styles are grouped into 5 team-building styles. Styles are a continuum, so a group means closest to, not a strict faction.",
   "本赛季刚开始，轮换和风格还会变化。": "The season has just started; rotations and styles will still change.",
   "交易过的球员算在他最后效力的球队。": "Traded players count for the team they finished with.",
   "挡拆持球手搭配顺下的篮下终结者，外线是跑动射手。": "A pick-and-roll ball handler with a rolling rim finisher, and movement shooters outside.",

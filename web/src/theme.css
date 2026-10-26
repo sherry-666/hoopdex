@@ -178,3 +178,17 @@ table.data tr:hover td { background: var(--tone); }
 }
 @media (max-width: 640px) { .hide-narrow { display: none; } }
 .site-footer { max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter) 32px; color: var(--muted); font-size: var(--size-caption); }
+
+/* Rating numbers in 2K-style card tiers: bronze < 70, silver < 80, gold < 87, amethyst < 92,
+   diamond < 96, galaxy opal 96+. Gold and up get a moving shine; opal also shifts hue. */
+.tier-num { background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 1.5px #111; paint-order: stroke fill; display: inline-block; }
+.tier-bronze { background-image: linear-gradient(180deg, #e8a878, #8a4b22 60%, #c07a4a); }
+.tier-silver { background-image: linear-gradient(180deg, #ffffff, #8d939a 55%, #dfe3e7); }
+.tier-gold { background-image: linear-gradient(110deg, #a8740f 0%, #ffe27a 30%, #c68a12 50%, #fff3b0 65%, #a8740f 100%); animation: tier-sweep 3s linear infinite; }
+.tier-amethyst { background-image: linear-gradient(110deg, #5b2a86 0%, #d6a7ff 30%, #7d3fc0 50%, #f0dcff 65%, #5b2a86 100%); animation: tier-sweep 3s linear infinite; }
+.tier-diamond { background-image: linear-gradient(110deg, #1b7fa8 0%, #bff4ff 30%, #3fb7e0 50%, #ffffff 62%, #1b7fa8 100%); animation: tier-sweep 2.6s linear infinite; }
+.tier-opal { background-image: linear-gradient(110deg, #ff5f9e, #ffd166, #6ee7b7, #60a5fa, #c084fc, #ff5f9e); animation: tier-sweep 2.4s linear infinite, tier-holo 4s linear infinite; }
+@keyframes tier-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes tier-holo { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tier-num { animation: none !important; } }
