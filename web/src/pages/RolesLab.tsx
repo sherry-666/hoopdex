@@ -39,7 +39,7 @@ export default function RolesLab() {
             : t("数据：{season} 常规赛，满 500 分钟的球员。", { season }))}
         </p>
       </section>
-      {early && <p className="bubble" style={{ margin: 0 }}>{t("本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。")}</p>}
+      {early && <p className="bubble" style={{ margin: 0 }}>{t("本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员。定位是本赛季和上赛季的过渡值，图上的位置只用本赛季数据，可信度低。")}</p>}
 
       <div className="row">
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("赛季")}

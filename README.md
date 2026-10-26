@@ -57,6 +57,12 @@ offense = scoring 45%, playmaking (AST% − 0.5 × TOV ratio) 25%, OREB% 10%, on
 steals/36 20%, blocks/36 15%, DREB% 15%, on-court defense 50%. On-court numbers are measured against his own
 team plus 30% of the team's edge on the league, so a strong team doesn't lift everyone.
 
+While a season is in progress (nobody has 70 games yet), the site defaults to it and its model outputs are
+transition values (`ballstats/blend.py`): ratings, archetype mixes, superpowers and team styles / ratings are
+`w x this season + (1 - w) x last season`, with w = minutes / (minutes + 600) for players and
+games / (games + 20) for teams. Box-score stats are never blended. `roles` re-applies the blend after every
+rebuild; run `ratings` and `teams` after it.
+
 Team styles (进攻体系, offensive systems) come from how a team runs its offense, not from its players' archetypes: Synergy play-type mix,
 passes / drives / elbow, post and paint touches per 100, seconds and dribbles per touch, catch-and-shoot vs
 pull-up share, shot zones, assisted share and pace (`ballstats/team_features.py`), standardized within each

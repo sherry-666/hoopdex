@@ -17,8 +17,13 @@ export default function Home() {
   const { t } = useLang();
   usePageTitle();
   const [q, setQ] = useState("");
-  const featured = useMemo(() => (players.data ?? []).filter((p) => p.in_fit && p.pts_36 != null)
-    .sort((a, b) => (b.pts_36 ?? 0) - (a.pts_36 ?? 0)).slice(0, 8), [players.data]);
+  // Regular players only: 500+ minutes, or early in a season 40% of the minutes leader's.
+  const featured = useMemo(() => {
+    const all = players.data ?? [];
+    const floor = Math.min(500, 0.4 * Math.max(0, ...all.map((p) => p.minutes)));
+    return all.filter((p) => p.minutes >= floor && p.pts_36 != null)
+      .sort((a, b) => (b.pts_36 ?? 0) - (a.pts_36 ?? 0)).slice(0, 8);
+  }, [players.data]);
 
   return (
     <>

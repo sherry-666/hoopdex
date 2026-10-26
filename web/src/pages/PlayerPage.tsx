@@ -60,7 +60,12 @@ export default function PlayerPage() {
             <span className="tag">{t("{n} 分钟", { n: p.minutes.toLocaleString() })}</span>
             {off && <span className="tag" style={{ background: seriesColor(off.mix[0].id), color: "#fff", borderColor: "var(--ink)" }}>{name(off.style)}</span>}
           </div>
-          {!p.in_fit && (
+          {off?.blend_weight != null ? (
+            <p className="bubble" style={{ borderColor: "var(--pop-yellow)", margin: 0 }}>
+              {t("赛季初过渡值：定位、超能力和评分按本赛季 {w} + {prior} 赛季 {pw} 合成，本赛季打得越多，占比越高。", {
+                w: `${Math.round(off.blend_weight * 100)}%`, prior: off.prior_season ?? "", pw: `${Math.round((1 - off.blend_weight) * 100)}%` })}
+            </p>
+          ) : !p.in_fit && (
             <p className="bubble" style={{ borderColor: "var(--pop-red)", margin: 0 }}>
               {t("样本不足：上场不满 500 分钟，定位和超能力只是投影出来的参考，可信度低。")}
             </p>

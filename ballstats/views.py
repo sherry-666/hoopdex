@@ -225,6 +225,8 @@ def rebuild_all(conn: psycopg.Connection, reference: str, seasons: list[str]) ->
     for s in seasons:
         store_stats(conn, s, *data[s])
     counts["career_stats"] = _store_career_stats(conn, data)
+    from ballstats import blend
+    counts["blend"] = blend.blend_roles(conn)
     return counts
 
 

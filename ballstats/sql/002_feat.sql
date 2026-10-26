@@ -41,3 +41,9 @@ CREATE TABLE IF NOT EXISTS feat.role_type (
     model_version  text        NOT NULL,
     PRIMARY KEY (season, side, level, type_id)
 );
+
+-- Transition values for the season in progress (blend.py): the season's own mix and how
+-- much of it the stored weights carry; null when not blended.
+ALTER TABLE feat.player_role ADD COLUMN IF NOT EXISTS raw_weights jsonb;
+ALTER TABLE feat.player_role ADD COLUMN IF NOT EXISTS blend_weight double precision;
+ALTER TABLE feat.player_role ADD COLUMN IF NOT EXISTS prior_season text;

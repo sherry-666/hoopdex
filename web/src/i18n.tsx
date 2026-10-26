@@ -110,6 +110,15 @@ const UI_EN: Record<string, string> = {
   "「球员构成」是轮换 9 人的打法原型按分钟加权。": "Player makeup is the rotation's 9 players' archetypes, weighted by minutes.", "轮换 OVR": "Rotation OVR",
   // offense / defense ratings
   "综合": "Overall", "进攻评分": "Offense rating",
+  "赛季初过渡值：定位、超能力和评分按本赛季 {w} + {prior} 赛季 {pw} 合成，本赛季打得越多，占比越高。":
+    "Early-season transition values: roles, superpowers and ratings blend this season {w} with {prior} {pw}; this season's share grows as he plays.",
+  "过渡值 = {w} × 本赛季 {own} + {pw} × {prior} 赛季 {p}": "Transition value = {w} × this season {own} + {pw} × {prior} {p}",
+  "进行中的赛季：本赛季权重 = 分钟 ÷（分钟 + 600），其余来自上赛季。约 5 场首发（170 分钟）时本赛季占 22%，600 分钟占一半，1800 分钟占 75%。新秀没有上赛季，样本少时向替补水平靠拢。":
+    "Season in progress: this season's weight = minutes ÷ (minutes + 600), the rest comes from last season. About 5 starts (170 minutes) gives this season 22%, 600 minutes half, 1,800 minutes 75%. Rookies have no last season, so small samples lean toward bench level.",
+  "赛季初过渡值：进攻体系和球队评分按场次把本赛季和上赛季合成（本赛季权重 = 场次 ÷（场次 + 20）），轮换和风格还会变化。":
+    "Early-season transition values: offensive systems and team ratings blend this season with last by games played (this season's weight = games ÷ (games + 20)); rotations and styles will still shift.",
+  "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员。定位是本赛季和上赛季的过渡值，图上的位置只用本赛季数据，可信度低。":
+    "The season has just started and no one has 500 minutes yet, so every player is shown. Roles are transition values blending this season with last; map positions use this season only and are low confidence.",
   "数字的颜色是 2K 式卡牌等级：铜（70 以下）、银（70+）、金（80+）、紫晶（87+）、钻石（92+）、银河蛋白石（96+）。":
     "Number colours follow 2K-style card tiers: bronze (under 70), silver (70+), gold (80+), amethyst (87+), diamond (92+), galaxy opal (96+).", "防守评分": "Defense rating", "评分类型": "Rating type",
   "攻": "OFF", "守": "DEF", "组织": "Playmaking", "进攻篮板": "Offensive rebounding", "在场进攻": "On-court offense",

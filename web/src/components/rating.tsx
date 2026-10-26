@@ -239,10 +239,17 @@ export function RatingPanel({ rating, career, lines, season }: {
           {rating && d && (
             <>
               <Breakdown metric={metric} rating={rating} />
-              <p className="note" style={{ margin: 0 }}>
+              {d.blend && (
+                <p className="note" style={{ margin: 0 }}>
+                  {t("过渡值 = {w} × 本赛季 {own} + {pw} × {prior} 赛季 {p}", {
+                    w: `${Math.round(d.blend.weight * 100)}%`, pw: `${Math.round((1 - d.blend.weight) * 100)}%`,
+                    own: d.blend[`own_${metric}`], prior: d.blend_prior ?? "", p: d.blend[`prior_${metric}`] })}
+                </p>
+              )}
+              {!d.blend && <p className="note" style={{ margin: 0 }}>
                 {t("样本权重 {w}（{min} 分钟）：样本越少，评分越向替补水平靠拢。", { w: `${Math.round(d.reliability * 100)}%`, min: Math.round(rating.minutes).toLocaleString() })}
                 {rating.baseline_season !== season && ` ${t("本赛季还早，按 {s} 赛季的标准换算。", { s: rating.baseline_season })}`}
-              </p>
+              </p>}
             </>
           )}
         </div>
@@ -268,6 +275,7 @@ export function RatingPanel({ rating, career, lines, season }: {
           <li>{t("按上场时间做收缩：分钟越少，越向替补水平靠拢，避免几场比赛就打出 95 分。")}</li>
           <li>{t("换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。三项评分各自独立计算，综合评分不是攻守的平均。")}</li>
           <li>{t("巅峰评分 = 生涯中连续三个满 500 分钟赛季的最高平均；生涯评分 = 70% 巅峰 + 30% 各赛季按分钟加权的平均。")}</li>
+          <li>{t("进行中的赛季：本赛季权重 = 分钟 ÷（分钟 + 600），其余来自上赛季。约 5 场首发（170 分钟）时本赛季占 22%，600 分钟占一半，1800 分钟占 75%。新秀没有上赛季，样本少时向替补水平靠拢。")}</li>
           <li>{t("数字的颜色是 2K 式卡牌等级：铜（70 以下）、银（70+）、金（80+）、紫晶（87+）、钻石（92+）、银河蛋白石（96+）。")}</li>
         </ol>
         <p className="note" style={{ marginTop: 10 }}>{t("这是第一版（只用 box score）。它偏爱篮板多、出手效率高的内线；防守尤其难从 box score 看出来，换防、协防和限制投篮都看不到。之后会换成考虑队友和对手的影响力模型（RAPM）。每个赛季都在当季内排名，所以不同年代可以直接比较。")}</p>

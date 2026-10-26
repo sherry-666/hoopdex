@@ -33,6 +33,7 @@ export interface SideRole {
   family: string; style: string; top_weight: number; in_fit: boolean;
   mix: { id: number; name: string; weight: number }[];
   similar: { player_id: number; name: string; team: string; style_label: string; similarity: number }[];
+  blend_weight: number | null; prior_season: string | null;
 }
 export interface PlayerDetail {
   player_id: number; name: string; team: string; gp: number; minutes: number; in_fit: boolean;
@@ -51,6 +52,8 @@ export interface SeasonRating {
   ovr: number; off: number; def: number; z: number; qualified: boolean; baseline_season: string; minutes: number; gp: number; model_version: string;
   detail: { contribution: number; scoring: number; on_court: number; reliability: number;
     pie: number; ts: number; usg: number; net: number; league_ts: number;
+    blend?: { weight: number; own_ovr: number; own_off: number; own_def: number; prior_ovr: number; prior_off: number; prior_def: number };
+    blend_prior?: string;
     off: { scoring: number; playmaking: number; off_rebounding: number; on_court: number;
       ortg: number; league_ortg: number; ast_pct: number; tov_pct: number; oreb_pct: number };
     def: { steals: number; blocks: number; def_rebounding: number; on_court: number;
@@ -80,7 +83,7 @@ export interface TeamProfile {
   team: string; style_id: number; defense_tag: string; off_mix: Record<string, number>; def_mix: Record<string, number>;
   off_z: Record<string, number>; avg_ovr: number | null; rotation_minutes: number;
   ovr: number | null; off: number | null; def: number | null; ortg: number | null; drtg: number | null;
-  system: Record<string, number> | null;
+  system: Record<string, number> | null; blend_weight: number | null;
   core: { player_id: number; name: string; minutes: number; style: string | null; ovr: number | null; off?: number | null; def?: number | null }[];
 }
 export interface TeamView { styles: TeamStyle[]; teams: TeamProfile[]; archetypes: Record<Side, string[]> }
@@ -100,16 +103,16 @@ export const usePlayer = (season: string | undefined, id: number) =>
   useQuery({ queryKey: ["player", season, id], queryFn: () => get<PlayerDetail>(`/api/players/${season}/${id}`), enabled: !!season });
 
 /** The default season for the role explorer: the newest complete one with explorer views. */
+/** The default season for the role explorer: the newest one with views, even while in progress. */
 export function useSeason(): string | undefined {
-  const seasons = useSeasons().data;
-  return (seasons?.find((s) => s.has_views && !s.in_progress) ?? seasons?.find((s) => s.has_views))?.season;
+  return useSeasons().data?.find((s) => s.has_views)?.season;
 }
 export const CAREER = "career";
 
-/** The default season for lists and player pages: the newest complete one. */
+/** The default season for lists and player pages: the newest one, even while in progress.
+ *  Early in a season its ratings and roles blend with last season (ballstats/blend.py). */
 export function useDefaultSeason(): string | undefined {
-  const seasons = useSeasons().data;
-  return (seasons?.find((s) => !s.in_progress) ?? seasons?.[0])?.season;
+  return useSeasons().data?.[0]?.season;
 }
 
 export const seriesColor = (i: number) => `var(--series-${(i % 7) + 1})`;

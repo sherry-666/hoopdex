@@ -162,6 +162,17 @@ def player(season: str, player_id: int) -> dict:
 
     names = archetype_names(season)
     role_rows = q("SELECT * FROM feat.player_role WHERE season = %s AND player_id = %s", (season, player_id))
+    # Season in progress: superpowers blend with last season by the same weight as the roles (blend.py).
+    blended = next((r for r in role_rows if r["blend_weight"] is not None), None)
+    if blended:
+        prior = q("SELECT stats FROM feat.player_stats WHERE season = %s AND player_id = %s",
+                  (blended["prior_season"], player_id))
+        if prior:
+            p_league = league_table(blended["prior_season"])
+            p_mean, p_sd = p_league.mean(), p_league.std()
+            w = blended["blend_weight"]
+            z = {k: w * v + (1 - w) * float((prior[0]["stats"][k] - p_mean[k]) / p_sd[k]) if prior[0]["stats"].get(k) is not None
+                 and k in p_mean and p_sd[k] > 0 else v for k, v in z.items()}
     sides = {}
     for r in role_rows:
         mix = sorted(({"id": int(a), "name": names.get((r["side"], int(a))), "weight": w}
@@ -178,7 +189,7 @@ def player(season: str, player_id: int) -> dict:
             del p["weights"]
         sides[r["side"]] = {
             "family": r["family_name"], "style": r["style_label"], "top_weight": r["top_weight"],
-            "in_fit": r["in_fit"], "mix": mix,
+            "in_fit": r["in_fit"], "mix": mix, "blend_weight": r["blend_weight"], "prior_season": r["prior_season"],
             "similar": sorted(peers, key=lambda p: -p["similarity"])[:5],
         }
     return {
@@ -259,8 +270,8 @@ def site_base(request: Request) -> str:
 
 
 def default_season() -> str:
-    rows = seasons()
-    return next((r for r in rows if not r["in_progress"]), rows[0])["season"]
+    """The newest season, even while in progress: its numbers blend with last season (blend.py)."""
+    return seasons()[0]["season"]
 
 
 def page_for(path: str, params: dict, lang: str) -> seo.Page:

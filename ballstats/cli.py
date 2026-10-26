@@ -130,6 +130,8 @@ def cmd_roles(args) -> int:
                 views.store_side(conn, args.season, fit, X, info["min"])
     if not args.dry_run:
         views.store_stats(conn, args.season, info, off, de)
+        from ballstats import blend
+        print("blend:", blend.blend_roles(conn))
     return 0
 
 

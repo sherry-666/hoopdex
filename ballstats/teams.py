@@ -27,7 +27,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 from sklearn.cluster import KMeans
 
-from ballstats import team_features
+from ballstats import blend, team_features
 
 NUM_ROTATION = 9
 N_STYLES = 5
@@ -66,14 +66,23 @@ def _team_results(conn: psycopg.Connection) -> pd.DataFrame:
     return pd.DataFrame(out, columns=["season", "team", "ortg", "drtg"])
 
 
-def _team_ratings(T: pd.DataFrame) -> pd.DataFrame:
-    """Team OVR / offense / defense: half roster, half results, z-scored within each season."""
+def _team_ratings(T: pd.DataFrame, weights: dict[tuple[str, str], float]) -> pd.DataFrame:
+    """Team OVR / offense / defense: half roster, half results, z-scored within each season.
+    In the season in progress, results are blended with the team's last season (blend.py);
+    the roster half already is, through the blended player ratings."""
     zs = lambda c: T.groupby("season")[c].transform(lambda v: (v - v.mean()) / v.std())
     results = {"ovr": T["ortg"] - T["drtg"], "off": T["ortg"], "def": -T["drtg"]}
     out = pd.DataFrame(index=T.index)
+    row = {(s, t): i for i, (s, t) in enumerate(zip(T.season, T.team))}
     for k, res in results.items():
         T[f"_res_{k}"] = res
-        z = ROSTER_SHARE * zs(f"roster_{k}") + (1 - ROSTER_SHARE) * zs(f"_res_{k}").fillna(zs(f"roster_{k}"))
+        res_z = zs(f"_res_{k}")
+        for (s, t), w in weights.items():
+            prior = row.get((blend.previous(s), t))
+            if (s, t) in row and prior is not None and pd.notna(res_z.iloc[prior]):
+                i = row[(s, t)]
+                res_z.iloc[i] = w * res_z.iloc[i] + (1 - w) * res_z.iloc[prior] if pd.notna(res_z.iloc[i]) else res_z.iloc[prior]
+        z = ROSTER_SHARE * zs(f"roster_{k}") + (1 - ROSTER_SHARE) * res_z.fillna(zs(f"roster_{k}"))
         T["_z"] = z
         z = zs("_z")
         out[f"rating_{k}"] = np.clip(np.round(TEAM_MID + TEAM_SD * z), 50, 99)
@@ -117,7 +126,20 @@ def compute(conn: psycopg.Connection) -> dict:
         })
     T = pd.DataFrame(teams)
     T = T.merge(_team_results(conn), on=["season", "team"], how="left")
-    T = pd.concat([T, _team_ratings(T)], axis=1)
+
+    # Styles come from how teams run their offense (team_features), every season since 2015-16.
+    f = team_features.build(conn)
+    Z = team_features.standardize(f).dropna(axis=1)
+    # The season in progress: blend each team's style with its last season by games played.
+    weights: dict[tuple[str, str], float] = {}
+    ongoing = blend.ongoing_season(conn)
+    if ongoing:
+        prior = blend.previous(ongoing)
+        for s, t in [i for i in Z.index if i[0] == ongoing]:
+            weights[(s, t)] = w = blend.team_weight(f.loc[(s, t), "gp"])
+            if (prior, t) in Z.index:
+                Z.loc[(s, t)] = w * Z.loc[(s, t)] + (1 - w) * Z.loc[(prior, t)]
+    T = pd.concat([T, _team_ratings(T, weights)], axis=1)
     complete = T.groupby("season")["minutes"].median()
     arch_seasons = sorted(complete[complete >= MIN_TEAM_MINUTES].index)
     fit_mask = T.season.isin(arch_seasons).to_numpy()
@@ -126,9 +148,6 @@ def compute(conn: psycopg.Connection) -> dict:
     Zd = (de - de[fit_mask].mean(0)) / de[fit_mask].std(0)
     T["_row"] = range(len(T))    # row of Zo / Zd, kept through the filter below
 
-    # Styles come from how teams run their offense (team_features), every season since 2015-16.
-    f = team_features.build(conn)
-    Z = team_features.standardize(f).dropna(axis=1)
     gp = f["gp"].groupby(level="season").median()
     fit_seasons = sorted(gp[gp >= MIN_FIT_GP].index)
     km = KMeans(N_STYLES, n_init=50, random_state=SEED).fit(Z.loc[fit_seasons].to_numpy())
@@ -149,19 +168,23 @@ def compute(conn: psycopg.Connection) -> dict:
                 (k, info.get("name"), info.get("description"),
                  Jsonb({c: round(float(v), 2) for c, v in zip(Z.columns, center)}), version))
         cur.executemany(
-            "INSERT INTO feat.team_system (season, team, style_id, features, model_version) VALUES (%s,%s,%s,%s,%s)",
-            [(s, t, int(system[(s, t)]), Jsonb({c: round(float(v), 2) for c, v in Z.loc[(s, t)].items()}), version)
+            "INSERT INTO feat.team_system (season, team, style_id, features, model_version, blend_weight)"
+            " VALUES (%s,%s,%s,%s,%s,%s)",
+            [(s, t, int(system[(s, t)]), Jsonb({c: round(float(v), 2) for c, v in Z.loc[(s, t)].items()}), version,
+              round(weights[(s, t)], 3) if (s, t) in weights else None)
              for s, t in Z.index])
         for i, t in T.iterrows():
             tag = def_names[int(np.argmax(Zd[t["_row"]]))]
             cur.execute(
                 "INSERT INTO feat.team_profile (season, team, style_id, defense_tag, off_mix, def_mix, off_z, avg_ovr,"
-                " rotation_minutes, core, model_version, ovr, off, def, ortg, drtg) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                " rotation_minutes, core, model_version, ovr, off, def, ortg, drtg, blend_weight)"
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (t.season, t.team, int(t.style_id), DEFENSE_TAGS.get(tag, tag),
                  Jsonb({n: round(float(v), 4) for n, v in zip(off_names, t["off"])}),
                  Jsonb({n: round(float(v), 4) for n, v in zip(def_names, t["def"])}),
                  Jsonb({n: round(float(v), 2) for n, v in zip(off_names, Zo[t["_row"]])}),
                  None if t.avg_ovr is None else round(t.avg_ovr, 1), round(t.minutes), Jsonb(t.core), version,
                  *(None if pd.isna(t[f"rating_{k}"]) else int(t[f"rating_{k}"]) for k in ("ovr", "off", "def")),
-                 *(None if pd.isna(t[k]) else round(float(t[k]), 1) for k in ("ortg", "drtg"))))
+                 *(None if pd.isna(t[k]) else round(float(t[k]), 1) for k in ("ortg", "drtg")),
+                 round(weights[(t.season, t.team)], 3) if (t.season, t.team) in weights else None))
     return {"team_seasons": len(T), "fit_on": fit_seasons, "model_version": version, "named": bool(names)}

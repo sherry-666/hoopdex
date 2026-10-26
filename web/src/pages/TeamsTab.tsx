@@ -143,7 +143,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
         {t("交易过的球员算在他最后效力的球队。")}{" "}
         {t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}
       </p>
-      {early && <p className="bubble" style={{ margin: 0 }}>{t("本赛季刚开始，轮换和风格还会变化。")}</p>}
+      {early && <p className="bubble" style={{ margin: 0 }}>{t("赛季初过渡值：进攻体系和球队评分按场次把本赛季和上赛季合成（本赛季权重 = 场次 ÷（场次 + 20）），轮换和风格还会变化。")}</p>}
       <div className="row">
         <button type="button" className="chip" aria-pressed={style === null} onClick={() => setStyle(null)}>{t("全部")}</button>
         {styles.map((s) => (

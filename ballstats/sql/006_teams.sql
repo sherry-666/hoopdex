@@ -39,3 +39,7 @@ CREATE TABLE IF NOT EXISTS feat.team_system (
     model_version  text    NOT NULL,
     PRIMARY KEY (season, team)
 );
+
+-- Share of the ongoing season in a blended team style (blend.py); null when not blended.
+ALTER TABLE feat.team_system ADD COLUMN IF NOT EXISTS blend_weight double precision;
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS blend_weight double precision;

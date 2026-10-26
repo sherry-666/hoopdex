@@ -27,6 +27,7 @@ import pandas as pd
 import psycopg
 from psycopg.types.json import Jsonb
 
+from ballstats import blend
 from ballstats.collector import result_rows
 
 MODEL_VERSION = "ovr-box-v2"
@@ -118,6 +119,7 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
         z_adj = reliability * zc + (1 - reliability) * REPLACEMENT_Z
         out[scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z_adj), 40, 99).astype(int)
         out[f"z_{scale}"] = z_adj
+        out[f"zc_{scale}"] = zc
         for k in weights:
             out[f"{scale}.{k}"] = z[k]
     out["reliability"] = reliability
@@ -150,7 +152,8 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         " AND status = 'ok' AND params->>'measure_type_detailed_defense' = 'Advanced'"
         " AND params->>'per_mode_detailed' = 'Totals' ORDER BY 1")]
     tables = {s: t for s in seasons if (t := _season_table(conn, s)) is not None}
-    rows, last_complete = [], None
+    rows, last_complete, prev = [], None, None
+    newest = max(tables)
     for s in sorted(tables):
         t = tables[s]
         complete = (t["minutes"] >= MIN_MINUTES).sum() >= MIN_QUALIFIED
@@ -158,6 +161,21 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
             last_complete = s
         base_season = s if complete or last_complete is None else last_complete
         r = season_ratings(t, tables[base_season])
+        # The season in progress: blend each returning player with last season (blend.py).
+        if s == newest and t["gp"].max() < blend.ONGOING_MAX_GP and prev is not None and prev[0] == blend.previous(s):
+            blended = r.index.intersection(prev[1].index)
+            w = r.loc[blended, "minutes"].map(blend.player_weight)
+            r["blend_weight"] = np.nan
+            r.loc[blended, "blend_weight"] = w
+            to_scale = lambda z: np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99)
+            for scale in SCALES:
+                r[f"own_{scale}"] = to_scale(r[f"zc_{scale}"])           # this season alone, unshrunk
+                r[f"prior_{scale}"] = np.nan
+                r.loc[blended, f"prior_{scale}"] = prev[1].loc[blended, scale]
+                z = w * r.loc[blended, f"zc_{scale}"] + (1 - w) * prev[1].loc[blended, f"z_{scale}"]
+                r.loc[blended, f"z_{scale}"] = z
+                r.loc[blended, scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99).astype(int)
+        prev = (s, r)
         for pid, x in r.iterrows():
             raw = t.loc[pid]
             detail = {
@@ -169,9 +187,16 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
                 "def": {**{k: x[f"def.{k}"] for k in DEF_WEIGHTS}, "drtg": raw["drtg"], "league_drtg": x["league_drtg"],
                         "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"]},
             }
+            if pd.notna(x.get("blend_weight", np.nan)):
+                detail["blend"] = {"weight": x["blend_weight"], **{f"own_{k}": x[f"own_{k}"] for k in SCALES},
+                                   **{f"prior_{k}": x[f"prior_{k}"] for k in SCALES}}
+                detail_prior = blend.previous(s)
+            else:
+                detail_prior = None
             rows.append((s, int(pid), x["name"], x["team"], int(x["gp"]), float(x["minutes"]), int(x["ovr"]),
                          round(float(x["z_ovr"]), 3), int(x["off"]), int(x["def"]),
-                         bool(x["minutes"] >= MIN_MINUTES), base_season, Jsonb(_rounded(detail)), MODEL_VERSION))
+                         bool(x["minutes"] >= MIN_MINUTES), base_season,
+                         Jsonb({**_rounded(detail), **({"blend_prior": detail_prior} if detail_prior else {})}), MODEL_VERSION))
 
     df = pd.DataFrame(rows, columns=["season", "player_id", "name", "team", "gp", "minutes", "ovr", "z", "off", "def",
                                      "qualified", "baseline_season", "detail", "model_version"])
