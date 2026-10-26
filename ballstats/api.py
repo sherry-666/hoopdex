@@ -305,7 +305,14 @@ def sitemap(request: Request) -> Response:
 # index.html with that page's meta tags and a text summary filled in (see seo.py).
 if WEB_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
-    INDEX_HTML = (WEB_DIST / "index.html").read_text()
+
+    @lru_cache(maxsize=1)
+    def _index_html(mtime: float) -> str:
+        return (WEB_DIST / "index.html").read_text()
+
+    def index_html() -> str:
+        # Re-read after a rebuild: the asset file names in it change with every build.
+        return _index_html((WEB_DIST / "index.html").stat().st_mtime)
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str, request: Request) -> Response:
@@ -317,4 +324,4 @@ if WEB_DIST.is_dir():
         params = dict(request.query_params)
         lang = "en" if params.get("lang") == "en" else "zh"
         page = page_for("/" + path.rstrip("/"), params, lang) if path else page_for("/", params, lang)
-        return HTMLResponse(seo.render(INDEX_HTML, page, lang, site_base(request)), status_code=page.status)
+        return HTMLResponse(seo.render(index_html(), page, lang, site_base(request)), status_code=page.status)
