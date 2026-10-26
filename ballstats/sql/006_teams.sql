@@ -29,3 +29,13 @@ ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS off integer;
 ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS def integer;
 ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS ortg double precision;  -- points scored per 100 possessions
 ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS drtg double precision;  -- points allowed per 100 possessions
+
+-- Offensive system style of every team season since 2015-16 (teams.py, team_features.py).
+CREATE TABLE IF NOT EXISTS feat.team_system (
+    season         text    NOT NULL,
+    team           text    NOT NULL,
+    style_id       integer NOT NULL,
+    features       jsonb   NOT NULL,   -- {feature: z within the season}
+    model_version  text    NOT NULL,
+    PRIMARY KEY (season, team)
+);

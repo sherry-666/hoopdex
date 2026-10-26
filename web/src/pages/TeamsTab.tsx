@@ -5,6 +5,55 @@ import { Failed, Loading, MixBar } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { teamName } from "../teams";
+import { FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
+import type { TeamStyle } from "../api";
+
+/** Each style's average on every feature, in sd from that season's league. */
+function StyleTable({ styles, pick, onPick }: { styles: TeamStyle[]; pick: number | null; onPick: (id: number | null) => void }) {
+  const { t, name, lang } = useLang();
+  const shade = (z: number) => {
+    const a = Math.round(Math.min(1, Math.abs(z) / 1.6) * 85);
+    return `color-mix(in srgb, var(${z >= 0 ? "--seq-hi" : "--seq-lo"}) ${a}%, var(--panel))`;
+  };
+  return (
+    <details className="panel" style={{ padding: "10px 14px" }}>
+      <summary style={{ cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种建队思路的特征")}</summary>
+      <p className="note" style={{ margin: "8px 0" }}>{t("每格是这一类球队的平均值，单位是相对当季联盟的标准差（σ）：红色高于联盟，蓝色低于联盟。点列名筛选球队。")}</p>
+      <div className="table-box">
+        <table className="data" style={{ minWidth: 560 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>{t("特征")}</th>
+              {styles.map((s) => (
+                <th key={s.style_id} className="num-col" style={{ cursor: "pointer", textDecoration: pick === s.style_id ? "underline" : undefined }}
+                  onClick={() => onPick(pick === s.style_id ? null : s.style_id)}>{name(s.name)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {FEATURE_GROUPS.map(([group, codes]) => [
+              <tr key={group}><td colSpan={styles.length + 1} style={{ fontWeight: 700, paddingTop: 10 }}>{t(group)}</td></tr>,
+              ...codes.filter((c) => c in (styles[0]?.centroid ?? {})).map((c) => (
+                <tr key={c}>
+                  <td>{teamFeature(c, lang)}</td>
+                  {styles.map((s) => {
+                    const z = s.centroid[c] ?? 0;
+                    return (
+                      <td key={s.style_id} className="num-col" style={{ background: shade(z), opacity: pick == null || pick === s.style_id ? 1 : 0.35,
+                        color: Math.abs(z) > 1.1 ? "#fff" : undefined, fontVariantNumeric: "tabular-nums" }}>
+                        {z > 0 ? "+" : z < 0 ? "−" : ""}{Math.abs(z).toFixed(1)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )),
+            ])}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
 
 function mixFrom(shares: Record<string, number>, order: string[]) {
   return order.map((name, id) => ({ id, name, weight: shares[name] ?? 0 }));
@@ -34,8 +83,20 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
           </span>
         )}
       </div>
+      {t.system && (
+        <div>
+          <div className="note" style={{ marginBottom: 4 }}>{tr("进攻特点（相对当季联盟）")}</div>
+          <div className="row" style={{ gap: 6 }}>
+            {signature(t.system).map(([code, z]) => (
+              <span key={code} className="tag" style={z > 0 ? { background: "var(--pop-yellow)", color: "var(--on-yellow)" } : undefined}>
+                {teamFeature(code, lang)} {z > 0 ? "↑" : "↓"} {Math.abs(z).toFixed(1)}σ
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
-        <div className="note">{tr("进攻")}</div>
+        <div className="note">{tr("球员构成")}</div>
         <MixBar mix={off} height={16} />
         <div className="row" style={{ gap: 10, marginTop: 4 }}>
           {top.map((m) => (
@@ -77,7 +138,8 @@ export default function TeamsTab({ season, early }: { season: string | undefined
   return (
     <>
       <p className="note" style={{ maxWidth: "80ch", margin: 0 }}>
-        {t("按每队上场时间最多的 9 名球员，把他们的打法原型按分钟加权，得出球队的风格；再把风格相近的球队归成 5 种建队思路。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
+        {t("建队思路看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
+        {t("「球员构成」是轮换 9 人的打法原型按分钟加权。")}{" "}
         {t("交易过的球员算在他最后效力的球队。")}{" "}
         {t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}
       </p>
@@ -91,6 +153,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
           </button>
         ))}
       </div>
+      <StyleTable styles={styles} pick={style} onPick={setStyle} />
       {shown.map((s) => {
         const members = teams.filter((tm) => tm.style_id === s.style_id);
         if (!members.length) return null;

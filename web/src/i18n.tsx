@@ -93,7 +93,20 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
-  "建队思路": "Team-building style", "轮换 OVR": "Rotation OVR",
+  "建队思路": "Team-building style",
+  "进攻特点（相对当季联盟）": "Offensive traits (vs league that season)", "球员构成": "Player makeup",
+  "5 种建队思路的特征": "What defines the 5 team styles", "特征": "Feature",
+  "战术类型占比": "Play-type mix", "传球与触球": "Passing and touches", "出手与节奏": "Shots and pace",
+  "每格是这一类球队的平均值，单位是相对当季联盟的标准差（σ）：红色高于联盟，蓝色低于联盟。点列名筛选球队。":
+    "Each cell is the style's average, in standard deviations from that season's league (σ): red is above the league, blue below. Click a column name to filter teams.",
+  "大量弧顶三分和急停跳投，持球单打多；禁区得分和空切少。": "Lots of above-the-break and pull-up threes and isolation; few paint points or cuts.",
+  "空切、绕掩护和接球投篮多；传球多、持球时间短，大部分进球有助攻。": "Cuts, off-screen action and catch-and-shoot; many passes, short touches, most baskets assisted.",
+  "进攻经由低位和肘区展开：背身、手递手和中距离多，三分少，节奏偏慢。": "Offense runs through the post and elbows: post-ups, handoffs and midrange, fewer threes, slower pace.",
+  "突破多、节奏快，转换进攻和篮下出手多，外线配定点投篮；中距离和急停少。": "Drives and pace: transition and rim attempts with spot-up shooters; little midrange or pull-up shooting.",
+  "挡拆持球为主，每次触球时间长、运球多，急停中投多；传球和接球投篮少。": "Ball-screen heavy: long touches, many dribbles and pull-up midrange; few passes or catch-and-shoot looks.",
+  "建队思路看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。":
+    "Team styles describe how a team plays: play-type mix (pick-and-roll, isolation, cuts, post-ups…), passing and touches, drives, shot locations and pace, each against that season's league, clustered into 5 styles using every team since 2015-16. Styles are a continuum; a label means closest to, not a strict camp.",
+  "「球员构成」是轮换 9 人的打法原型按分钟加权。": "Player makeup is the rotation's 9 players' archetypes, weighted by minutes.", "轮换 OVR": "Rotation OVR",
   // offense / defense ratings
   "综合": "Overall", "进攻评分": "Offense rating", "防守评分": "Defense rating", "评分类型": "Rating type",
   "攻": "OFF", "守": "DEF", "组织": "Playmaking", "进攻篮板": "Offensive rebounding", "在场进攻": "On-court offense",
@@ -141,7 +154,8 @@ const NAMES_EN: Record<string, string> = {
   "追防与被针对": "Chaser / Targeted", "外线防投手": "Perimeter Contester", "护框": "Rim Protector", "抢断干扰": "Disruptor",
   "内线": "Interior", "无球侧翼 / 射手": "Off-ball Wings / Shooters", "持球创造者": "Creators", "外线": "Perimeter",
   "挡拆顺下": "Pick-and-Roll Rim", "内线枢纽": "Interior Hub Offense", "冲击篮下": "Rim Attack", "持球核心 + 空间": "Star Creator + Spacing",
-  "突破分球": "Drive and Kick", "护框型防守": "Rim-protection defense", "侵略型防守": "Disruptive defense",
+  "突破分球": "Drive and Kick", "外线单打": "Perimeter Iso", "跑动传切": "Motion Offense",
+  "冲击转换": "Drive and Run", "持球挡拆": "Ball-screen Creator", "护框型防守": "Rim-protection defense", "侵略型防守": "Disruptive defense",
   "外线封堵型防守": "Perimeter-contest defense", "追防型防守": "Chase defense",
   "持球创造指数（低 = 接球投射）": "Creation index (low = catch-and-shoot)", "内线终结指数": "Interior finishing index",
   "低位组织指数": "Post hub index", "外线指数（低 = 护框）": "Perimeter index (low = rim protection)",

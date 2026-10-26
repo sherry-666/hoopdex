@@ -8,8 +8,9 @@ from ballstats.collector import Collector, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
-OPTIONAL_GROUPS = ("careers", "history")   # run only when asked for
+OPTIONAL_GROUPS = ("careers", "history", "teams")   # run only when asked for
 HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
+TEAMS_FROM = 2015     # first season with Synergy play types
 
 
 def current_season(today: dt.date | None = None) -> str:
@@ -58,6 +59,10 @@ def cmd_collect(args) -> int:
         start = int(args.season[:4])
         seasons = [f"{y}-{(y + 1) % 100:02d}" for y in range(HISTORY_FROM, start + 1)]
         run_jobs(collector, catalog.history_jobs(seasons, args.season), "history", args.refresh)
+    if "teams" in groups:
+        start = int(args.season[:4])
+        seasons = [f"{y}-{(y + 1) % 100:02d}" for y in range(TEAMS_FROM, start + 1)]
+        run_jobs(collector, catalog.team_jobs(seasons, args.season), "teams", args.refresh)
     if "careers" in groups:
         # Everyone on this season's league list plus everyone the app already shows.
         allp = collector.fetch("CommonAllPlayers", {"season": args.season, "league_id": "00",

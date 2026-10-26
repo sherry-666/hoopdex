@@ -122,6 +122,32 @@ def history_jobs(seasons: list[str], current: str) -> list[Job]:
             for s in seasons for m in ("Base", "Advanced")]
 
 
+TEAM_PT_MEASURES = ["Passing", "Drives", "Possessions", "CatchShoot", "PullUpShot",
+                    "ElbowTouch", "PostTouch", "PaintTouch"]
+
+
+def team_jobs(seasons: list[str], current: str) -> list[Job]:
+    """Team-level offense per season: Synergy play types, tracking dashboards, pace and
+    scoring mix, and shot zones. Synergy starts in 2015-16. Finished seasons are cached for good."""
+    jobs = []
+    for s in seasons:
+        age = SEASON_MAX_AGE_H if s == current else None
+        common = {"season": s, "season_type_all_star": "Regular Season"}
+        jobs += [Job("SynergyPlayTypes", {**common, "league_id": "00", "per_mode_simple": "Totals",
+                                          "player_or_team_abbreviation": "T", "play_type_nullable": pt,
+                                          "type_grouping_nullable": "offensive"}, age)
+                 for pt in PLAY_TYPES]
+        jobs += [Job("LeagueDashPtStats", {**common, "per_mode_simple": "Totals", "player_or_team": "Team",
+                                           "pt_measure_type": m}, age)
+                 for m in TEAM_PT_MEASURES]
+        jobs += [Job("LeagueDashTeamStats", {**common, "per_mode_detailed": "Totals",
+                                             "measure_type_detailed_defense": m}, age)
+                 for m in ("Base", "Advanced", "Scoring")]
+        jobs.append(Job("LeagueDashTeamShotLocations", {**common, "distance_range": "By Zone",
+                                                        "per_mode_detailed": "Totals"}, age))
+    return jobs
+
+
 def career_jobs(player_ids: list[int]) -> list[Job]:
     # Season-by-season totals for a player's whole career (regular season and playoffs).
     # Refetched when stale because active players add games every night.

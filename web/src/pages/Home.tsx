@@ -24,7 +24,7 @@ export default function Home() {
     <>
       <section className="panel halftone" style={{ background: "var(--pop-yellow)", color: "var(--on-yellow)", borderColor: "#111", padding: "28px 24px" }}>
         <h1 style={{ fontFamily: "var(--font-latin)", fontSize: "clamp(40px, 7vw, 76px)", lineHeight: 0.95, letterSpacing: 1.5, color: "var(--pop-red)", WebkitTextStroke: "2px #111", paintOrder: "stroke fill" }}>
-          EVERY PLAYER IS A HERO
+          KNOW THE GAME
         </h1>
         <p style={{ maxWidth: "60ch", margin: "12px 0 18px" }}>
           {t("HoopDex 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。")}

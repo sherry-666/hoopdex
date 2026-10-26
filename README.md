@@ -57,6 +57,14 @@ offense = scoring 45%, playmaking (AST% − 0.5 × TOV ratio) 25%, OREB% 10%, on
 steals/36 20%, blocks/36 15%, DREB% 15%, on-court defense 50%. On-court numbers are measured against his own
 team plus 30% of the team's edge on the league, so a strong team doesn't lift everyone.
 
+Team styles come from how a team runs its offense, not from its players' archetypes: Synergy play-type mix,
+passes / drives / elbow, post and paint touches per 100, seconds and dribbles per touch, catch-and-shoot vs
+pull-up share, shot zones, assisted share and pace (`ballstats/team_features.py`), standardized within each
+season and clustered (k-means, 5 styles) on every team season since 2015-16. Collect the inputs once with
+`python -m ballstats collect --groups teams` (~23 requests per season). Against shuffled data this separates
+four times better than clustering the rotation's archetype mix did, and 59% of teams keep their style the
+next season (chance: 25%); it is still a continuum, so a style means "closest to".
+
 Team ratings (`python -m ballstats teams`, centred on 80) are half the rotation's minutes-weighted player
 ratings and half the team's actual net / offensive / defensive rating per 100 possessions, z-scored per season.
 

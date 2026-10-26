@@ -80,6 +80,7 @@ export interface TeamProfile {
   team: string; style_id: number; defense_tag: string; off_mix: Record<string, number>; def_mix: Record<string, number>;
   off_z: Record<string, number>; avg_ovr: number | null; rotation_minutes: number;
   ovr: number | null; off: number | null; def: number | null; ortg: number | null; drtg: number | null;
+  system: Record<string, number> | null;
   core: { player_id: number; name: string; minutes: number; style: string | null; ovr: number | null; off?: number | null; def?: number | null }[];
 }
 export interface TeamView { styles: TeamStyle[]; teams: TeamProfile[]; archetypes: Record<Side, string[]> }

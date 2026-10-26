@@ -4,9 +4,11 @@ Per team and season, the rotation is its NUM_ROTATION players with the most minu
 (a traded player counts for the team he finished with). The team's style is the
 minutes-weighted average of their archetype mixes, offense and defense.
 
-Team-building styles come from k-means on the offensive mix, standardized and fitted
-on complete seasons, then applied to every season. Like player roles they are a
-continuum (silhouette ~0.19), so a style means "closest to", not a strict faction.
+Team-building styles come from how the team runs its offense (team_features: play-type
+mix, ball movement, touches, shot diet, pace), standardized within each season so the
+league's drift toward threes doesn't split teams by era. k-means is fitted on every
+complete season since 2015-16 and applied to all. Styles are still a continuum
+(silhouette ~0.12 vs ~0.03 on shuffled data), so a style means "closest to".
 The defensive tag is the defensive archetype the rotation leans on most versus the league.
 
 Team ratings (OVR, offense, defense; centred on 80) blend two halves, each a z-score
@@ -25,10 +27,13 @@ import psycopg
 from psycopg.types.json import Jsonb
 from sklearn.cluster import KMeans
 
+from ballstats import team_features
+
 NUM_ROTATION = 9
 N_STYLES = 5
 SEED = 0
-MIN_TEAM_MINUTES = 1500     # a season counts as complete for fitting once rotations reach this
+MIN_TEAM_MINUTES = 1500     # archetype z-scores are scaled on seasons whose rotations reach this
+MIN_FIT_GP = 60             # styles are fitted on seasons whose teams have played this many games
 TEAM_MID, TEAM_SD = 80.0, 6.0
 ROSTER_SHARE = 0.5          # the rest comes from actual results
 DEFENSE_TAGS = {"护框": "护框型防守", "抢断干扰": "侵略型防守", "外线防投手": "外线封堵型防守", "追防与被针对": "追防型防守"}
@@ -114,36 +119,48 @@ def compute(conn: psycopg.Connection) -> dict:
     T = T.merge(_team_results(conn), on=["season", "team"], how="left")
     T = pd.concat([T, _team_ratings(T)], axis=1)
     complete = T.groupby("season")["minutes"].median()
-    fit_seasons = sorted(complete[complete >= MIN_TEAM_MINUTES].index)
-    fit_mask = T.season.isin(fit_seasons).to_numpy()
+    arch_seasons = sorted(complete[complete >= MIN_TEAM_MINUTES].index)
+    fit_mask = T.season.isin(arch_seasons).to_numpy()
     off, de = np.vstack(T["off"]), np.vstack(T["def"])
-    o_mu, o_sd = off[fit_mask].mean(0), off[fit_mask].std(0)
-    d_mu, d_sd = de[fit_mask].mean(0), de[fit_mask].std(0)
-    Zo, Zd = (off - o_mu) / o_sd, (de - d_mu) / d_sd
-    km = KMeans(N_STYLES, n_init=20, random_state=SEED).fit(Zo[fit_mask])
-    T["style_id"] = km.predict(Zo)
-    version = f"team-v1-k{N_STYLES}-{'+'.join(fit_seasons)}"
+    Zo = (off - off[fit_mask].mean(0)) / off[fit_mask].std(0)
+    Zd = (de - de[fit_mask].mean(0)) / de[fit_mask].std(0)
+    T["_row"] = range(len(T))    # row of Zo / Zd, kept through the filter below
+
+    # Styles come from how teams run their offense (team_features), every season since 2015-16.
+    f = team_features.build(conn)
+    Z = team_features.standardize(f).dropna(axis=1)
+    gp = f["gp"].groupby(level="season").median()
+    fit_seasons = sorted(gp[gp >= MIN_FIT_GP].index)
+    km = KMeans(N_STYLES, n_init=50, random_state=SEED).fit(Z.loc[fit_seasons].to_numpy())
+    system = pd.Series(km.predict(Z.to_numpy()), index=Z.index)
+    version = f"team-v2-system-k{N_STYLES}-{fit_seasons[0]}..{fit_seasons[-1]}"
     names = _style_names(version)
+    T = T[[(s, t) in system.index for s, t in zip(T.season, T.team)]].reset_index(drop=True)
+    T["style_id"] = [int(system[(s, t)]) for s, t in zip(T.season, T.team)]
 
     off_names = [arch["offense"][i] for i in sorted(arch["offense"])]
     def_names = [arch["defense"][i] for i in sorted(arch["defense"])]
     with conn.transaction(), conn.cursor() as cur:
-        cur.execute("TRUNCATE feat.team_profile, feat.team_style")
+        cur.execute("TRUNCATE feat.team_profile, feat.team_style, feat.team_system")
         for k, center in enumerate(km.cluster_centers_):
             info = names.get(k, {})
             cur.execute(
                 "INSERT INTO feat.team_style (style_id, name, description, centroid, model_version) VALUES (%s,%s,%s,%s,%s)",
                 (k, info.get("name"), info.get("description"),
-                 Jsonb({n: round(float(v), 2) for n, v in zip(off_names, center)}), version))
+                 Jsonb({c: round(float(v), 2) for c, v in zip(Z.columns, center)}), version))
+        cur.executemany(
+            "INSERT INTO feat.team_system (season, team, style_id, features, model_version) VALUES (%s,%s,%s,%s,%s)",
+            [(s, t, int(system[(s, t)]), Jsonb({c: round(float(v), 2) for c, v in Z.loc[(s, t)].items()}), version)
+             for s, t in Z.index])
         for i, t in T.iterrows():
-            tag = def_names[int(np.argmax(Zd[i]))]
+            tag = def_names[int(np.argmax(Zd[t["_row"]]))]
             cur.execute(
                 "INSERT INTO feat.team_profile (season, team, style_id, defense_tag, off_mix, def_mix, off_z, avg_ovr,"
                 " rotation_minutes, core, model_version, ovr, off, def, ortg, drtg) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (t.season, t.team, int(t.style_id), DEFENSE_TAGS.get(tag, tag),
                  Jsonb({n: round(float(v), 4) for n, v in zip(off_names, t["off"])}),
                  Jsonb({n: round(float(v), 4) for n, v in zip(def_names, t["def"])}),
-                 Jsonb({n: round(float(v), 2) for n, v in zip(off_names, Zo[i])}),
+                 Jsonb({n: round(float(v), 2) for n, v in zip(off_names, Zo[t["_row"]])}),
                  None if t.avg_ovr is None else round(t.avg_ovr, 1), round(t.minutes), Jsonb(t.core), version,
                  *(None if pd.isna(t[f"rating_{k}"]) else int(t[f"rating_{k}"]) for k in ("ovr", "off", "def")),
                  *(None if pd.isna(t[k]) else round(float(t[k]), 1) for k in ("ortg", "drtg"))))

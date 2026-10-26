@@ -206,8 +206,9 @@ def career_rating_for(player_id: int) -> dict | None:
 def team_view(season: str) -> dict:
     """Team-building styles and every team's rotation profile for one season."""
     styles = q("SELECT style_id, name, description, centroid FROM feat.team_style ORDER BY style_id")
-    teams = q("SELECT team, style_id, defense_tag, off_mix, def_mix, off_z, avg_ovr, rotation_minutes, core,"
-              " ovr, off, def, ortg, drtg FROM feat.team_profile WHERE season = %s ORDER BY ovr DESC NULLS LAST", (season,))
+    teams = q("SELECT p.team, p.style_id, p.defense_tag, p.off_mix, p.def_mix, p.off_z, p.avg_ovr, p.rotation_minutes,"
+              " p.core, p.ovr, p.off, p.def, p.ortg, p.drtg, s.features AS system FROM feat.team_profile p"
+              " LEFT JOIN feat.team_system s USING (season, team) WHERE p.season = %s ORDER BY p.ovr DESC NULLS LAST", (season,))
     if not teams:
         raise HTTPException(404, f"no team profiles for {season}")
     arch = q("SELECT DISTINCT side, type_id, name FROM feat.role_type WHERE level = 'archetype' ORDER BY side, type_id")
