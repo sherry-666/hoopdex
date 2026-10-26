@@ -81,6 +81,15 @@ npm --prefix web install && npm --prefix web run dev  # http://localhost:5173, p
 
 For a single server, `npm --prefix web run build` and the API also serves `web/dist` at http://localhost:8000.
 
+### SEO
+
+The app renders in the browser, so the API fills `index.html` per route (`ballstats/seo.py`): title,
+description, canonical URL, hreflang, Open Graph / Twitter tags, JSON-LD and a plain-HTML summary inside
+`#root` that React replaces on mount. Unknown routes, players and seasons return 404. Chinese is the
+default; `?lang=en` is the English version of any page. `/robots.txt` and `/sitemap.xml` (every player, both
+languages) are generated. Set `BALLSTATS_SITE_URL` (e.g. `https://hoopdex.app`) so canonical URLs use the
+public domain. Only the built app on :8000 does this; the Vite dev server doesn't.
+
 ## Deploy (Railway)
 
 The `Dockerfile` builds the frontend and serves it plus the API from one FastAPI process; `railway.json`

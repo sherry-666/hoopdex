@@ -18,4 +18,4 @@ COPY ballstats ./ballstats
 RUN pip install --no-cache-dir .
 COPY --from=web /web/dist ./web/dist
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn ballstats.api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn ballstats.api:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips=*"]

@@ -173,12 +173,20 @@ function fill(s: string, vars?: Record<string, string | number>) {
 }
 
 export function LangProvider({ children }: { children: ReactNode }) {
+  // ?lang=en in the URL wins (it's the English page search engines index), then the saved choice.
   const [lang, setLangState] = useState<Lang>(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("lang");
+    if (fromUrl === "en" || fromUrl === "zh") return fromUrl;
     try { return (localStorage.getItem("lang") as Lang) || "zh"; } catch { return "zh"; }
   });
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     try { localStorage.setItem("lang", l); } catch { /* storage blocked */ }
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("lang")) {
+      if (l === "en") url.searchParams.set("lang", "en"); else url.searchParams.delete("lang");
+      window.history.replaceState(window.history.state, "", url);
+    }
   }, []);
   useEffect(() => {
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";

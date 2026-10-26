@@ -3,17 +3,18 @@
 Run: .venv/bin/uvicorn ballstats.api:app --port 8000
 """
 
+import re
 from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import config, powers, roles
+from ballstats import config, powers, roles, seo
 
 app = FastAPI(title="ballstats")
 WEB_DIST: Path = config.WEB_DIST
@@ -246,14 +247,70 @@ def player_career(player_id: int) -> dict:
     return out
 
 
-# The built frontend, when present (npm run build in web/). Unknown paths fall back to
-# index.html so client-side routes work on reload.
+def site_base(request: Request) -> str:
+    """Absolute site origin for canonical URLs: BALLSTATS_SITE_URL, else the request's own."""
+    return config.SITE_URL or str(request.base_url).rstrip("/")
+
+
+def default_season() -> str:
+    rows = seasons()
+    return next((r for r in rows if not r["in_progress"]), rows[0])["season"]
+
+
+def page_for(path: str, params: dict, lang: str) -> seo.Page:
+    """The SEO page for a client-side route; unknown routes and players get a 404."""
+    explicit = params.get("season")
+    known = {r["season"] for r in seasons()}
+    if explicit and explicit not in known and not (path == "/roles" and explicit == "career"):
+        return seo.not_found(lang, path)
+    season = explicit or default_season()
+    if path == "/":
+        return seo.home(lang, season, player_list(season))
+    if path == "/roles":
+        return seo.roles_lab(lang, explicit)
+    if path == "/players":
+        return seo.roster(lang, season, player_list(season), params.get("tab") == "teams", bool(explicit))
+    if m := re.fullmatch(r"/players/(\d+)", path):
+        pid = int(m.group(1))
+        played = player_seasons(pid)
+        if not played or (explicit and explicit not in played):
+            return seo.not_found(lang, path)
+        season = explicit or (season if season in played else played[0])
+        return seo.player(lang, season, bool(explicit), player(season, pid))
+    if path == "/predict":
+        return seo.coming_soon(lang, path, "比赛预测", "Game Predictor")
+    if path == "/trade":
+        return seo.coming_soon(lang, path, "交易模拟", "Trade Machine")
+    return seo.not_found(lang, path)
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots(request: Request) -> PlainTextResponse:
+    return PlainTextResponse(seo.robots(site_base(request)))
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap(request: Request) -> Response:
+    pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/players", {"tab": "teams"})]
+    ids = q("SELECT DISTINCT player_id FROM feat.player_stats WHERE season <> 'career' ORDER BY player_id")
+    pages += [(f"/players/{r['player_id']}", {}) for r in ids]
+    return Response(seo.sitemap(site_base(request), pages), media_type="application/xml")
+
+
+# The built frontend, when present (npm run build in web/). Client-side routes get
+# index.html with that page's meta tags and a text summary filled in (see seo.py).
 if WEB_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
+    INDEX_HTML = (WEB_DIST / "index.html").read_text()
 
     @app.get("/{path:path}", include_in_schema=False)
-    def spa(path: str) -> FileResponse:
+    def spa(path: str, request: Request) -> Response:
         if path.startswith("api/"):
             raise HTTPException(404, "unknown API route")
         target = WEB_DIST / path
-        return FileResponse(target if path and target.is_file() else WEB_DIST / "index.html")
+        if path and target.is_file():
+            return FileResponse(target)
+        params = dict(request.query_params)
+        lang = "en" if params.get("lang") == "en" else "zh"
+        page = page_for("/" + path.rstrip("/"), params, lang) if path else page_for("/", params, lang)
+        return HTMLResponse(seo.render(INDEX_HTML, page, lang, site_base(request)), status_code=page.status)

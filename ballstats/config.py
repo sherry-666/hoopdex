@@ -19,3 +19,7 @@ PROXY = os.environ.get("BALLSTATS_PROXY") or None
 
 # Built frontend served by the API. Defaults to web/dist next to the package source.
 WEB_DIST = Path(os.environ.get("BALLSTATS_WEB_DIST") or Path(__file__).resolve().parent.parent / "web" / "dist")
+
+# Public origin for canonical URLs and the sitemap, e.g. https://hoopdex.app. Without it
+# the request's own host is used.
+SITE_URL = (os.environ.get("BALLSTATS_SITE_URL") or "").rstrip("/") or None
