@@ -192,3 +192,28 @@ table.data tr:hover td { background: var(--tone); }
 @keyframes tier-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes tier-holo { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .tier-num { animation: none !important; } }
+
+/* The dark card plate behind a rating number (OvrBadge, OffDef): edge colour and glow by tier.
+   Amethyst and up get a light sweep across the plate; opal cycles its edge through the spectrum. */
+@property --edge { syntax: "<color>"; inherits: false; initial-value: #8a8f96; }
+.plate { --edge: #8a8f96; --glow: 0px; position: relative; display: inline-grid; place-items: center; flex: none; overflow: hidden;
+  background: linear-gradient(160deg, #2a2536, #121019); border: 2px solid var(--edge);
+  box-shadow: 2px 2px 0 #111, 0 0 var(--glow) var(--edge); }
+/* The tier gradients are tuned for light pages; on the dark plate their low ends vanish, so lift them. */
+.plate .tier-num { -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.85); position: relative; z-index: 1; }
+.plate .tier-bronze { background-image: linear-gradient(180deg, #ffd0a8, #cf8854 60%, #ebab78); }
+.plate .tier-gold { background-image: linear-gradient(110deg, #e6a824 0%, #fff0a0 30%, #f2bd3a 50%, #fffbd0 65%, #e6a824 100%); }
+.plate .tier-amethyst { background-image: linear-gradient(110deg, #ad74ec 0%, #efd8ff 30%, #c794f7 50%, #faeeff 65%, #ad74ec 100%); }
+.plate .tier-diamond { background-image: linear-gradient(110deg, #52c8f0 0%, #def9ff 30%, #86ddf6 50%, #ffffff 62%, #52c8f0 100%); }
+.plate-sm { border-width: 1.5px; box-shadow: 1px 1px 0 #111, 0 0 calc(var(--glow) * 0.6) var(--edge); }
+.plate-bronze { --edge: #b0693a; }
+.plate-silver { --edge: #c9ced4; }
+.plate-gold { --edge: #f2c230; --glow: 8px; }
+.plate-amethyst { --edge: #b36cf0; --glow: 10px; }
+.plate-diamond { --edge: #5fd8ff; --glow: 12px; }
+.plate-opal { --edge: #ff5f9e; --glow: 14px; animation: plate-holo 4s linear infinite; }
+.plate-amethyst::after, .plate-diamond::after, .plate-opal::after { content: ""; position: absolute; inset: -50% -120%; pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.45) 50%, transparent 58%); animation: plate-shine 3.4s ease-in-out infinite; }
+@keyframes plate-shine { 0%, 55% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+@keyframes plate-holo { 0% { --edge: #ff5f9e; } 20% { --edge: #ffd166; } 40% { --edge: #6ee7b7; } 60% { --edge: #60a5fa; } 80% { --edge: #c084fc; } 100% { --edge: #ff5f9e; } }
+@media (prefers-reduced-motion: reduce) { .plate, .plate::after { animation: none !important; } }

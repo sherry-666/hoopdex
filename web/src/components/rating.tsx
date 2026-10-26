@@ -9,21 +9,13 @@ const RATING_SHORT: Record<RatingKey, { zh: string; en: string }> = {
   ovr: { zh: "综合", en: "OVR" }, off: { zh: "攻", en: "OFF" }, def: { zh: "守", en: "DEF" },
 };
 
-function tone(v: number) {
-  return { bg: v >= 90 ? "var(--pop-red)" : v >= 80 ? "var(--pop-yellow)" : "var(--panel)",
-           ink: v >= 90 ? "#fff" : v >= 80 ? "#111" : "var(--ink)" };
-}
-
-/** Small OVR badge for cards. */
+/** Small OVR badge for cards: a dark card plate in the rating's 2K tier (edge colour, glow, shine). */
 export function OvrBadge({ ovr, size = 40 }: { ovr: number | null | undefined; size?: number }) {
   if (ovr == null) return null;
-  const { bg, ink } = tone(ovr);
   return (
-    <span aria-label={`OVR ${ovr}`} style={{
-      display: "inline-grid", placeItems: "center", width: size, height: size, flex: "none",
-      background: bg, color: ink, border: "2px solid var(--ink)", boxShadow: "2px 2px 0 var(--ink)",
-      fontFamily: "var(--font-latin)", fontSize: size * 0.55, lineHeight: 1,
-    }}>{ovr}</span>
+    <span aria-label={`OVR ${ovr}`} className={`plate plate-${tierOf(ovr)}`} style={{
+      width: size, height: size, fontFamily: "var(--font-latin)", fontSize: size * 0.55, lineHeight: 1,
+    }}><TierNumber value={ovr} /></span>
   );
 }
 
@@ -34,8 +26,9 @@ export function OffDef({ off, def, size = 15 }: { off: number | null | undefined
   const cell = (k: "off" | "def", v: number | null | undefined) => v == null ? null : (
     <span aria-label={`${RATING_SHORT[k].en} ${v}`} style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
       <span style={{ fontSize: size * 0.72, color: "var(--muted)", fontWeight: 700 }}>{RATING_SHORT[k][lang]}</span>
-      <span style={{ fontFamily: "var(--font-latin)", fontSize: size * 1.15, lineHeight: 1, padding: "1px 4px",
-        background: tone(v).bg, color: tone(v).ink, border: "1.5px solid var(--ink)" }}>{v}</span>
+      <span className={`plate plate-sm plate-${tierOf(v)}`} style={{ fontFamily: "var(--font-latin)", fontSize: size * 1.15, lineHeight: 1, padding: "2px 5px" }}>
+        <TierNumber value={v} />
+      </span>
     </span>
   );
   return <span style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>{cell("off", off)}{cell("def", def)}</span>;
@@ -45,6 +38,10 @@ const TIERS: [number, string, string, string][] = [
   [96, "opal", "银河蛋白石", "Galaxy opal"], [92, "diamond", "钻石", "Diamond"], [87, "amethyst", "紫晶", "Amethyst"],
   [80, "gold", "金", "Gold"], [70, "silver", "银", "Silver"], [0, "bronze", "铜", "Bronze"],
 ];
+
+function tierOf(value: number) {
+  return TIERS.find(([min]) => value >= min)![1];
+}
 
 /** A rating number dressed in its 2K-style card tier: the higher, the fancier. */
 export function TierNumber({ value, digits = 0 }: { value: number; digits?: number }) {
