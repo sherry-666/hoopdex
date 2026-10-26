@@ -134,6 +134,6 @@ this machine, since stats.nba.com blocks cloud IPs; re-run this after `ballstats
 REMOTE_DATABASE_URL="$(railway variables --service Postgres --json | jq -r .DATABASE_PUBLIC_URL)" scripts/push_db.sh
 ```
 
-Comic portraits: drop `web/public/portraits/<player_id>.png` (5:6 aspect). Players without one show a placeholder.
+Comic portraits: drop `web/public/portraits/<player_id>.webp` (5:6 aspect, about 840x1008). Players without one show a placeholder.
 Superpowers come from `ballstats/powers.py`: a player's most extreme style stats (z >= 1 among 500+ minute players),
 graded S / A / B, each quoting the stat behind it.

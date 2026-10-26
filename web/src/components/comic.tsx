@@ -5,7 +5,7 @@ import { POWERS_EN, useLang } from "../i18n";
 import { teamName } from "../teams";
 import { OffDef, OvrBadge } from "./rating";
 
-/** A player's comic portrait: /portraits/<id>.png when it exists, otherwise an
+/** A player's comic portrait: /portraits/<id>.webp when it exists, otherwise an
  * inked silhouette on halftone in the colour of his main archetype. */
 export function Portrait({ id, name, archetype, size = 220 }: { id: number; name: string; archetype?: number | null; size?: number }) {
   const { t } = useLang();
@@ -13,7 +13,7 @@ export function Portrait({ id, name, archetype, size = 220 }: { id: number; name
   const color = archetype == null ? "var(--pop-yellow)" : seriesColor(archetype);
   if (!missing) {
     return (
-      <img src={`/portraits/${id}.png`} alt={t("{name} 的漫画形象", { name })} width={size} height={size * 1.2}
+      <img src={`/portraits/${id}.webp`} alt={t("{name} 的漫画形象", { name })} width={size} height={size * 1.2}
         style={{ display: "block", width: "100%", height: "auto", aspectRatio: "5 / 6", objectFit: "cover", border: "var(--line) solid var(--ink)" }}
         onError={() => setMissing(true)} />
     );
