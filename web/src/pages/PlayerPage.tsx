@@ -5,7 +5,7 @@ import { Burst, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } f
 import { useLang, usePageTitle } from "../i18n";
 import { label } from "../labels";
 import { teamName } from "../teams";
-import { OvrBadge, RatingPanel } from "../components/rating";
+import { OffDef, OvrBadge, RatingPanel } from "../components/rating";
 
 const BURSTS: { key: string; title: string; fmt: (v: number) => string; tone: "red" | "yellow" | "blue" }[] = [
   { key: "pts_36", title: "得分 / 36", fmt: (v) => v.toFixed(1), tone: "red" },
@@ -52,6 +52,7 @@ export default function PlayerPage() {
           <div className="row" style={{ marginTop: 10, gap: 16, flexWrap: "nowrap", alignItems: "center" }}>
             <h1 className="hero-name">{p.name}</h1>
             <OvrBadge ovr={p.rating?.ovr} size={64} />
+            <OffDef off={p.rating?.off} def={p.rating?.def} size={18} />
           </div>
           <div className="row">
             <span className="tag">{teamName(p.team, lang, true)}</span>
@@ -191,7 +192,7 @@ function CareerTable({ id, season }: { id: number; season?: string }) {
           <table className="data">
             <thead>
               <tr>
-                <th>{t("赛季")}</th><th>{t("球队")}</th>{type === "regular" && <th className="num-col">OVR</th>}<th className="num-col">{t("年龄")}</th>
+                <th>{t("赛季")}</th><th>{t("球队")}</th>{type === "regular" && <><th className="num-col">OVR</th><th className="num-col">{t("攻")}</th><th className="num-col">{t("守")}</th></>}<th className="num-col">{t("年龄")}</th>
                 {CAREER_COLS.map(([h, , always]) => <th key={h} className={`num-col${always ? "" : " hide-narrow"}`}>{t(h)}</th>)}
               </tr>
             </thead>
@@ -199,7 +200,10 @@ function CareerTable({ id, season }: { id: number; season?: string }) {
               {[...lines].reverse().map((l) => (
                 <tr key={`${l.season}-${l.team}`} style={l.season === season ? { background: "var(--pop-yellow)", color: "var(--on-yellow)" } : undefined}>
                   <td>{l.season}</td><td>{teamName(l.team, lang)}</td>
-                  {type === "regular" && <td className="num-col" style={{ fontFamily: "var(--font-latin)", fontSize: 17 }}>{l.ovr ?? "—"}</td>}
+                  {type === "regular" && <>
+                    <td className="num-col" style={{ fontFamily: "var(--font-latin)", fontSize: 17 }}>{l.ovr ?? "—"}</td>
+                    <td className="num-col">{l.off ?? "—"}</td><td className="num-col">{l.def ?? "—"}</td>
+                  </>}
                   <td className="num-col">{l.age ?? "—"}</td>
                   {CAREER_COLS.map(([h, f, always]) => <td key={h} className={`num-col${always ? "" : " hide-narrow"}`}>{f(l)}</td>)}
                 </tr>
@@ -207,7 +211,11 @@ function CareerTable({ id, season }: { id: number; season?: string }) {
               {total && (
                 <tr style={{ fontWeight: 700, borderTop: "3px solid var(--ink)" }}>
                   <td>{t("生涯")}</td><td></td>
-                  {type === "regular" && <td className="num-col" style={{ fontFamily: "var(--font-latin)", fontSize: 17 }}>{career.data?.rating?.career.toFixed(1) ?? "—"}</td>}
+                  {type === "regular" && <>
+                    <td className="num-col" style={{ fontFamily: "var(--font-latin)", fontSize: 17 }}>{career.data?.rating?.career.toFixed(1) ?? "—"}</td>
+                    <td className="num-col">{career.data?.rating?.off_career?.toFixed(1) ?? "—"}</td>
+                    <td className="num-col">{career.data?.rating?.def_career?.toFixed(1) ?? "—"}</td>
+                  </>}
                   <td></td>
                   {CAREER_COLS.map(([h, f, always]) => <td key={h} className={`num-col${always ? "" : " hide-narrow"}`}>{f(total)}</td>)}
                 </tr>

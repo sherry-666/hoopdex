@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Power, SeasonInfo, seriesColor } from "../api";
 import { POWERS_EN, useLang } from "../i18n";
 import { teamName } from "../teams";
-import { OvrBadge } from "./rating";
+import { OffDef, OvrBadge } from "./rating";
 
 /** A player's comic portrait: /portraits/<id>.png when it exists, otherwise an
  * inked silhouette on halftone in the colour of his main archetype. */
@@ -80,8 +80,9 @@ export function PowerBubble({ power, label }: { power: Power; label: string }) {
   );
 }
 
-export function PlayerCard({ id, name, team, style, archetype, season, ovr }: {
-  id: number; name: string; team: string; style?: string | null; archetype?: number | null; season?: string; ovr?: number | null;
+export function PlayerCard({ id, name, team, style, archetype, season, ovr, off, def }: {
+  id: number; name: string; team: string; style?: string | null; archetype?: number | null; season?: string;
+  ovr?: number | null; off?: number | null; def?: number | null;
 }) {
   const lang = useLang();
   return (
@@ -95,6 +96,7 @@ export function PlayerCard({ id, name, team, style, archetype, season, ovr }: {
         <span className="tag">{teamName(team, lang.lang)}</span>
         {style && <span className="note" style={{ color: "var(--ink-soft)" }}>{lang.name(style)}</span>}
       </div>
+      <OffDef off={off} def={def} size={13} />
     </Link>
   );
 }

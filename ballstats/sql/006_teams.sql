@@ -22,3 +22,10 @@ CREATE TABLE IF NOT EXISTS feat.team_profile (
     model_version     text    NOT NULL,
     PRIMARY KEY (season, team)
 );
+
+-- Team ratings (teams.py): half rotation player ratings, half actual results; centred on 80.
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS ovr integer;
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS off integer;
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS def integer;
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS ortg double precision;  -- points scored per 100 possessions
+ALTER TABLE feat.team_profile ADD COLUMN IF NOT EXISTS drtg double precision;  -- points allowed per 100 possessions

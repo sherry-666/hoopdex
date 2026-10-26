@@ -108,7 +108,7 @@ def player_list(season: str) -> list[dict]:
                (s.stats ->> 'usg_pct')::float AS usg_pct,
                o.family_name AS off_family, o.style_label AS off_style, o.top_archetype_id AS off_top,
                d.family_name AS def_family, d.style_label AS def_style, d.top_archetype_id AS def_top,
-               rt.ovr
+               rt.ovr, rt.off, rt.def
         FROM feat.player_stats s
         LEFT JOIN feat.player_rating rt ON rt.season = s.season AND rt.player_id = s.player_id
         LEFT JOIN feat.player_role o ON o.season = s.season AND o.player_id = s.player_id AND o.side = 'offense'
@@ -190,13 +190,14 @@ def player(season: str, player_id: int) -> dict:
 
 
 def rating_for(season: str, player_id: int) -> dict | None:
-    rows = q("SELECT ovr, z, qualified, baseline_season, minutes, gp, detail, model_version FROM feat.player_rating"
+    rows = q("SELECT ovr, off, def, z, qualified, baseline_season, minutes, gp, detail, model_version FROM feat.player_rating"
              " WHERE season = %s AND player_id = %s", (season, player_id))
     return rows[0] if rows else None
 
 
 def career_rating_for(player_id: int) -> dict | None:
-    rows = q("SELECT peak, peak_from, peak_to, avg_ovr, career, seasons, qualified_seasons FROM feat.player_career_rating"
+    rows = q("SELECT peak, peak_from, peak_to, avg_ovr, career, off_career, off_peak, def_career, def_peak,"
+             " seasons, qualified_seasons FROM feat.player_career_rating"
              " WHERE player_id = %s", (player_id,))
     return rows[0] if rows else None
 
@@ -205,8 +206,8 @@ def career_rating_for(player_id: int) -> dict | None:
 def team_view(season: str) -> dict:
     """Team-building styles and every team's rotation profile for one season."""
     styles = q("SELECT style_id, name, description, centroid FROM feat.team_style ORDER BY style_id")
-    teams = q("SELECT team, style_id, defense_tag, off_mix, def_mix, off_z, avg_ovr, rotation_minutes, core"
-              " FROM feat.team_profile WHERE season = %s ORDER BY avg_ovr DESC NULLS LAST", (season,))
+    teams = q("SELECT team, style_id, defense_tag, off_mix, def_mix, off_z, avg_ovr, rotation_minutes, core,"
+              " ovr, off, def, ortg, drtg FROM feat.team_profile WHERE season = %s ORDER BY ovr DESC NULLS LAST", (season,))
     if not teams:
         raise HTTPException(404, f"no team profiles for {season}")
     arch = q("SELECT DISTINCT side, type_id, name FROM feat.role_type WHERE level = 'archetype' ORDER BY side, type_id")
@@ -227,7 +228,8 @@ def player_career(player_id: int) -> dict:
     and playoffs. A traded player's season shows his combined line, with the teams listed."""
     players = q("SELECT name, first_season, last_season FROM core.player WHERE player_id = %s", (player_id,))
     rows = q("SELECT * FROM core.player_season WHERE player_id = %s ORDER BY season, season_type, team", (player_id,))
-    ovr = {r["season"]: r for r in q("SELECT season, ovr, qualified FROM feat.player_rating WHERE player_id = %s", (player_id,))}
+    ovr = {r["season"]: r for r in q("SELECT season, ovr, off, def, qualified FROM feat.player_rating WHERE player_id = %s",
+                                     (player_id,))}
     out: dict = {"player": players[0] if players else None, "regular": [], "playoffs": [], "career": {},
                  "rating": career_rating_for(player_id)}
     for stype in ("regular", "playoffs"):
@@ -240,7 +242,8 @@ def player_career(player_id: int) -> dict:
             teams = [r["team"] for r in stints if r["team"] != "TOT"]
             out[stype].append({**{k: v for k, v in line.items() if k not in ("player_id", "season_type", "team_id")},
                                "team": "/".join(teams) or line["team"],
-                               "ovr": ovr[season]["ovr"] if stype == "regular" and season in ovr else None,
+                               **{k: ovr[season][k] if stype == "regular" and season in ovr else None
+                                  for k in ("ovr", "off", "def")},
                                "ovr_qualified": ovr[season]["qualified"] if stype == "regular" and season in ovr else None})
     for r in q("SELECT * FROM core.player_career WHERE player_id = %s", (player_id,)):
         out["career"][r["season_type"]] = {k: v for k, v in r.items() if k not in ("player_id", "season_type")}

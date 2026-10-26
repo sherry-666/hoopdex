@@ -24,7 +24,7 @@ export interface PlayerRow {
   pts_36: number | null; ts_pct: number | null; usg_pct: number | null;
   off_family: string | null; off_style: string | null; off_top: number | null;
   def_family: string | null; def_style: string | null; def_top: number | null;
-  ovr: number | null;
+  ovr: number | null; off: number | null; def: number | null;
 }
 export interface Power {
   side: Side; feature: string; name: string; description: string; grade: "S" | "A" | "B"; z: number; value: number | null;
@@ -48,12 +48,17 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export interface SeasonRating {
-  ovr: number; z: number; qualified: boolean; baseline_season: string; minutes: number; gp: number; model_version: string;
+  ovr: number; off: number; def: number; z: number; qualified: boolean; baseline_season: string; minutes: number; gp: number; model_version: string;
   detail: { contribution: number; scoring: number; on_court: number; reliability: number;
-    pie: number; ts: number; usg: number; net: number; league_ts: number };
+    pie: number; ts: number; usg: number; net: number; league_ts: number;
+    off: { scoring: number; playmaking: number; off_rebounding: number; on_court: number;
+      ortg: number; league_ortg: number; ast_pct: number; tov_pct: number; oreb_pct: number };
+    def: { steals: number; blocks: number; def_rebounding: number; on_court: number;
+      drtg: number; league_drtg: number; stl_36: number; blk_36: number; dreb_pct: number } };
 }
 export interface CareerRating {
-  peak: number; peak_from: string; peak_to: string; avg_ovr: number; career: number; seasons: number; qualified_seasons: number;
+  peak: number; peak_from: string; peak_to: string; avg_ovr: number; career: number;
+  off_career: number | null; off_peak: number | null; def_career: number | null; def_peak: number | null; seasons: number; qualified_seasons: number;
 }
 export interface SeasonInfo { season: string; players: number; qualified: number; has_views: boolean; in_progress: boolean }
 export interface CareerLine {
@@ -61,7 +66,7 @@ export interface CareerLine {
   gp: number; gs: number | null; min: number | null; fgm: number; fga: number; fg3m: number; fg3a: number;
   ftm: number; fta: number; oreb: number | null; dreb: number | null; reb: number; ast: number; stl: number | null;
   blk: number | null; tov: number | null; pf: number; pts: number;
-  ovr?: number | null; ovr_qualified?: boolean | null;
+  ovr?: number | null; off?: number | null; def?: number | null; ovr_qualified?: boolean | null;
 }
 export interface Career {
   player: { name: string; first_season: string | null; last_season: string | null } | null;
@@ -74,7 +79,8 @@ export interface TeamStyle { style_id: number; name: string | null; description:
 export interface TeamProfile {
   team: string; style_id: number; defense_tag: string; off_mix: Record<string, number>; def_mix: Record<string, number>;
   off_z: Record<string, number>; avg_ovr: number | null; rotation_minutes: number;
-  core: { player_id: number; name: string; minutes: number; style: string | null; ovr: number | null }[];
+  ovr: number | null; off: number | null; def: number | null; ortg: number | null; drtg: number | null;
+  core: { player_id: number; name: string; minutes: number; style: string | null; ovr: number | null; off?: number | null; def?: number | null }[];
 }
 export interface TeamView { styles: TeamStyle[]; teams: TeamProfile[]; archetypes: Record<Side, string[]> }
 export const useTeams = (season: string | undefined) =>

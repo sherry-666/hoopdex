@@ -6,8 +6,8 @@ import { useLang, usePageTitle } from "../i18n";
 import { teamName } from "../teams";
 import TeamsTab from "./TeamsTab";
 
-type SortKey = "ovr" | "minutes" | "pts_36" | "ts_pct" | "usg_pct";
-const SORTS: Record<SortKey, string> = { ovr: "综合评分", minutes: "上场分钟", pts_36: "得分 / 36", ts_pct: "真实命中率", usg_pct: "使用率" };
+type SortKey = "ovr" | "off" | "def" | "minutes" | "pts_36" | "ts_pct" | "usg_pct";
+const SORTS: Record<SortKey, string> = { ovr: "综合评分", off: "进攻评分", def: "防守评分", minutes: "上场分钟", pts_36: "得分 / 36", ts_pct: "真实命中率", usg_pct: "使用率" };
 const PAGE = 48;
 
 export default function Roster() {
@@ -96,7 +96,7 @@ export default function Roster() {
       {players.error && <Failed error={players.error} />}
       <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
         {rows.slice(0, limit).map((p) => (
-          <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} />
+          <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} off={p.off} def={p.def} />
         ))}
       </div>
       {rows.length > limit && (

@@ -29,11 +29,16 @@ from psycopg.types.json import Jsonb
 
 from ballstats.collector import result_rows
 
-MODEL_VERSION = "ovr-box-v1"
+MODEL_VERSION = "ovr-box-v2"
 MIN_MINUTES = 500
 MIN_QUALIFIED = 100         # below this many 500-minute players, borrow a prior season's baseline
 WEIGHTS = {"contribution": 0.40, "scoring": 0.40, "on_court": 0.20}
+OFF_WEIGHTS = {"scoring": 0.45, "playmaking": 0.25, "off_rebounding": 0.10, "on_court": 0.20}
+DEF_WEIGHTS = {"steals": 0.20, "blocks": 0.15, "def_rebounding": 0.15, "on_court": 0.50}
+SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS}
 USAGE_CREDIT = 0.3          # scoring credit per point of usage above league average
+TEAM_SHARE = 0.3            # on-court off/def: vs his own team, plus this share of the team's edge on the league
+TOV_PENALTY = 0.5           # playmaking = assist % - this x turnover ratio
 NET_SHRINK_MIN = 1000       # on-court net rating keeps minutes / (minutes + this) of its value
 RELIABILITY_MIN = 250       # rating keeps minutes / (minutes + this) of its distance from replacement
 REPLACEMENT_Z = -1.0
@@ -56,40 +61,87 @@ def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
     t = pd.DataFrame({
         "name": base["PLAYER_NAME"], "team": base["TEAM_ABBREVIATION"], "gp": base["GP"], "minutes": base["MIN"],
         "pie": adv["PIE"], "ts": adv["TS_PCT"], "usg": adv["USG_PCT"], "net": adv["NET_RATING"],
+        "ortg": adv["OFF_RATING"], "drtg": adv["DEF_RATING"], "ast_pct": adv["AST_PCT"], "tov_pct": adv["TM_TOV_PCT"],
+        "oreb_pct": adv["OREB_PCT"], "dreb_pct": adv["DREB_PCT"],
+        "stl_36": base["STL"] * 36 / base["MIN"].clip(lower=1), "blk_36": base["BLK"] * 36 / base["MIN"].clip(lower=1),
     })
-    return t.dropna(subset=["pie", "ts", "usg", "net", "minutes"])
+    t = t.dropna(subset=["pie", "ts", "usg", "net", "ortg", "drtg", "minutes"]).fillna(0.0)
+    # Team ratings as the minutes-weighted average of its players' on-court ratings (a traded
+    # player counts for the team he finished with).
+    for k in ("ortg", "drtg"):
+        w = t[k] * t["minutes"]
+        t[f"team_{k}"] = w.groupby(t["team"]).transform("sum") / t["minutes"].groupby(t["team"]).transform("sum")
+    return t
 
 
-def _components(t: pd.DataFrame, league_ts: float, league_usg: float) -> pd.DataFrame:
-    return pd.DataFrame({
-        "contribution": t["pie"],
-        "scoring": (t["usg"] * (t["ts"] - league_ts) + USAGE_CREDIT * (t["usg"] - league_usg)) * 100,
-        "on_court": t["net"] * t["minutes"] / (t["minutes"] + NET_SHRINK_MIN),
-    }, index=t.index)
+def _shrink(v: pd.Series, minutes: pd.Series) -> pd.Series:
+    return v * minutes / (minutes + NET_SHRINK_MIN)
+
+
+def _components(t: pd.DataFrame, lg: dict[str, float]) -> dict[str, pd.DataFrame]:
+    """Raw component values per scale; lg holds league averages of the baseline season."""
+    m = t["minutes"]
+    return {
+        "ovr": pd.DataFrame({
+            "contribution": t["pie"],
+            "scoring": (t["usg"] * (t["ts"] - lg["ts"]) + USAGE_CREDIT * (t["usg"] - lg["usg"])) * 100,
+            "on_court": _shrink(t["net"], m),
+        }),
+        "off": pd.DataFrame({
+            "scoring": (t["usg"] * (t["ts"] - lg["ts"]) + USAGE_CREDIT * (t["usg"] - lg["usg"])) * 100,
+            "playmaking": t["ast_pct"] * 100 - TOV_PENALTY * t["tov_pct"],
+            "off_rebounding": t["oreb_pct"],
+            "on_court": _shrink(t["ortg"] - t["team_ortg"] + TEAM_SHARE * (t["team_ortg"] - lg["ortg"]), m),
+        }),
+        "def": pd.DataFrame({
+            "steals": t["stl_36"],
+            "blocks": t["blk_36"],
+            "def_rebounding": t["dreb_pct"],
+            "on_court": _shrink(t["team_drtg"] - t["drtg"] + TEAM_SHARE * (lg["drtg"] - t["team_drtg"]), m),
+        }),
+    }
 
 
 def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
     """Rate every player of table t against the qualified players of baseline (t itself,
-    or an earlier season while t is still early)."""
+    or an earlier season while t is still early), on all three scales."""
     ref = baseline[baseline["minutes"] >= MIN_MINUTES]
-    league_ts = float(np.average(ref["ts"], weights=ref["minutes"]))
-    league_usg = float(np.average(ref["usg"], weights=ref["minutes"]))
-    ref_c = _components(ref, league_ts, league_usg)
-    mean, sd = ref_c.mean(), ref_c.std()
-    z = (_components(t, league_ts, league_usg) - mean) / sd
-    combo = sum(z[k] * w for k, w in WEIGHTS.items())
-    ref_combo = sum(((ref_c[k] - mean[k]) / sd[k]) * w for k, w in WEIGHTS.items())
-    zc = (combo - ref_combo.mean()) / ref_combo.std()
+    lg = {k: float(np.average(ref[k], weights=ref["minutes"])) for k in ("ts", "usg", "ortg", "drtg")}
+    ref_c, mine = _components(ref, lg), _components(t, lg)
     reliability = t["minutes"] / (t["minutes"] + RELIABILITY_MIN)
-    z_adj = reliability * zc + (1 - reliability) * REPLACEMENT_Z
     out = t[["name", "team", "gp", "minutes"]].copy()
-    out["ovr"] = np.clip(np.round(SCALE_MID + SCALE_SD * z_adj), 40, 99).astype(int)
-    out["z"] = z_adj
-    for k in WEIGHTS:
-        out[f"z_{k}"] = z[k]
+    for scale, weights in SCALES.items():
+        mean, sd = ref_c[scale].mean(), ref_c[scale].std()
+        z = (mine[scale] - mean) / sd
+        ref_combo = sum(((ref_c[scale][k] - mean[k]) / sd[k]) * w for k, w in weights.items())
+        zc = (sum(z[k] * w for k, w in weights.items()) - ref_combo.mean()) / ref_combo.std()
+        z_adj = reliability * zc + (1 - reliability) * REPLACEMENT_Z
+        out[scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z_adj), 40, 99).astype(int)
+        out[f"z_{scale}"] = z_adj
+        for k in weights:
+            out[f"{scale}.{k}"] = z[k]
     out["reliability"] = reliability
-    out["league_ts"] = league_ts
+    for k, v in lg.items():
+        out[f"league_{k}"] = v
     return out
+
+
+def _rounded(d: dict) -> dict:
+    return {k: _rounded(v) if isinstance(v, dict) else round(float(v), 4) for k, v in d.items()}
+
+
+def _career(pool: pd.DataFrame, col: str) -> tuple[float, str, str, float, float]:
+    """(peak, peak_from, peak_to, average, career) of one rating column over a player's seasons."""
+    vals = pool[col].to_numpy(dtype=float)
+    if len(vals) >= PEAK_WINDOW:
+        means = np.convolve(vals, np.ones(PEAK_WINDOW) / PEAK_WINDOW, mode="valid")
+        i = int(means.argmax())
+        peak, frm, to = float(means[i]), pool["season"].iloc[i], pool["season"].iloc[i + PEAK_WINDOW - 1]
+    else:
+        peak, frm, to = float(vals.mean()), pool["season"].iloc[0], pool["season"].iloc[-1]
+    avg = float(np.average(vals, weights=pool["minutes"]))
+    career = CAREER_PEAK_WEIGHT * peak + (1 - CAREER_PEAK_WEIGHT) * avg
+    return round(peak, 1), frm, to, round(avg, 1), round(career, 1)
 
 
 def compute(conn: psycopg.Connection) -> dict[str, int]:
@@ -107,39 +159,38 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         base_season = s if complete or last_complete is None else last_complete
         r = season_ratings(t, tables[base_season])
         for pid, x in r.iterrows():
+            raw = t.loc[pid]
+            detail = {
+                "contribution": x["ovr.contribution"], "scoring": x["ovr.scoring"], "on_court": x["ovr.on_court"],
+                "reliability": x["reliability"], "pie": raw["pie"], "ts": raw["ts"], "usg": raw["usg"],
+                "net": raw["net"], "league_ts": x["league_ts"],
+                "off": {**{k: x[f"off.{k}"] for k in OFF_WEIGHTS}, "ortg": raw["ortg"], "league_ortg": x["league_ortg"],
+                        "ast_pct": raw["ast_pct"], "tov_pct": raw["tov_pct"], "oreb_pct": raw["oreb_pct"]},
+                "def": {**{k: x[f"def.{k}"] for k in DEF_WEIGHTS}, "drtg": raw["drtg"], "league_drtg": x["league_drtg"],
+                        "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"]},
+            }
             rows.append((s, int(pid), x["name"], x["team"], int(x["gp"]), float(x["minutes"]), int(x["ovr"]),
-                         round(float(x["z"]), 3), bool(x["minutes"] >= MIN_MINUTES), base_season,
-                         Jsonb({"contribution": round(float(x["z_contribution"]), 2), "scoring": round(float(x["z_scoring"]), 2),
-                                "on_court": round(float(x["z_on_court"]), 2), "reliability": round(float(x["reliability"]), 3),
-                                "pie": round(float(t.at[pid, "pie"]), 4), "ts": round(float(t.at[pid, "ts"]), 4),
-                                "usg": round(float(t.at[pid, "usg"]), 4), "net": round(float(t.at[pid, "net"]), 1),
-                                "league_ts": round(float(x["league_ts"]), 4)}),
-                         MODEL_VERSION))
+                         round(float(x["z_ovr"]), 3), int(x["off"]), int(x["def"]),
+                         bool(x["minutes"] >= MIN_MINUTES), base_season, Jsonb(_rounded(detail)), MODEL_VERSION))
 
-    df = pd.DataFrame(rows, columns=["season", "player_id", "name", "team", "gp", "minutes", "ovr", "z",
+    df = pd.DataFrame(rows, columns=["season", "player_id", "name", "team", "gp", "minutes", "ovr", "z", "off", "def",
                                      "qualified", "baseline_season", "detail", "model_version"])
     careers = []
     for pid, g in df.sort_values("season").groupby("player_id"):
         q = g[g["qualified"]]
         pool = q if len(q) else g
-        ovrs = pool["ovr"].to_numpy(dtype=float)
-        if len(ovrs) >= PEAK_WINDOW:
-            means = np.convolve(ovrs, np.ones(PEAK_WINDOW) / PEAK_WINDOW, mode="valid")
-            i = int(means.argmax())
-            peak, frm, to = float(means[i]), pool["season"].iloc[i], pool["season"].iloc[i + PEAK_WINDOW - 1]
-        else:
-            peak, frm, to = float(ovrs.mean()), pool["season"].iloc[0], pool["season"].iloc[-1]
-        avg = float(np.average(ovrs, weights=pool["minutes"]))
-        career = CAREER_PEAK_WEIGHT * peak + (1 - CAREER_PEAK_WEIGHT) * avg
-        careers.append((int(pid), round(peak, 1), frm, to, round(avg, 1), round(career, 1),
+        peak, frm, to, avg, career = _career(pool, "ovr")
+        off, de = _career(pool, "off"), _career(pool, "def")
+        careers.append((int(pid), peak, frm, to, avg, career, off[4], off[0], de[4], de[0],
                         len(g), len(q), MODEL_VERSION))
 
     with conn.transaction(), conn.cursor() as cur:
         cur.execute("TRUNCATE feat.player_rating, feat.player_career_rating")
         cur.executemany(
-            "INSERT INTO feat.player_rating (season, player_id, name, team, gp, minutes, ovr, z, qualified,"
-            " baseline_season, detail, model_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", rows)
+            "INSERT INTO feat.player_rating (season, player_id, name, team, gp, minutes, ovr, z, off, def, qualified,"
+            " baseline_season, detail, model_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", rows)
         cur.executemany(
             "INSERT INTO feat.player_career_rating (player_id, peak, peak_from, peak_to, avg_ovr, career,"
-            " seasons, qualified_seasons, model_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", careers)
+            " off_career, off_peak, def_career, def_peak, seasons, qualified_seasons, model_version)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", careers)
     return {"seasons": len(tables), "season_ratings": len(rows), "careers": len(careers)}

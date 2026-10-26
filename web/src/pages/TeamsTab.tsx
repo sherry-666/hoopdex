@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { seriesColor, TeamProfile, useTeams } from "../api";
 import { Failed, Loading, MixBar } from "../components/comic";
-import { OvrBadge } from "../components/rating";
+import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { teamName } from "../teams";
 
@@ -21,10 +21,18 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
           <h3 style={{ fontSize: 24, lineHeight: 1.1 }}>{teamName(t.team, lang, lang === "en")}</h3>
           <span className="tag" style={{ marginTop: 6 }}>{name(t.defense_tag)}</span>
         </div>
-        <div style={{ textAlign: "center" }}>
-          <OvrBadge ovr={t.avg_ovr == null ? null : Math.round(t.avg_ovr)} size={52} />
-          <div className="note">{tr("轮换 OVR")}</div>
+        <div style={{ textAlign: "center", display: "grid", justifyItems: "center", gap: 4 }}>
+          <OvrBadge ovr={t.ovr} size={52} />
+          <div className="note">{tr("球队评分")}</div>
         </div>
+      </div>
+      <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+        <OffDef off={t.off} def={t.def} size={16} />
+        {t.ortg != null && t.drtg != null && (
+          <span className="note" title={tr("每 100 回合得分 / 失分")}>
+            {tr("得 {o} · 失 {d} / 百回合", { o: t.ortg.toFixed(1), d: t.drtg.toFixed(1) })}
+          </span>
+        )}
       </div>
       <div>
         <div className="note">{tr("进攻")}</div>
@@ -48,6 +56,7 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
             <li key={p.player_id} style={{ fontSize: "var(--size-caption)" }}>
               <Link to={`/players/${p.player_id}?season=${season}`}>{p.name}</Link>
               {p.ovr != null && <b> {p.ovr}</b>}
+              {p.off != null && p.def != null && <span className="note"> ({tr("攻")}{p.off}/{tr("守")}{p.def})</span>}
               {p.style && <span className="note"> · {name(p.style)}</span>}
             </li>
           ))}
@@ -69,7 +78,8 @@ export default function TeamsTab({ season, early }: { season: string | undefined
     <>
       <p className="note" style={{ maxWidth: "80ch", margin: 0 }}>
         {t("按每队上场时间最多的 9 名球员，把他们的打法原型按分钟加权，得出球队的风格；再把风格相近的球队归成 5 种建队思路。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
-        {t("交易过的球员算在他最后效力的球队。")}
+        {t("交易过的球员算在他最后效力的球队。")}{" "}
+        {t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}
       </p>
       {early && <p className="bubble" style={{ margin: 0 }}>{t("本赛季刚开始，轮换和风格还会变化。")}</p>}
       <div className="row">

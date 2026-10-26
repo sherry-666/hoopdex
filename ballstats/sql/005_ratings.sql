@@ -27,3 +27,11 @@ CREATE TABLE IF NOT EXISTS feat.player_career_rating (
     qualified_seasons  integer NOT NULL,
     model_version      text NOT NULL
 );
+
+-- Offense and defense ratings (ovr-box-v2), same 40..99 scale as OVR.
+ALTER TABLE feat.player_rating ADD COLUMN IF NOT EXISTS off integer;
+ALTER TABLE feat.player_rating ADD COLUMN IF NOT EXISTS def integer;
+ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS off_career double precision;
+ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS off_peak double precision;
+ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS def_career double precision;
+ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS def_peak double precision;

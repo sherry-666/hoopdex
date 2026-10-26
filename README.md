@@ -52,6 +52,14 @@ scoring volume and efficiency (40%) and minutes-shrunk on-court net rating (20%)
 by sample size and scaled as 77 + 6.5 z. Peak = best three qualifying seasons in a row; career = 0.7 peak +
 0.3 minutes-weighted average. Details in `ballstats/ratings.py`; the player page explains it too.
 
+Offense and defense ratings use the same scale and pipeline, computed separately (OVR is not their average):
+offense = scoring 45%, playmaking (AST% − 0.5 × TOV ratio) 25%, OREB% 10%, on-court offense 20%; defense =
+steals/36 20%, blocks/36 15%, DREB% 15%, on-court defense 50%. On-court numbers are measured against his own
+team plus 30% of the team's edge on the league, so a strong team doesn't lift everyone.
+
+Team ratings (`python -m ballstats teams`, centred on 80) are half the rotation's minutes-weighted player
+ratings and half the team's actual net / offensive / defensive rating per 100 possessions, z-scored per season.
+
 To rebuild every season with tracking data on one model, plus the career view (each player's seasons
 averaged by minutes, stored as season `career`), with the cluster-view axes fitted once and shared:
 

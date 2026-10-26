@@ -52,7 +52,7 @@ export default function Home() {
         {players.isLoading && <Loading what="球员" />}
         {players.error && <Failed error={players.error} />}
         <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-          {featured.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} />)}
+          {featured.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} off={p.off} def={p.def} />)}
         </div>
       </section>
     </>

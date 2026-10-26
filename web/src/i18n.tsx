@@ -94,6 +94,27 @@ const UI_EN: Record<string, string> = {
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
   "建队思路": "Team-building style", "轮换 OVR": "Rotation OVR",
+  // offense / defense ratings
+  "综合": "Overall", "进攻评分": "Offense rating", "防守评分": "Defense rating", "评分类型": "Rating type",
+  "攻": "OFF", "守": "DEF", "组织": "Playmaking", "进攻篮板": "Offensive rebounding", "在场进攻": "On-court offense",
+  "防守篮板": "Defensive rebounding", "在场防守": "On-court defense",
+  "助攻率 {ast}，失误率 {tov}": "Assist rate {ast}, turnover ratio {tov}", "进攻篮板率 {v}": "Offensive rebound rate {v}",
+  "防守篮板率 {v}": "Defensive rebound rate {v}", "每 36 分钟 {v} 次": "{v} per 36 minutes",
+  "他在场时球队每 100 回合得 {on} 分（联盟 {lg}）": "With him on the floor the team scores {on} per 100 possessions (league {lg})",
+  "他在场时球队每 100 回合失 {on} 分（联盟 {lg}）": "With him on the floor the team allows {on} per 100 possessions (league {lg})",
+  "各赛季{k}评分": "{k} rating by season", "{k}巅峰 {p}，生涯 {c}": "{k} peak {p}, career {c}",
+  "进攻评分：得分效率与量 45%、组织（助攻率减一半失误率）25%、进攻篮板 10%、在场进攻 20%。":
+    "Offense rating: scoring efficiency and volume 45%, playmaking (assist rate minus half the turnover ratio) 25%, offensive rebounding 10%, on-court offense 20%.",
+  "防守评分：抢断 20%、盖帽 15%、防守篮板 15%、在场防守 50%。在场数据和他自己球队比（再加三成球队整体水平），所以防守好的球队不会把每个人都抬高。":
+    "Defense rating: steals 20%, blocks 15%, defensive rebounding 15%, on-court defense 50%. On-court numbers are compared with his own team (plus 30% of the team's overall level), so a great defensive team doesn't lift everyone on it.",
+  "换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。三项评分各自独立计算，综合评分不是攻守的平均。":
+    "Converted to a 2K-style score: 77 + 6.5 × σ, range 40–99. The league median is about 75, the top 10% above about 82, the very best near 99. The three ratings are computed separately; overall is not the average of offense and defense.",
+  "这是第一版（只用 box score）。它偏爱篮板多、出手效率高的内线；防守尤其难从 box score 看出来，换防、协防和限制投篮都看不到。之后会换成考虑队友和对手的影响力模型（RAPM）。每个赛季都在当季内排名，所以不同年代可以直接比较。":
+    "This is version 1 (box score only). It favours efficient, rebounding bigs, and defense is especially hard to see in a box score: switching, help defense and shot deterrence don't show up. It will be replaced by an impact model (RAPM) that accounts for teammates and opponents. Every season is ranked within itself, so eras can be compared directly.",
+  "球队评分": "Team rating", "每 100 回合得分 / 失分": "Points scored / allowed per 100 possessions",
+  "得 {o} · 失 {d} / 百回合": "{o} for · {d} against / 100",
+  "球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。":
+    "Team ratings (overall, offense, defense) are half the rotation's player ratings (minutes-weighted) and half the team's actual net rating, points scored and points allowed per 100 possessions, each ranked among that season's 30 teams; 80 is league average.",
   "主力轮换": "Main rotation", "{n} 支球队": "{n} teams",
   "按每队上场时间最多的 9 名球员，把他们的打法原型按分钟加权，得出球队的风格；再把风格相近的球队归成 5 种建队思路。打法是连续的，归类表示「最接近」，不是严格的派系。":
     "Each team's style is the minutes-weighted archetype mix of its 9 players with the most minutes; teams with similar styles are grouped into 5 team-building styles. Styles are a continuum, so a group means closest to, not a strict faction.",
