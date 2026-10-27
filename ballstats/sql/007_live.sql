@@ -49,3 +49,22 @@ CREATE TABLE IF NOT EXISTS live.update_log (
     injuries    integer,
     unmatched   text[]
 );
+
+-- Regular-season standings per season, from ESPN's standings feed. Past seasons are final;
+-- the current one is refreshed on every run. rank is the position within the conference.
+CREATE TABLE IF NOT EXISTS live.standing (
+    season       text NOT NULL,
+    team         text NOT NULL,
+    conf         text NOT NULL CHECK (conf IN ('East', 'West')),
+    rank         integer NOT NULL,
+    wins         integer NOT NULL,
+    losses       integer NOT NULL,
+    win_pct      double precision,
+    games_behind double precision,
+    home         text, road text, conf_record text, last10 text, streak text,
+    pts_for      double precision,       -- per game
+    pts_against  double precision,
+    clincher     text,                   -- z / y / x / e: clinched best record / division / playoffs / eliminated
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (season, team)
+);

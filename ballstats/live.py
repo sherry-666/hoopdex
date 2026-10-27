@@ -21,7 +21,7 @@ log = logging.getLogger("ballstats.live")
 BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 EASTERN = ZoneInfo("America/New_York")
 # ESPN's team abbreviations that differ from stats.nba.com's.
-TEAM_ABBR = {"UTAH": "UTA", "NO": "NOP", "NY": "NYK", "SA": "SAS", "GS": "GSW", "WSH": "WAS"}
+TEAM_ABBR = {"NJ": "NJN", "UTAH": "UTA", "NO": "NOP", "NY": "NYK", "SA": "SAS", "GS": "GSW", "WSH": "WAS"}
 BACKFILL_DAYS = 45
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
 
@@ -172,6 +172,76 @@ def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]
     return n_games, sorted(unmatched)
 
 
+STANDINGS_FROM = 1997   # end year of the first season kept (1996-97, as far back as the ratings)
+
+
+def season_label(end_year: int) -> str:
+    return f"{end_year - 1}-{end_year % 100:02d}"
+
+
+def fnum(v) -> float | None:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def update_standings(conn) -> int:
+    """The current season's standings, plus any past season not stored yet."""
+    current = int(current_season()[:4]) + 1
+    have = {r[0] for r in conn.execute("SELECT DISTINCT season FROM live.standing")}
+    n = 0
+    for end in range(STANDINGS_FROM, current + 1):
+        season = season_label(end)
+        if end < current and season in have:
+            continue
+        data = get_standings(end)
+        rows = []
+        for child in data["children"]:
+            conf = "East" if child["name"].startswith("East") else "West"
+            entries = child["standings"]["entries"]
+            if end == current:   # ESPN's order is unreliable while records are tied early on
+                def key(e):
+                    st = {s["name"]: s.get("value") for s in e["stats"]}
+                    return -(fnum(st.get("winPercent")) or 0), -((fnum(st.get("avgPointsFor")) or 0) - (fnum(st.get("avgPointsAgainst")) or 0))
+                entries = sorted(entries, key=key)
+            for i, e in enumerate(entries, 1):
+                st = {s["name"]: s for s in e["stats"]}
+                disp = lambda k: st.get(k, {}).get("displayValue")
+                val = lambda k: fnum(st.get(k, {}).get("value"))
+                gb = disp("gamesBehind")
+                rows.append((season, abbr(e["team"]["abbreviation"]), conf, i, int(val("wins")), int(val("losses")),
+                             val("winPercent"), 0.0 if gb in (None, "-") else fnum(gb), disp("Home"), disp("Road"),
+                             disp("vs. Conf."), disp("Last Ten Games"), disp("streak"), val("avgPointsFor"),
+                             val("avgPointsAgainst"), disp("clincher") or None))
+        if not rows:
+            continue
+        with conn.transaction():
+            conn.execute("DELETE FROM live.standing WHERE season = %s", (season,))
+            with conn.cursor() as cur:
+                cur.executemany(
+                    "INSERT INTO live.standing (season, team, conf, rank, wins, losses, win_pct, games_behind, home, road,"
+                    " conf_record, last10, streak, pts_for, pts_against, clincher)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", rows)
+        n += len(rows)
+        log.info("standings %s: %d teams", season, len(rows))
+    return n
+
+
+def get_standings(end_year: int) -> dict:
+    last: Exception | None = None
+    for attempt in range(4):
+        try:
+            res = session.get("https://site.api.espn.com/apis/v2/sports/basketball/nba/standings",
+                              params={"season": end_year}, timeout=30)
+            res.raise_for_status()
+            return res.json()
+        except requests.RequestException as e:
+            last = e
+            time.sleep(2 ** attempt)
+    raise RuntimeError(f"ESPN standings {end_year} failed: {last}")
+
+
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
     # Rows from before season_type was stored may include preseason games; refetch them.
@@ -180,9 +250,10 @@ def update(conn, days: int = 3) -> dict:
         days = max(days, BACKFILL_DAYS)   # first run: fill the season so far
     n_games, missed_g = update_games(conn, index, days)
     n_inj, missed_i = update_injuries(conn, index)
+    n_stand = update_standings(conn)
     unmatched = sorted(set(missed_g) | set(missed_i))
     conn.execute("INSERT INTO live.update_log (games, injuries, unmatched) VALUES (%s, %s, %s)",
                  (n_games, n_inj, unmatched))
     if unmatched:
         log.warning("%d names without an NBA id: %s", len(unmatched), ", ".join(unmatched[:20]))
-    return {"games": n_games, "injuries": n_inj, "unmatched": len(unmatched)}
+    return {"games": n_games, "injuries": n_inj, "standings": n_stand, "unmatched": len(unmatched)}

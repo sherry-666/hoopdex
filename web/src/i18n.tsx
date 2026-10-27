@@ -24,6 +24,14 @@ const UI_EN: Record<string, string> = {
   "来源 ESPN，{date} 更新。": "Source: ESPN, updated {date}.", "近期比赛": "Recent games", "日期": "Date", "对手": "Opponent",
   "比分": "Score", "投篮": "FG", "三分": "3PT", "胜": "W", "负": "L", "未出场": "Did not play",
   "每天自动更新，来源 ESPN；只含最近同步到的比赛。": "Updated daily from ESPN; only games synced so far.",
+  // rankings
+  "排名": "Rankings", "{season} 赛季东西部排名和球员评分排名。": "{season} conference standings and player rating rankings.",
+  "东部": "Eastern Conference", "西部": "Western Conference", "胜率": "PCT", "胜场差": "GB", "近10场": "L10", "连续": "Streak",
+  "球员排名": "Player rankings", "姓名": "Player", "攻 / 守": "OFF / DEF",
+  "最佳战绩": "Best record", "分区第一": "Division leader", "锁定季后赛": "Clinched playoffs", "无缘季后赛": "Eliminated", "已淘汰": "Eliminated",
+  "赛季刚开始，评分是本赛季与上赛季的合成值；上场不满 60 分钟的球员不参与。": "Early in the season: ratings blend this season with last, and players under 60 minutes are left out.",
+  "{season} 赛季满 500 分钟的球员，按评分排序。": "Players with 500+ minutes in {season}, sorted by rating.",
+  "每天自动更新，来源 ESPN，{date} 更新。": "Updated daily from ESPN, last on {date}.",
   // roster
   "{season} 赛季的全部球员。搜名字或球队，按进攻大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive family.",
   "Stephen Curry、DEN……": "Stephen Curry, DEN…", "搜索球员或球队": "Search players or teams", "排序": "Sort",

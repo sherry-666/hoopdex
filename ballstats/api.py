@@ -234,6 +234,31 @@ def career_rating_for(player_id: int) -> dict | None:
     return rows[0] if rows else None
 
 
+@app.get("/api/rankings/seasons")
+def ranking_seasons() -> list[str]:
+    """Seasons with standings, newest first."""
+    return [r["season"] for r in q("SELECT DISTINCT season FROM live.standing ORDER BY season DESC")]
+
+
+@app.get("/api/rankings/{season}")
+def rankings(season: str, limit: int = 50) -> dict:
+    """Conference standings (live.standing, refreshed daily) and the top players by rating."""
+    stand = q("SELECT team, conf, rank, wins, losses, win_pct, games_behind, home, road, conf_record, last10, streak,"
+              " pts_for, pts_against, clincher, updated_at FROM live.standing WHERE season = %s ORDER BY conf, rank", (season,))
+    if not stand:
+        raise HTTPException(404, f"no standings for {season}")
+    # While nobody has qualified yet (early season) the ratings are blends: rank everyone with a few games.
+    qualified = q("SELECT 1 FROM feat.player_rating WHERE season = %s AND qualified LIMIT 1", (season,))
+    players = q(
+        """
+        SELECT player_id, name, team, gp, minutes, ovr, off, def FROM feat.player_rating
+        WHERE season = %s AND (qualified OR (%s AND minutes >= 60)) ORDER BY ovr DESC, minutes DESC LIMIT %s
+        """, (season, not qualified, min(limit, 200)))
+    return {"season": season, "updated_at": max(r["updated_at"] for r in stand),
+            "east": [r for r in stand if r["conf"] == "East"], "west": [r for r in stand if r["conf"] == "West"],
+            "players": players, "players_early": not qualified}
+
+
 @app.get("/api/teams/{season}")
 def team_view(season: str) -> dict:
     """Offensive systems and every team's rotation profile for one season."""
@@ -297,7 +322,7 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
     """The SEO page for a client-side route; unknown routes and players get a 404."""
     explicit = params.get("season")
     known = {r["season"] for r in seasons()}
-    if explicit and explicit not in known and not (path == "/roles" and explicit == "career"):
+    if explicit and explicit not in known and not (path == "/roles" and explicit == "career") and path != "/rankings":
         return seo.not_found(lang, path)
     season = explicit or default_season()
     if path == "/":
@@ -313,6 +338,12 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         if not explicit and season not in team_seasons:
             season = team_seasons[0]
         return seo.teams(lang, season, bool(explicit), team_view(season))
+    if path == "/rankings":
+        rank_seasons = ranking_seasons()
+        if not rank_seasons or (explicit and explicit not in rank_seasons):
+            return seo.not_found(lang, path)
+        season = explicit or rank_seasons[0]
+        return seo.rankings(lang, season, bool(explicit), rankings(season))
     if m := re.fullmatch(r"/players/(\d+)", path):
         pid = int(m.group(1))
         played = player_seasons(pid)
@@ -334,7 +365,7 @@ def robots(request: Request) -> PlainTextResponse:
 
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap(request: Request) -> Response:
-    pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/teams", {})]
+    pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/teams", {}), ("/rankings", {})]
     ids = q("SELECT DISTINCT player_id FROM feat.player_stats WHERE season <> 'career' ORDER BY player_id")
     pages += [(f"/players/{r['player_id']}", {}) for r in ids]
     return Response(seo.sitemap(site_base(request), pages), media_type="application/xml")

@@ -130,7 +130,8 @@ def _link(path: str, text: str, lang: str, query: dict | None = None) -> str:
 def _nav(lang: str) -> str:
     zh = lang == "zh"
     items = [("/", "首页" if zh else "Home"), ("/roles", "定位实验室" if zh else "Role Lab"),
-             ("/players", "球员名册" if zh else "Player Roster"), ("/teams", "球队体系" if zh else "Team Systems")]
+             ("/players", "球员名册" if zh else "Player Roster"), ("/teams", "球队体系" if zh else "Team Systems"),
+             ("/rankings", "排名" if zh else "Rankings")]
     other = _link("/", "English", "en") if zh else _link("/", "中文", "zh")
     return "<nav>" + " · ".join(_link(p, t, lang) for p, t in items) + f" · {other}</nav>"
 
@@ -195,6 +196,23 @@ def teams(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
     body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
             f"<main><p>{html.escape(desc)}</p><ul>{''.join(items)}</ul></main>")
     return Page(200, title, desc, "/teams", {"season": season} if explicit_season else {}, body=body)
+
+
+def rankings(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
+    zh = lang == "zh"
+    title = f"{'NBA 排名：东西部排名与球员评分' if zh else 'NBA rankings: standings and player ratings'} {season} · {SITE_NAME}"
+    desc = (f"{season} 赛季 NBA 东部、西部球队排名和球员综合评分排名，每天更新。" if zh else
+            f"NBA {season} Eastern and Western Conference standings and player rating rankings, updated daily.")
+    def conf(name: str, rows: list[dict]) -> str:
+        items = "".join(f"<li>{r['rank']}. {html.escape(team_name(r['team'], lang))} {r['wins']}-{r['losses']}</li>" for r in rows)
+        return f"<h2>{name}</h2><ol>{items}</ol>"
+    players = "".join(f"<li>{html.escape(p['name'])} · {html.escape(team_name(p['team'], lang))} · OVR {p['ovr']}</li>"
+                      for p in view["players"][:50])
+    body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
+            f"<main><p>{html.escape(desc)}</p>{conf('东部' if zh else 'Eastern Conference', view['east'])}"
+            f"{conf('西部' if zh else 'Western Conference', view['west'])}"
+            f"<h2>{'球员排名' if zh else 'Player rankings'}</h2><ol>{players}</ol></main>")
+    return Page(200, title, desc, "/rankings", {"season": season} if explicit_season else {}, body=body)
 
 
 def player(lang: str, season: str, explicit_season: bool, p: dict) -> Page:

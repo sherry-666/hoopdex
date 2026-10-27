@@ -139,9 +139,10 @@ REMOTE_DATABASE_URL="$(railway variables --service Postgres --json | jq -r '"pos
 
 `python -m ballstats live-update [--days 3]` pulls finished games' box scores and the current injury report
 from ESPN's public feeds (which, unlike stats.nba.com, answer cloud IPs) into the `live` schema
-(`live.player_game`, `live.injury`; `ballstats/live.py`). Players are matched to NBA ids by name; names it
+(`live.player_game`, `live.injury`, `live.standing`; `ballstats/live.py`). Players are matched to NBA ids by name; names it
 cannot match (mostly rookies not in the data yet) are logged and skipped. The player page shows the injury
-as a banner (current season only) and the last 10 games. It does not touch `feat`: ratings, roles and
+as a banner (current season only) and the last 10 games. It also keeps the conference standings per season (1996-97 on; past seasons are fetched once, the current one every run),
+which feed the Rankings tab together with the player ratings in `feat`. It does not touch `feat`: ratings, roles and
 team styles still come from the local pipeline. `push_db.sh` only replaces `raw` / `feat`, so `live` survives it.
 
 On Railway it is a second service from the same repo and image, run on a schedule (`railway.cron.json`, 11:00 UTC

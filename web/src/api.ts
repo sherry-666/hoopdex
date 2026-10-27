@@ -107,6 +107,19 @@ export const usePlayerSeasons = (id: number) =>
   useQuery({ queryKey: ["player-seasons", id], queryFn: () => get<string[]>(`/api/player/${id}/seasons`) });
 export const useCareer = (id: number) =>
   useQuery({ queryKey: ["career", id], queryFn: () => get<Career>(`/api/player/${id}/career`) });
+export interface Standing {
+  team: string; conf: "East" | "West"; rank: number; wins: number; losses: number; win_pct: number | null;
+  games_behind: number | null; home: string | null; road: string | null; conf_record: string | null;
+  last10: string | null; streak: string | null; pts_for: number | null; pts_against: number | null; clincher: string | null;
+}
+export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null }
+export interface Rankings {
+  season: string; updated_at: string; east: Standing[]; west: Standing[]; players: RankedPlayer[]; players_early: boolean;
+}
+export const useRankingSeasons = () =>
+  useQuery({ queryKey: ["ranking-seasons"], queryFn: () => get<string[]>("/api/rankings/seasons") });
+export const useRankings = (season: string | undefined) =>
+  useQuery({ queryKey: ["rankings", season], queryFn: () => get<Rankings>(`/api/rankings/${season}`), enabled: !!season });
 export const useRecentGames = (id: number) =>
   useQuery({ queryKey: ["recent", id], queryFn: () => get<RecentGame[]>(`/api/player/${id}/recent`) });
 export const useRoleView = (season: string | undefined, side: Side) =>
