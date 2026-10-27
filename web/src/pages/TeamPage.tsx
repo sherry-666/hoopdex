@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TeamGame, TeamRosterRow, useDefaultSeason, useTeamPage, useTeamSeasons } from "../api";
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
+import TeamAnalysis from "../components/TeamAnalysis";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere } from "../labels";
@@ -154,6 +155,8 @@ export default function TeamPage() {
         <Link to={`/teams?season=${season}`} className="note">{t("← 全部球队体系")}</Link>
         <Link to={`/rankings?season=${season}`} className="note">{t("排名")}</Link>
       </div>
+
+      <TeamAnalysis team={team} season={season} />
 
       <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span className="caption" style={{ fontSize: 20, alignSelf: "flex-start" }}>{t("球员阵容与数据")}</span>

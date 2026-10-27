@@ -354,24 +354,23 @@ def team_page(team: str, season: str) -> dict:
     else:
         played = []
     totals = {r["player_id"]: r for r in played}
+    ids = set(totals) | {r["player_id"] for r in q("SELECT player_id FROM feat.player_stats WHERE season = %s AND team = %s", (season, team))}
     roster = q(
         """
-        SELECT p.player_id, coalesce(s.name, p.name) AS name, s.team AS final_team, s.minutes, s.gp,
-               (s.stats ->> 'ts_pct')::float AS ts_pct,
+        SELECT u.player_id,
+               coalesce(s.name, p.name, (SELECT name FROM feat.player_stats WHERE player_id = u.player_id LIMIT 1)) AS name,
+               s.team AS final_team, s.minutes, s.gp, (s.stats ->> 'ts_pct')::float AS ts_pct,
                o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def
-        FROM core.player p
-        LEFT JOIN feat.player_stats s ON s.season = %(season)s AND s.player_id = p.player_id
-        LEFT JOIN feat.player_rating rt ON rt.season = %(season)s AND rt.player_id = p.player_id
-        LEFT JOIN feat.player_role o ON o.season = %(season)s AND o.player_id = p.player_id AND o.side = 'offense'
-        LEFT JOIN feat.player_role d ON d.season = %(season)s AND d.player_id = p.player_id AND d.side = 'defense'
-        WHERE p.player_id = ANY(%(ids)s) OR (s.team = %(team)s)
-        """, {"season": season, "team": team, "ids": list(totals)})
-    # Players the ratings tables and core.player do not know (a few games, a short stay) still get a row.
-    roster += [{"player_id": i, "name": t["name"] or str(i), "final_team": None, "minutes": None, "gp": t["gp"], "ts_pct": None,
-                "off_style": None, "def_style": None, "ovr": None, "off": None, "def": None}
-               for i, t in totals.items() if i not in {r["player_id"] for r in roster}]
+        FROM unnest(%(ids)s::bigint[]) AS u(player_id)
+        LEFT JOIN core.player p ON p.player_id = u.player_id
+        LEFT JOIN feat.player_stats s ON s.season = %(season)s AND s.player_id = u.player_id
+        LEFT JOIN feat.player_rating rt ON rt.season = %(season)s AND rt.player_id = u.player_id
+        LEFT JOIN feat.player_role o ON o.season = %(season)s AND o.player_id = u.player_id AND o.side = 'offense'
+        LEFT JOIN feat.player_role d ON d.season = %(season)s AND d.player_id = u.player_id AND d.side = 'defense'
+        """, {"season": season, "ids": list(ids)})
     for r in roster:
         t = totals.get(r["player_id"])
+        r["name"] = r["name"] or (t and t["name"]) or str(r["player_id"])   # a player no table has a name for
         if t:   # his games with this team
             r["gp"], r["minutes"] = t["gp"], float(t["min"] or 0)
         final = r.pop("final_team")

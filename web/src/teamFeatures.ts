@@ -30,3 +30,6 @@ export const teamFeature = (code: string, lang: "zh" | "en") => TEAM_FEATURES[co
 export function signature(features: Record<string, number> | null | undefined, n = 3) {
   return Object.entries(features ?? {}).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, n);
 }
+
+/** A defensive archetype's name on a team card is its team-level tag. */
+export const DEFENSE_TAGS: Record<string, string> = { 护框: "护框型防守", 抢断干扰: "侵略型防守", 外线防投手: "外线封堵型防守", 追防与被针对: "追防型防守" };

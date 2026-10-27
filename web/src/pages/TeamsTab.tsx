@@ -5,7 +5,7 @@ import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { DIVISIONS, divisionOf, teamName } from "../teams";
-import { FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
+import { DEFENSE_TAGS, FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
 import { label } from "../labels";
 import type { TeamStyle } from "../api";
 
@@ -15,8 +15,6 @@ const shade = (z: number) => {
 };
 const signed = (z: number) => `${z > 0 ? "+" : z < 0 ? "−" : ""}${Math.abs(z).toFixed(1)}`;
 
-// A defensive archetype's name on a team card is its team-level tag.
-const DEFENSE_TAGS: Record<string, string> = { 护框: "护框型防守", 抢断干扰: "侵略型防守", 外线防投手: "外线封堵型防守", 追防与被针对: "追防型防守" };
 const DEFENSE_GROUPS: [string, string[]][] = [
   ["体型", ["height_in", "weight_lb"]],
   ["护框与篮板", ["blk_36", "rim_dfga_36", "dfga_lt6_share", "dreb_pct", "contests_36"]],
