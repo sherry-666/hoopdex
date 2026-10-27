@@ -500,8 +500,6 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         return seo.player(lang, season, bool(explicit), player(season, pid))
     if path == "/predict":
         return seo.coming_soon(lang, path, "比赛预测", "Game Predictor")
-    if path == "/trade":
-        return seo.coming_soon(lang, path, "交易模拟", "Trade Machine")
     return seo.not_found(lang, path)
 
 

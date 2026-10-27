@@ -6,7 +6,7 @@ export type Lang = "zh" | "en";
 /* UI text. Keys are the Chinese source strings; {name} marks a variable. */
 const UI_EN: Record<string, string> = {
   // shell
-  "首页": "Home", "定位实验室": "Role Lab", "球员名册": "Player Roster", "比赛预测": "Game Predictor", "交易模拟": "Trade Machine",
+  "首页": "Home", "定位实验室": "Role Lab", "球员名册": "Player Roster", "比赛预测": "Game Predictor",
   "日间版": "Day edition", "夜间版": "Night edition", "主导航": "Main navigation",
   "走错片场了": "Wrong set", "这一页不存在。回首页看看其他球员吧。": "This page doesn't exist. Head home and look at the other players.",
   "选两支球队，看胜率和分差。球员影响力模型完成后上线。": "Pick two teams and see the win probability and margin. Launches once the player impact model is ready.",
