@@ -2,7 +2,7 @@
 export const FEATURE_LABELS: Record<string, string> = {
   shot_rim: "篮下出手占比", shot_short_mid: "短中距离占比", shot_long_mid: "长中距离占比",
   shot_corner3: "底角三分占比", shot_atb3: "弧顶三分占比", shot_deep3: "超远三分占比",
-  fta_rate: "罚球率", usg_pct: "使用率", ast_pct: "助攻率", uast_fgm_pct: "非助攻进球占比",
+  fta_rate: "罚球出手率", usg_pct: "使用率", ast_pct: "助攻率", uast_fgm_pct: "非助攻进球占比",
   oreb_pct: "进攻篮板率", drives_36: "突破 / 36 分钟", touches_36: "触球 / 36 分钟",
   sec_per_touch: "每次触球秒数", drib_per_touch: "每次触球运球", elbow_touch_share: "肘区触球占比",
   post_touch_share: "低位触球占比", paint_touch_share: "油漆区触球占比",
