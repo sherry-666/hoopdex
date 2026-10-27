@@ -148,10 +148,18 @@ def _player_list(players: list[dict], season: str, lang: str, limit: int) -> str
 
 def home(lang: str, season: str, players: list[dict]) -> Page:
     zh = lang == "zh"
-    top = sorted((p for p in players if p.get("in_fit")), key=lambda p: -(p.get("pts_36") or 0))[:20]
+    regular = [p for p in players if p.get("in_fit")]
+
+    def best(key: str) -> list[dict]:
+        return sorted((p for p in regular if p.get(key) is not None), key=lambda p: -p[key])[:6]
+
+    sections = [("得分火力最猛的球员", "Top scorers", "pts_36"), ("赛季最佳球员", "Best players", "ovr"),
+                ("赛季最佳进攻球员", "Best offensive players", "off"),
+                ("赛季最佳防守球员", "Best defensive players", "def")]
+    lists = "".join(f"<h2>{name_zh if zh else name_en} ({html.escape(season)})</h2>"
+                    f"{_player_list(best(key), season, lang, 6)}" for name_zh, name_en, key in sections)
     body = (f"<header><h1>HoopDex</h1>{_nav(lang)}</header><main><p>{html.escape(SITE_DESC[lang])}</p>"
-            f"<h2>{'得分火力最猛的球员' if zh else 'Top scorers'} ({html.escape(season)})</h2>"
-            f"{_player_list(top, season, lang, 20)}</main>")
+            f"{lists}</main>")
     return Page(200, SITE_TITLE[lang], SITE_DESC[lang], "/", body=body,
                 jsonld={"@type": "WebSite", "name": SITE_NAME, "inLanguage": HTML_LANG[lang],
                         "description": SITE_DESC[lang]})
