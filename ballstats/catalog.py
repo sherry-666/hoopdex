@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from nba_api.stats.static import teams
 
 SEASON_MAX_AGE_H = 20.0  # aggregates change nightly
+# League-wide box / advanced totals (what ratings and per-36 come from): one request each, so
+# refetched often enough that a finished game shows up within hours.
+TOTALS_MAX_AGE_H = 3.0
 
 PLAYER_STATS_MEASURES = ["Base", "Advanced", "Misc", "Scoring", "Usage", "Defense"]
 PT_MEASURES = [
@@ -81,7 +84,7 @@ def season_jobs(season: str, season_type: str) -> list[Job]:
                                               "per_mode_detailed": "Totals"}),
     ]
     jobs += [Job("LeagueDashPlayerStats", {**common, "per_mode_detailed": "Totals",
-                                           "measure_type_detailed_defense": m})
+                                           "measure_type_detailed_defense": m}, TOTALS_MAX_AGE_H)
              for m in PLAYER_STATS_MEASURES]
     jobs += [Job("LeagueDashPlayerClutch", {**common, "per_mode_detailed": "Totals",
                                             "measure_type_detailed_defense": m})
@@ -118,7 +121,7 @@ def history_jobs(seasons: list[str], current: str) -> list[Job]:
     per measure. Finished seasons never change, so they are cached for good."""
     return [Job("LeagueDashPlayerStats", {"season": s, "season_type_all_star": "Regular Season",
                                           "per_mode_detailed": "Totals", "measure_type_detailed_defense": m},
-                max_age_h=SEASON_MAX_AGE_H if s == current else None)
+                max_age_h=TOTALS_MAX_AGE_H if s == current else None)
             for s in seasons for m in ("Base", "Advanced")]
 
 
