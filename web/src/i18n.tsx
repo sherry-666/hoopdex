@@ -111,7 +111,10 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
-  "进攻体系": "Offensive system", "球队体系": "Team Systems", "防守体系": "Defensive system",
+  "进攻体系": "Offensive system", "球队体系": "Team Systems", "防守体系": "Defensive system", "4 种防守体系的特征": "What defines the 4 defensive systems",
+  "每格是这一类防守球员的平均值，单位是相对联盟球员的标准差（σ）：红色高于联盟，蓝色低于联盟。球队的防守体系由轮换球员的这些类型按分钟加权得出。点列名筛选球队。":
+    "Each cell is the average of players of this defensive type, in standard deviations (σ) from the league's players: red is above the league, blue below. A team's defensive system comes from its rotation's types weighted by minutes. Click a column to filter teams.",
+  "体型": "Build", "护框与篮板": "Rim and rebounding", "抢断与活动量": "Steals and activity", "防守的战术类型占比": "Share of play types defended",
   "防守体系看的是球队的轮换更依赖哪一种防守方式。每名球员的防守特征（抢断、干扰、护框次数、封盖、造犯规、对位三分和近筐出手占比、防守速度等）先归成 4 种防守原型，每人是这几种原型的混合。":
     "A team's defensive system is the kind of defense its rotation leans on most. Each player's defensive traits (steals, deflections, rim contests, blocks, charges drawn, share of threes and rim shots defended, defensive speed) are grouped into 4 defensive archetypes, and every player is a mix of them.",
   "球队的防守构成是轮换 9 人的防守原型按分钟加权，再和当季联盟比；标签取这支球队比联盟平均更突出的那一种。它是「最偏向」，不是球队唯一的防守方式，也不是聚类分出来的派系。":

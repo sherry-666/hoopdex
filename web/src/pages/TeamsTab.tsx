@@ -1,20 +1,81 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { seriesColor, TeamProfile, useRankings, useTeams } from "../api";
+import { seriesColor, TeamProfile, useRankings, useRoleView, useTeams } from "../api";
 import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { DIVISIONS, divisionOf, teamName } from "../teams";
 import { FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
+import { label } from "../labels";
 import type { TeamStyle } from "../api";
+
+const shade = (z: number) => {
+  const a = Math.round(Math.min(1, Math.abs(z) / 1.6) * 85);
+  return `color-mix(in srgb, var(${z >= 0 ? "--seq-hi" : "--seq-lo"}) ${a}%, var(--panel))`;
+};
+const signed = (z: number) => `${z > 0 ? "+" : z < 0 ? "−" : ""}${Math.abs(z).toFixed(1)}`;
+
+// A defensive archetype's name on a team card is its team-level tag.
+const DEFENSE_TAGS: Record<string, string> = { 护框: "护框型防守", 抢断干扰: "侵略型防守", 外线防投手: "外线封堵型防守", 追防与被针对: "追防型防守" };
+const DEFENSE_GROUPS: [string, string[]][] = [
+  ["体型", ["height_in", "weight_lb"]],
+  ["护框与篮板", ["blk_36", "rim_dfga_36", "dfga_lt6_share", "dreb_pct", "contests_36"]],
+  ["外线", ["dfga3_share", "contest3_share"]],
+  ["抢断与活动量", ["stl_36", "deflections_36", "charges_36", "speed_def"]],
+  ["防守的战术类型占比", ["def_pt_Isolation", "def_pt_PRBallHandler", "def_pt_PRRollman", "def_pt_Postup", "def_pt_Spotup", "def_pt_Handoff", "def_pt_OffScreen"]],
+];
+
+/** Each defensive archetype's average on every player feature, in sd from the league's players. */
+function DefenseTable({ season, pick, onPick }: { season: string; pick: string | null; onPick: (tag: string | null) => void }) {
+  const { t, name, lang } = useLang();
+  const view = useRoleView(season, "defense");
+  const arch = view.data?.archetypes ?? [];
+  if (!arch.length) return null;
+  return (
+    <section style={{ marginTop: 16 }}>
+      <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{t("4 种防守体系的特征")}</h3>
+      <p className="note" style={{ margin: "8px 0" }}>{t("每格是这一类防守球员的平均值，单位是相对联盟球员的标准差（σ）：红色高于联盟，蓝色低于联盟。球队的防守体系由轮换球员的这些类型按分钟加权得出。点列名筛选球队。")}</p>
+      <div className="table-box">
+        <table className="data" style={{ minWidth: 520 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>{t("特征")}</th>
+              {arch.map((a) => {
+                const tag = DEFENSE_TAGS[a.name] ?? a.name;
+                return (
+                  <th key={a.type_id} className="num-col" style={{ cursor: "pointer", textDecoration: pick === tag ? "underline" : undefined }}
+                    onClick={() => onPick(pick === tag ? null : tag)}>{name(tag)}</th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {DEFENSE_GROUPS.map(([group, codes]) => [
+              <tr key={group}><td colSpan={arch.length + 1} style={{ fontWeight: 700, paddingTop: 10 }}>{t(group)}</td></tr>,
+              ...codes.filter((c) => c in (arch[0]?.profile ?? {})).map((c) => (
+                <tr key={c}>
+                  <td>{label(c, lang)}</td>
+                  {arch.map((a) => {
+                    const z = a.profile[c] ?? 0;
+                    const tag = DEFENSE_TAGS[a.name] ?? a.name;
+                    return (
+                      <td key={a.type_id} className="num-col" style={{ background: shade(z), opacity: pick == null || pick === tag ? 1 : 0.35,
+                        color: Math.abs(z) > 1.1 ? "#fff" : undefined, fontVariantNumeric: "tabular-nums" }}>{signed(z)}</td>
+                    );
+                  })}
+                </tr>
+              )),
+            ])}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 /** Each style's average on every feature, in sd from that season's league. */
 function StyleTable({ styles, pick, onPick }: { styles: TeamStyle[]; pick: number | null; onPick: (id: number | null) => void }) {
   const { t, name, lang } = useLang();
-  const shade = (z: number) => {
-    const a = Math.round(Math.min(1, Math.abs(z) / 1.6) * 85);
-    return `color-mix(in srgb, var(${z >= 0 ? "--seq-hi" : "--seq-lo"}) ${a}%, var(--panel))`;
-  };
   return (
     <section style={{ marginTop: 16 }}>
       <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种进攻体系的特征")}</h3>
@@ -238,6 +299,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
           <li><b>{t("追防型防守")}</b>：{t("防守速度快、对位多，常被对手针对。")}</li>
         </ul>
         <p style={{ margin: 0 }}>{t("球队评分里的「防守」一半来自轮换球员的防守评分，一半来自球队实际的每百回合失分。")}</p>
+        <DefenseTable season={season} pick={def} onPick={setDef} />
       </Modal>
       <div className="row">
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("排序")}
