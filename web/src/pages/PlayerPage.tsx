@@ -25,8 +25,10 @@ export default function PlayerPage() {
   const playerSeasons = usePlayerSeasons(id);
   const defaultSeason = useDefaultSeason();
   // ?season= wins; otherwise the default season if he played in it, else his latest one.
-  const season = params.get("season")
-    ?? (playerSeasons.data?.includes(defaultSeason ?? "") ? defaultSeason : playerSeasons.data?.[0]);
+  // A ?season= he has no stats in (e.g. a new season he hasn't played yet) falls back to his latest one.
+  const asked = params.get("season");
+  const season = asked && playerSeasons.data?.includes(asked) ? asked
+    : playerSeasons.data?.includes(defaultSeason ?? "") ? defaultSeason : playerSeasons.data?.[0];
   const q = usePlayer(season, id);
   const career = useCareer(id);
   usePageTitle(q.data ? t("{name} 的打法原型与超能力 · NBA {season}", { name: q.data.name, season: season ?? "" }) : undefined);
