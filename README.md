@@ -44,7 +44,7 @@ views stay with the reference season):
 
 ```bash
 .venv/bin/python -m ballstats collect --groups history   # league box + advanced totals, 1996-97 to now (~60 requests)
-.venv/bin/python -m ballstats ratings                    # -> feat.player_rating, feat.player_career_rating
+.venv/bin/python -m ballstats ratings                    # -> feat.player_rating, feat.player_career_rating, feat.player_season_box (the Rankings stat leaders)
 ```
 
 OVR (40-99) per player season from three z-scores against that season's 500+ minute players: PIE (40%),

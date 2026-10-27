@@ -113,8 +113,9 @@ export interface Standing {
   last10: string | null; streak: string | null; pts_for: number | null; pts_against: number | null; clincher: string | null;
 }
 export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null }
+export interface Leader { player_id: number; name: string; team: string | null; gp: number; value: number }
 export interface Rankings {
-  season: string; updated_at: string; east: Standing[]; west: Standing[]; players: RankedPlayer[]; players_early: boolean;
+  season: string; updated_at: string; team_games: number; leaders: Record<string, Leader[]>; east: Standing[]; west: Standing[]; players: RankedPlayer[]; players_early: boolean;
 }
 export const useRankingSeasons = () =>
   useQuery({ queryKey: ["ranking-seasons"], queryFn: () => get<string[]>("/api/rankings/seasons") });

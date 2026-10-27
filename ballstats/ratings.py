@@ -219,3 +219,26 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
             " off_career, off_peak, def_career, def_peak, seasons, qualified_seasons, model_version)"
             " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", careers)
     return {"seasons": len(tables), "season_ratings": len(rows), "careers": len(careers)}
+
+
+BOX_COLS = {"gp": "GP", "min": "MIN", "pts": "PTS", "reb": "REB", "ast": "AST", "stl": "STL", "blk": "BLK",
+            "fgm": "FGM", "fga": "FGA", "fg3m": "FG3M", "fg3a": "FG3A", "ftm": "FTM", "fta": "FTA"}
+
+
+def store_box(conn: psycopg.Connection) -> int:
+    """Copy every season's league-wide Base totals into feat.player_season_box."""
+    rows = []
+    for season, body in conn.execute(
+            "SELECT params->>'season', body FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats'"
+            " AND status = 'ok' AND params->>'measure_type_detailed_defense' = 'Base'"
+            " AND params->>'per_mode_detailed' = 'Totals' AND params->>'season_type_all_star' = 'Regular Season'").fetchall():
+        for r in result_rows(body):
+            rows.append((season, r["PLAYER_ID"], r["PLAYER_NAME"], r["TEAM_ABBREVIATION"],
+                         *(r.get(c) for c in BOX_COLS.values())))
+    with conn.transaction():
+        conn.execute("DELETE FROM feat.player_season_box")
+        with conn.cursor() as cur:
+            cur.executemany(
+                f"INSERT INTO feat.player_season_box (season, player_id, name, team, {', '.join(BOX_COLS)})"
+                f" VALUES ({', '.join(['%s'] * (4 + len(BOX_COLS)))})", rows)
+    return len(rows)

@@ -240,6 +240,47 @@ def ranking_seasons() -> list[str]:
     return [r["season"] for r in q("SELECT DISTINCT season FROM live.standing ORDER BY season DESC")]
 
 
+# Per-game stat leaders. (key, sql-free definition): rate stats need makes to qualify, the rest games played.
+LEADER_COUNT = {"pts": "pts", "reb": "reb", "ast": "ast", "stl": "stl", "blk": "blk", "fg3m": "fg3m"}
+LEADER_PCT = {"fg_pct": ("fgm", "fga", 3.66), "fg3_pct": ("fg3m", "fg3a", 1.0), "ft_pct": ("ftm", "fta", 1.52)}
+LEADER_SIZE = 25
+STAT_COLS = ("gp", "pts", "reb", "ast", "stl", "blk", "fg3m", "fg3a", "fgm", "fga", "ftm", "fta")
+
+
+def season_totals(season: str) -> list[dict]:
+    """Regular-season totals per player. The season the daily cron is filling comes from live.player_game
+    (fresher); finished seasons from feat.player_season_box."""
+    live = q("SELECT 1 FROM live.player_game WHERE season = %s AND season_type = 2 LIMIT 1", (season,))
+    if live:
+        return q(
+            """
+            SELECT g.player_id, p.name, string_agg(DISTINCT g.team, '/') AS team, count(*) AS gp,
+                   sum(pts) AS pts, sum(reb) AS reb, sum(ast) AS ast, sum(stl) AS stl, sum(blk) AS blk,
+                   sum(fg3m) AS fg3m, sum(fg3a) AS fg3a, sum(fgm) AS fgm, sum(fga) AS fga, sum(ftm) AS ftm, sum(fta) AS fta
+            FROM live.player_game g JOIN core.player p USING (player_id)
+            WHERE g.season = %s AND g.season_type = 2 AND g.dnp_reason IS NULL GROUP BY g.player_id, p.name
+            """, (season,))
+    if not q("SELECT to_regclass('feat.player_season_box') AS t")[0]["t"]:
+        return []   # feat not pushed since the box totals were added
+    return q("SELECT player_id, name, team, gp, pts, reb, ast, stl, blk, fg3m, fg3a, fgm, fga, ftm, fta"
+             " FROM feat.player_season_box WHERE season = %s", (season,))
+
+
+def stat_leaders(season: str, team_games: int) -> dict[str, list[dict]]:
+    """Top players per category: averages need 70% of the team's games played, percentages enough makes."""
+    rows = [r for r in season_totals(season) if r["gp"]]
+    min_gp = -(-7 * team_games // 10)
+    out: dict[str, list[dict]] = {}
+    for key, col in LEADER_COUNT.items():
+        pool = [(r[col] / r["gp"], r) for r in rows if r[col] is not None and r["gp"] >= min_gp]
+        out[key] = pool
+    for key, (made, att, per_game) in LEADER_PCT.items():
+        out[key] = [(r[made] / r[att], r) for r in rows if r[att] and r[made] is not None and r[made] >= per_game * team_games]
+    return {key: [{"player_id": r["player_id"], "name": r["name"], "team": r["team"], "gp": r["gp"], "value": round(v, 4)}
+                  for v, r in sorted(pool, key=lambda x: -x[0])[:LEADER_SIZE]]
+            for key, pool in out.items()}
+
+
 @app.get("/api/rankings/{season}")
 def rankings(season: str, limit: int = 50) -> dict:
     """Conference standings (live.standing, refreshed daily) and the top players by rating."""
@@ -254,7 +295,9 @@ def rankings(season: str, limit: int = 50) -> dict:
         SELECT player_id, name, team, gp, minutes, ovr, off, def FROM feat.player_rating
         WHERE season = %s AND (qualified OR (%s AND minutes >= 60)) ORDER BY ovr DESC, minutes DESC LIMIT %s
         """, (season, not qualified, min(limit, 200)))
-    return {"season": season, "updated_at": max(r["updated_at"] for r in stand),
+    team_games = max(r["wins"] + r["losses"] for r in stand)
+    return {"season": season, "updated_at": max(r["updated_at"] for r in stand), "team_games": team_games,
+            "leaders": stat_leaders(season, team_games),
             "east": [r for r in stand if r["conf"] == "East"], "west": [r for r in stand if r["conf"] == "West"],
             "players": players, "players_early": not qualified}
 

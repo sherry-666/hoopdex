@@ -35,3 +35,16 @@ ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS off_career double
 ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS off_peak double precision;
 ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS def_career double precision;
 ALTER TABLE feat.player_career_rating ADD COLUMN IF NOT EXISTS def_peak double precision;
+
+-- League-wide regular-season box totals per player and season (the Rankings stat leaders).
+-- One row per player; a traded player's team is his last one.
+CREATE TABLE IF NOT EXISTS feat.player_season_box (
+    season     text    NOT NULL,
+    player_id  bigint  NOT NULL,
+    name       text    NOT NULL,
+    team       text,
+    gp integer NOT NULL, min double precision,
+    pts integer, reb integer, ast integer, stl integer, blk integer,
+    fgm integer, fga integer, fg3m integer, fg3a integer, ftm integer, fta integer,
+    PRIMARY KEY (season, player_id)
+);

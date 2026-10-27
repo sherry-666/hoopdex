@@ -141,6 +141,7 @@ def cmd_ratings(args) -> int:
     conn = db.connect()
     db.init_schema(conn)
     print("ratings:", ratings.compute(conn))
+    print("box totals:", ratings.store_box(conn))
     return 0
 
 
