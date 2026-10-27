@@ -4,7 +4,7 @@ import logging
 import sys
 
 from ballstats import catalog, db
-from ballstats.collector import Collector, result_rows
+from ballstats.collector import Collector, RunStopped, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
@@ -28,9 +28,19 @@ def run_jobs(collector: Collector, jobs: list[catalog.Job], label: str, refresh:
 
 
 def cmd_collect(args) -> int:
+    """Exit codes: 0 done, 1 no game list, 2 some requests failed, 3 stopped early (budget / refused)."""
     conn = db.connect()
     db.init_schema(conn)
     collector = Collector(conn)
+    args.stats = collector.stats
+    try:
+        return collect_season(args, conn, collector)
+    except RunStopped as e:
+        log.warning("stopped early: %s; %s", e, collector.stats)
+        return 3
+
+
+def collect_season(args, conn, collector) -> int:
     groups = set(args.groups.split(","))
 
     finder = catalog.game_finder_job(args.season, args.season_type)
@@ -172,6 +182,44 @@ def cmd_live_update(args) -> int:
     return 0
 
 
+def cmd_daily_update(args) -> int:
+    """The nightly nba stats refresh: collect the season so far, then rebuild what is derived from it.
+
+    Cheap when nothing is new (requests already cached are skipped). Stops before touching `feat` if
+    the collection did not fully succeed, e.g. when stats.nba.com refuses this host.
+    """
+    from ballstats import blend
+
+    reference = args.reference or blend.previous(args.season)
+    conn = db.connect()
+    db.init_schema(conn)
+    have = conn.execute(
+        "SELECT count(*) FROM raw.raw_response WHERE endpoint = 'LeagueDashPtStats' AND status = 'ok'"
+        " AND params->>'season' = %s", (reference,)).fetchone()[0]
+    conn.close()
+    if not have:
+        log.error("raw data for %s is missing; load it first (scripts/push_db.sh raw feat), "
+                  "otherwise every past season would be refetched", reference)
+        return 1
+
+    collect = argparse.Namespace(season=args.season, season_type="Regular Season", refresh=False,
+                                 groups="season,games,players,history,teams")
+    code = cmd_collect(collect)
+    if code == 3:   # not an error for an hourly job: the cache keeps the progress
+        log.info("collection not finished; resuming next run. feat left as it was")
+        return 0
+    if code:
+        log.error("collection incomplete (exit %d); feat left as it was", code)
+        return code
+    if not collect.stats["fetched"]:
+        log.info("nothing new on stats.nba.com; feat is up to date")
+        return 0
+    cmd_roles(argparse.Namespace(season=args.season, reference=reference, all=False, dry_run=False))
+    cmd_ratings(args)
+    cmd_teams(args)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ballstats")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -196,6 +244,10 @@ def main(argv: list[str] | None = None) -> int:
 
     live_p = sub.add_parser("live-update", help="finished games and the injury report from ESPN (the daily cron job)")
     live_p.add_argument("--days", type=int, default=3, help="look back this many days for games not stored yet")
+
+    daily_p = sub.add_parser("daily-update", help="nba stats refresh of the current season, then roles / ratings / teams (the nightly job)")
+    daily_p.add_argument("--season", default=current_season())
+    daily_p.add_argument("--reference", help="role model season (default: the previous season)")
 
     roles_p = sub.add_parser("roles", help="fit role families and archetype mixes for a season")
     roles_p.add_argument("--season", default=current_season())
@@ -223,4 +275,6 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_live_update(args)
     if args.command == "teams":
         return cmd_teams(args)
+    if args.command == "daily-update":
+        return cmd_daily_update(args)
     return cmd_status(args)

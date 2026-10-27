@@ -153,6 +153,18 @@ daily, after the last games end in the US):
 3. Service → Variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 4. The first run, with an empty `live.player_game`, looks back 45 days to fill the season so far.
 
+### Nightly nba stats update (second cron)
+
+`python -m ballstats daily-update` is the Railway-side version of the local routine: it collects the current
+season from stats.nba.com (season, games, players, history, teams; cached requests are skipped), then runs
+`roles --reference <previous season>`, `ratings` and `teams`. If collection does not fully succeed (for example
+stats.nba.com refuses the host) it exits non-zero before touching `feat`. It refuses to run when `raw` for the
+reference season is missing, since every past season would be refetched.
+
+Setup: load `raw` once (`REMOTE_DATABASE_URL=<DATABASE_PUBLIC_URL> scripts/push_db.sh raw`), add a second cron
+service `nba-cron` with config file `/railway.nba.json` (hourly, `0 * * * *`; the cache lets it resume where the last run stopped), `DATABASE_URL=${{Postgres.DATABASE_URL}}`,
+and `BALLSTATS_PROXY` if stats.nba.com blocks Railway's IPs.
+
 Comic portraits: drop `web/public/portraits/<player_id>.webp` (5:6 aspect, about 840x1008). Players without one show a placeholder.
 Superpowers come from `ballstats/powers.py`: a player's most extreme style stats (z >= 1 among 500+ minute players),
 graded S / A / B, each quoting the stat behind it.

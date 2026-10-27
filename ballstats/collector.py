@@ -43,6 +43,10 @@ def is_empty_game_payload(body: dict) -> bool:
     return False
 
 
+class RunStopped(Exception):
+    """The run's time budget is spent, or stats.nba.com keeps refusing us; resume on the next run."""
+
+
 def endpoint_class(name: str):
     module = importlib.import_module(f"nba_api.stats.endpoints.{name.lower()}")
     return getattr(module, name)
@@ -53,6 +57,8 @@ class Collector:
         self.conn = conn
         self._last_request = 0.0
         self.stats = {"cached": 0, "fetched": 0, "failed": 0}
+        self._deadline = time.monotonic() + config.RUN_BUDGET_S if config.RUN_BUDGET_S else None
+        self._streak = 0   # requests in a row that failed every retry
 
     def _throttle(self) -> None:
         wait = self._last_request + config.MIN_INTERVAL_S - time.monotonic()
@@ -98,6 +104,8 @@ class Collector:
                 self.stats["cached"] += 1
                 return body
 
+        if self._deadline and time.monotonic() > self._deadline:
+            raise RunStopped(f"time budget of {config.RUN_BUDGET_S:.0f}s spent")
         cls = endpoint_class(endpoint)
         error = None
         for attempt in range(1, config.MAX_RETRIES + 1):
@@ -121,6 +129,7 @@ class Collector:
                     return None
                 self._store(endpoint, key, params, "ok", body, None, attempt)
                 self.stats["fetched"] += 1
+                self._streak = 0
                 return body
             except Exception as exc:  # timeouts, 429s and empty bodies all surface here
                 error = f"{type(exc).__name__}: {exc}"[:2000]
@@ -132,6 +141,9 @@ class Collector:
 
         self._store(endpoint, key, params, "error", None, error, config.MAX_RETRIES)
         self.stats["failed"] += 1
+        self._streak += 1
+        if config.MAX_CONSECUTIVE_FAILURES and self._streak >= config.MAX_CONSECUTIVE_FAILURES:
+            raise RunStopped(f"{self._streak} requests in a row failed; stats.nba.com is refusing us")
         return None
 
 
