@@ -56,7 +56,7 @@ class Collector:
     def __init__(self, conn: psycopg.Connection):
         self.conn = conn
         self._last_request = 0.0
-        self.stats = {"cached": 0, "fetched": 0, "failed": 0}
+        self.stats = {"cached": 0, "fetched": 0, "failed": 0, "empty": 0}
         self._deadline = time.monotonic() + config.RUN_BUDGET_S if config.RUN_BUDGET_S else None
         self._streak = 0   # requests in a row that failed every retry
 
@@ -125,7 +125,7 @@ class Collector:
                 if is_empty_game_payload(body):
                     # Not a transient error: retrying now won't help, the next run will.
                     self._store(endpoint, key, params, "error", None, "empty payload", attempt)
-                    self.stats["failed"] += 1
+                    self.stats["empty"] += 1   # not a failure of ours: the NBA has not published it yet
                     return None
                 self._store(endpoint, key, params, "ok", body, None, attempt)
                 self.stats["fetched"] += 1
