@@ -111,7 +111,9 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
-  "进攻体系": "Offensive system", "球队体系": "Team Systems",
+  "进攻体系": "Offensive system", "球队体系": "Team Systems", "防守体系": "Defensive system",
+  "总评": "Overall", "分区": "Division", "战绩排名": "Standings",
+  "大西洋": "Atlantic", "中部": "Central", "东南": "Southeast", "西北": "Northwest", "太平洋": "Pacific", "西南": "Southwest",
   "{season} 赛季每支球队怎么打：进攻体系、球队评分和主力轮换。": "How every team plays in {season}: offensive system, team ratings and rotation.",
   "进攻特点（相对当季联盟）": "Offensive traits (vs league that season)", "球员构成": "Player makeup",
   "5 种进攻体系的特征": "What defines the 5 offensive systems", "特征": "Feature",

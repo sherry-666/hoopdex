@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { seriesColor, TeamProfile, useTeams } from "../api";
+import { seriesColor, TeamProfile, useRankings, useTeams } from "../api";
 import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
-import { teamName } from "../teams";
+import { DIVISIONS, divisionOf, teamName } from "../teams";
 import { FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
 import type { TeamStyle } from "../api";
 
@@ -59,7 +59,7 @@ function mixFrom(shares: Record<string, number>, order: string[]) {
   return order.map((name, id) => ({ id, name, weight: shares[name] ?? 0 }));
 }
 
-function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; archetypes: { offense: string[]; defense: string[] } }) {
+function TeamCard({ t, season, archetypes, style, rank }: { t: TeamProfile; season: string; archetypes: { offense: string[]; defense: string[] }; style?: TeamStyle; rank?: number }) {
   const { t: tr, name, lang } = useLang();
   const off = mixFrom(t.off_mix, archetypes.offense);
   const top = [...off].sort((a, b) => b.weight - a.weight).slice(0, 3);
@@ -68,7 +68,11 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
         <div style={{ minWidth: 0 }}>
           <h3 style={{ fontSize: 24, lineHeight: 1.1 }}><TeamLogo team={t.team} size={40} />{teamName(t.team, lang, lang === "en")}</h3>
-          <span className="tag" style={{ marginTop: 6 }}>{name(t.defense_tag)}</span>
+          <div className="row" style={{ gap: 6, marginTop: 6 }}>
+            {style && <span className="tag" style={{ background: "var(--pop-yellow)", color: "var(--on-yellow)" }} title={tr("进攻体系")}>{tr("攻")} · {name(style.name)}</span>}
+            <span className="tag" title={tr("防守体系")}>{tr("守")} · {name(t.defense_tag)}</span>
+            {rank != null && <span className="tag" title={tr("战绩排名")}>#{rank}</span>}
+          </div>
         </div>
         <div style={{ textAlign: "center", display: "grid", justifyItems: "center", gap: 4 }}>
           <OvrBadge ovr={t.ovr} size={52} />
@@ -127,14 +131,48 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
   );
 }
 
+type SortKey = "ovr" | "off" | "def" | "division" | "rank";
+const SORTS: Record<SortKey, string> = { ovr: "总评", off: "进攻", def: "防守", division: "分区", rank: "战绩排名" };
+
 export default function TeamsTab({ season, early }: { season: string | undefined; early: boolean }) {
-  const { t, name } = useLang();
+  const { t, name, lang } = useLang();
   const view = useTeams(season);
-  const [style, setStyle] = useState<number | null>(null);
+  const standings = useRankings(season);
+  const [off, setOff] = useState<number | null>(null);
+  const [def, setDef] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("ovr");
+  // Conference standing (1 = best) per team, when the season has standings.
+  const rank = useMemo(() => {
+    const m = new Map<string, number>();
+    const d = standings.data;
+    if (d) [...d.east, ...d.west].forEach((s) => m.set(s.team, s.rank));
+    return m;
+  }, [standings.data]);
+  const conf = useMemo(() => {
+    const m = new Map<string, number>();
+    const d = standings.data;
+    if (d) { d.east.forEach((s) => m.set(s.team, 0)); d.west.forEach((s) => m.set(s.team, 1)); }
+    return m;
+  }, [standings.data]);
   if (view.isLoading || !season) return <Loading what="数据" />;
   if (view.error || !view.data) return <Failed error={view.error} />;
   const { styles, teams, archetypes } = view.data;
-  const shown = styles.filter((s) => style == null || s.style_id === style);
+  const styleOf = new Map(styles.map((s) => [s.style_id, s]));
+  const defTags = [...new Set(teams.map((tm) => tm.defense_tag))];
+  const byOvr = (a: TeamProfile, b: TeamProfile) => (b.ovr ?? -1) - (a.ovr ?? -1);
+  const val = (k: "ovr" | "off" | "def") => (a: TeamProfile, b: TeamProfile) => (b[k] ?? -1) - (a[k] ?? -1) || byOvr(a, b);
+  const shown = teams.filter((tm) => (off == null || tm.style_id === off) && (def == null || tm.defense_tag === def)).sort(
+    sort === "division" ? (a, b) => divisionOf(a.team) - divisionOf(b.team) || byOvr(a, b)
+    : sort === "rank" ? (a, b) => (conf.get(a.team) ?? 9) - (conf.get(b.team) ?? 9) || (rank.get(a.team) ?? 99) - (rank.get(b.team) ?? 99) || byOvr(a, b)
+    : val(sort));
+  const card = (tm: TeamProfile) => (
+    <TeamCard key={tm.team} t={tm} season={season} archetypes={archetypes} style={styleOf.get(tm.style_id)} rank={sort === "rank" ? rank.get(tm.team) : undefined} />
+  );
+  const grid = { display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 270px), 1fr))" } as const;
+  const sections = sort === "division" ? DIVISIONS.map(([zh, en], i) => ({ title: lang === "zh" ? zh : en, teams: shown.filter((tm) => divisionOf(tm.team) === i) }))
+    : sort === "rank" && conf.size ? [["东部", 0], ["西部", 1]].map(([zh, c]) => ({ title: t(zh as string), teams: shown.filter((tm) => conf.get(tm.team) === c) }))
+    : [{ title: "", teams: shown }];
+  const picked = off == null ? undefined : styleOf.get(off);
   return (
     <>
       <p className="note" style={{ maxWidth: "80ch", margin: 0 }}>
@@ -145,31 +183,40 @@ export default function TeamsTab({ season, early }: { season: string | undefined
       </p>
       {early && <p className="bubble" style={{ margin: 0 }}>{t("赛季初过渡值：进攻体系和球队评分按场次把本赛季和上赛季合成（本赛季权重 = 场次 ÷（场次 + 20）），轮换和风格还会变化。")}</p>}
       <div className="row">
-        <button type="button" className="chip" aria-pressed={style === null} onClick={() => setStyle(null)}>{t("全部")}</button>
+        <span className="note" style={{ minWidth: "5em" }}>{t("进攻体系")}</span>
+        <button type="button" className="chip" aria-pressed={off === null} onClick={() => setOff(null)}>{t("全部")}</button>
         {styles.map((s) => (
-          <button key={s.style_id} type="button" className="chip" aria-pressed={style === s.style_id}
-            onClick={() => setStyle(style === s.style_id ? null : s.style_id)}>
+          <button key={s.style_id} type="button" className="chip" aria-pressed={off === s.style_id}
+            onClick={() => setOff(off === s.style_id ? null : s.style_id)}>
             {name(s.name)} <span style={{ color: "var(--muted)" }}>{teams.filter((tm) => tm.style_id === s.style_id).length}</span>
           </button>
         ))}
       </div>
-      <StyleTable styles={styles} pick={style} onPick={setStyle} />
-      {shown.map((s) => {
-        const members = teams.filter((tm) => tm.style_id === s.style_id);
-        if (!members.length) return null;
-        return (
-          <section key={s.style_id} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <span className="caption" style={{ fontSize: 20 }}>{name(s.name)}</span>
-              <span className="note" style={{ marginLeft: 10 }}>{t("{n} 支球队", { n: members.length })}</span>
-              {s.description && <p style={{ margin: "8px 0 0", maxWidth: "70ch" }}>{t(s.description)}</p>}
-            </div>
-            <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 270px), 1fr))" }}>
-              {members.map((tm) => <TeamCard key={tm.team} t={tm} season={season} archetypes={archetypes} />)}
-            </div>
-          </section>
-        );
-      })}
+      <div className="row">
+        <span className="note" style={{ minWidth: "5em" }}>{t("防守体系")}</span>
+        <button type="button" className="chip" aria-pressed={def === null} onClick={() => setDef(null)}>{t("全部")}</button>
+        {defTags.map((d) => (
+          <button key={d} type="button" className="chip" aria-pressed={def === d} onClick={() => setDef(def === d ? null : d)}>
+            {name(d)} <span style={{ color: "var(--muted)" }}>{teams.filter((tm) => tm.defense_tag === d).length}</span>
+          </button>
+        ))}
+      </div>
+      {picked?.description && <p style={{ margin: 0, maxWidth: "70ch" }}>{t(picked.description)}</p>}
+      <StyleTable styles={styles} pick={off} onPick={setOff} />
+      <div className="row">
+        <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("排序")}
+          <select className="select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
+          </select>
+        </label>
+        <span className="note">{t("{n} 支球队", { n: shown.length })}</span>
+      </div>
+      {sections.map((sec) => sec.teams.length > 0 && (
+        <section key={sec.title} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {sec.title && <span className="caption" style={{ fontSize: 20 }}>{sec.title}</span>}
+          <div style={grid}>{sec.teams.map(card)}</div>
+        </section>
+      ))}
     </>
   );
 }

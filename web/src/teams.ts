@@ -27,3 +27,14 @@ export function teamName(abbr: string | null | undefined, lang: "zh" | "en", lon
     return lang === "zh" ? t[0] : long ? t[1] : a;
   }).join(" / ");
 }
+
+/** Current divisions, in display order: East then West. [Chinese, English, teams]. */
+export const DIVISIONS: [string, string, string[]][] = [
+  ["大西洋", "Atlantic", ["BOS", "BKN", "NYK", "PHI", "TOR"]],
+  ["中部", "Central", ["CHI", "CLE", "DET", "IND", "MIL"]],
+  ["东南", "Southeast", ["ATL", "CHA", "MIA", "ORL", "WAS"]],
+  ["西北", "Northwest", ["DEN", "MIN", "OKC", "POR", "UTA"]],
+  ["太平洋", "Pacific", ["GSW", "LAC", "LAL", "PHX", "SAC"]],
+  ["西南", "Southwest", ["DAL", "HOU", "MEM", "NOP", "SAS"]],
+];
+export const divisionOf = (team: string): number => DIVISIONS.findIndex(([, , ts]) => ts.includes(team));
