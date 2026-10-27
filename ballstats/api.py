@@ -184,7 +184,7 @@ def player(season: str, player_id: int) -> dict:
             """
             SELECT r.player_id, s.name, s.team, r.style_label, r.weights
             FROM feat.player_role r JOIN feat.player_stats s USING (season, player_id)
-            WHERE r.season = %s AND r.side = %s AND r.family_id = %s AND r.in_fit AND r.player_id <> %s
+            WHERE r.season = %s AND r.side = %s AND r.family_id = %s AND (r.in_fit OR r.blend_weight IS NOT NULL) AND r.player_id <> %s
             """, (season, r["side"], r["family_id"], player_id))
         for p in peers:
             dist = sum(abs(p["weights"].get(k, 0) - w) for k, w in r["weights"].items()) / 2
