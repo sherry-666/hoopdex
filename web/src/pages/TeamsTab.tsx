@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { seriesColor, TeamProfile, useRankings, useRoleView, useTeams } from "../api";
 import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
-import MatchupMatrix from "../components/MatchupMatrix";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { DIVISIONS, divisionOf, teamName } from "../teams";
@@ -277,10 +276,6 @@ export default function TeamsTab({ season, early }: { season: string | undefined
         ))}
       </div>
       {picked?.description && <p style={{ margin: 0, maxWidth: "70ch" }}>{t(picked.description)}</p>}
-      <section className="panel" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="caption" style={{ alignSelf: "flex-start" }}>{t("克制关系")}</span>
-        <MatchupMatrix offStyle={off ?? undefined} defTag={def ?? undefined} />
-      </section>
       <Modal open={info === "off"} onClose={() => setInfo(null)} title={t("进攻体系")}>
         <p style={{ margin: 0 }}>{t("进攻体系看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}</p>
         <p style={{ margin: 0 }}>{t("「球员构成」是轮换 9 人的打法原型按分钟加权。")} {t("交易过的球员算在他最后效力的球队。")}</p>
