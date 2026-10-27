@@ -18,11 +18,18 @@ export default function Home() {
   usePageTitle();
   const [q, setQ] = useState("");
   // Regular players only: 500+ minutes, or early in a season 40% of the minutes leader's.
-  const featured = useMemo(() => {
+  const sections = useMemo(() => {
     const all = players.data ?? [];
     const floor = Math.min(500, 0.4 * Math.max(0, ...all.map((p) => p.minutes)));
-    return all.filter((p) => p.minutes >= floor && p.pts_36 != null)
-      .sort((a, b) => (b.pts_36 ?? 0) - (a.pts_36 ?? 0)).slice(0, 8);
+    const regular = all.filter((p) => p.minutes >= floor);
+    const top = (key: "pts_36" | "ovr" | "off" | "def") =>
+      regular.filter((p) => p[key] != null).sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0)).slice(0, 6);
+    return [
+      { title: "得分火力最猛的球员", note: "（{season} · 每 36 分钟得分）", list: top("pts_36") },
+      { title: "赛季最佳球员", note: "（{season} · 总评）", list: top("ovr") },
+      { title: "赛季最佳进攻球员", note: "（{season} · 进攻评分）", list: top("off") },
+      { title: "赛季最佳防守球员", note: "（{season} · 防守评分）", list: top("def") },
+    ];
   }, [players.data]);
 
   return (
@@ -50,16 +57,18 @@ export default function Home() {
         ))}
       </div>
 
-      <section>
-        <h2 style={{ fontSize: "var(--size-h2)", marginBottom: 14 }}>
-          {t("得分火力最猛的球员")} <span className="note">{t("（{season} · 每 36 分钟得分）", { season: season ?? "" })}</span>
-        </h2>
-        {players.isLoading && <Loading what="球员" />}
-        {players.error && <Failed error={players.error} />}
-        <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-          {featured.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} off={p.off} def={p.def} />)}
-        </div>
-      </section>
+      {players.isLoading && <Loading what="球员" />}
+      {players.error && <Failed error={players.error} />}
+      {sections.map((sec) => (
+        <section key={sec.title}>
+          <h2 style={{ fontSize: "var(--size-h2)", marginBottom: 14 }}>
+            {t(sec.title)} <span className="note">{t(sec.note, { season: season ?? "" })}</span>
+          </h2>
+          <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
+            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} off={p.off} def={p.def} />)}
+          </div>
+        </section>
+      ))}
     </>
   );
 }
