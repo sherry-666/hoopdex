@@ -172,6 +172,7 @@ def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]
     return n_games, sorted(unmatched)
 
 
+STANDINGS_V = 2          # bump to refetch stored seasons after changing how they are ranked
 STANDINGS_FROM = 1997   # end year of the first season kept (1996-97, as far back as the ratings)
 
 
@@ -189,6 +190,7 @@ def fnum(v) -> float | None:
 def update_standings(conn) -> int:
     """The current season's standings, plus any past season not stored yet."""
     current = int(current_season()[:4]) + 1
+    conn.execute("DELETE FROM live.standing WHERE v IS NULL OR v < %s", (STANDINGS_V,))
     have = {r[0] for r in conn.execute("SELECT DISTINCT season FROM live.standing")}
     n = 0
     for end in range(STANDINGS_FROM, current + 1):
@@ -200,11 +202,14 @@ def update_standings(conn) -> int:
         for child in data["children"]:
             conf = "East" if child["name"].startswith("East") else "West"
             entries = child["standings"]["entries"]
-            if end == current:   # ESPN's order is unreliable while records are tied early on
+            if end == current:   # early on, ESPN's seeds and order say little: win % then point difference
                 def key(e):
                     st = {s["name"]: s.get("value") for s in e["stats"]}
                     return -(fnum(st.get("winPercent")) or 0), -((fnum(st.get("avgPointsFor")) or 0) - (fnum(st.get("avgPointsAgainst")) or 0))
-                entries = sorted(entries, key=key)
+            else:   # final standings: ESPN's list is not in seed order, its playoffSeed is
+                def key(e):
+                    return fnum(next((s.get("value") for s in e["stats"] if s["name"] == "playoffSeed"), None)) or 99
+            entries = sorted(entries, key=key)
             for i, e in enumerate(entries, 1):
                 st = {s["name"]: s for s in e["stats"]}
                 disp = lambda k: st.get(k, {}).get("displayValue")
@@ -221,8 +226,9 @@ def update_standings(conn) -> int:
             with conn.cursor() as cur:
                 cur.executemany(
                     "INSERT INTO live.standing (season, team, conf, rank, wins, losses, win_pct, games_behind, home, road,"
-                    " conf_record, last10, streak, pts_for, pts_against, clincher)"
-                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", rows)
+                    " conf_record, last10, streak, pts_for, pts_against, clincher, v)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    [r + (STANDINGS_V,) for r in rows])
         n += len(rows)
         log.info("standings %s: %d teams", season, len(rows))
     return n

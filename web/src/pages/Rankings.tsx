@@ -8,7 +8,9 @@ import { teamName } from "../teams";
 
 // The play-in tournament started in 2020-21: seeds 7-10 play in, otherwise 1-8 make the playoffs.
 const hasPlayIn = (season: string) => season >= "2020-21";
-const CLINCH: Record<string, string> = { z: "最佳战绩", y: "分区第一", x: "锁定季后赛", e: "无缘季后赛", o: "已淘汰" };
+// ESPN's clinch codes next to a team: what it has secured so far (final standings keep the last one).
+const CLINCH: Record<string, string> = { "*": "联盟最佳战绩", z: "本区第一", y: "分区冠军", x: "晋级季后赛", xp: "晋级季后赛（经附加赛）",
+  pb: "晋级附加赛", e: "无缘季后赛", o: "无缘季后赛" };
 
 function StandingsTable({ title, rows, season }: { title: string; rows: Standing[]; season: string }) {
   const { t, lang } = useLang();
@@ -31,7 +33,7 @@ function StandingsTable({ title, rows, season }: { title: string; rows: Standing
                 <td className="num-col">{r.rank}</td>
                 <td>
                   {teamName(r.team, lang, true)}
-                  {r.clincher && CLINCH[r.clincher] && <span className="tag" style={{ marginLeft: 6 }} title={t(CLINCH[r.clincher])}>{r.clincher}</span>}
+                  {r.clincher && CLINCH[r.clincher] && <span className="tag" style={{ marginLeft: 6 }}>{t(CLINCH[r.clincher])}</span>}
                 </td>
                 <td className="num-col">{r.wins}</td><td className="num-col">{r.losses}</td>
                 <td className="num-col">{r.win_pct == null ? "—" : r.win_pct.toFixed(3).replace(/^0/, "")}</td>

@@ -68,3 +68,4 @@ CREATE TABLE IF NOT EXISTS live.standing (
     updated_at   timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (season, team)
 );
+ALTER TABLE live.standing ADD COLUMN IF NOT EXISTS v smallint;   -- ranking logic version, see live.STANDINGS_V
