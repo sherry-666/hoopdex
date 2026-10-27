@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Pacers">
+<title>Pacers</title>
+<defs>
+<clipPath id="find"><path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z"/></clipPath>
+<pattern id="hind" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gind" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mind"><rect width="200" height="200" fill="url(#gind)"/></mask>
+</defs>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="#002D62" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#find)">
+<rect width="200" height="200" fill="url(#hind)" mask="url(#mind)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#FDBB30" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.9) translate(-100 -100)"><path d="M34 50 L86 100 L34 150 L34 124 L58 100 L34 76 Z" fill="#FDBB30" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M68 50 L120 100 L68 150 L68 124 L92 100 L68 76 Z" fill="#fff" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M102 50 L154 100 L102 150 L102 124 L126 100 L102 76 Z" fill="#FDBB30" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 88 L36 88" stroke="#FDBB30" stroke-width="4" stroke-linecap="round"/><path d="M18 100 L36 100" stroke="#FDBB30" stroke-width="4" stroke-linecap="round"/></g>
+</svg>

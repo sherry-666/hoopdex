@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Rankings as RankingsData, Standing, useRankings, useRankingSeasons } from "../api";
+import { Rankings as RankingsData, Standing, useRankings, useRankingSeasons, useSeasons } from "../api";
 import { Failed, Loading, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { OvrBadge } from "../components/rating";
@@ -60,12 +60,14 @@ const RATINGS: Record<Rating, string> = { ovr: "综合评分", off: "进攻评�
 function PlayerRanks({ data, season }: { data: RankingsData; season: string }) {
   const { t, lang } = useLang();
   const [key, setKey] = useState("pts");
+  // Player pages exist only for seasons with style data; older seasons link to his latest page.
+  const hasPage = useSeasons().data?.some((x) => x.season === season);
   const rating = key in RATINGS ? (key as Rating) : null;
   const stat = STATS.find((s) => s.key === key);
   const rows = useMemo(() => {
     if (rating) {
       return [...data.players].sort((a, b) => ((b[rating] ?? -1) - (a[rating] ?? -1)) || b.minutes - a.minutes)
-        .map((p) => ({ player_id: p.player_id, name: p.name, team: p.team, gp: p.gp, value: p[rating] ?? 0 }));
+        .map((p) => ({ player_id: p.player_id, name: p.name, team: p.team, gp: p.gp, value: p[rating] ?? 0, page: p.page }));
     }
     return data.leaders[key] ?? [];
   }, [data, key, rating]);
@@ -100,7 +102,7 @@ function PlayerRanks({ data, season }: { data: RankingsData; season: string }) {
               {rows.map((p, i) => (
                 <tr key={p.player_id}>
                   <td className="num-col">{i + 1}</td>
-                  <td><Link to={`/players/${p.player_id}?season=${season}`}>{p.name}</Link></td>
+                  <td>{p.page ? <Link to={`/players/${p.player_id}${hasPage ? `?season=${season}` : ""}`}>{p.name}</Link> : p.name}</td>
                   <td>{teamName(p.team, lang, true)}</td>
                   <td className="num-col">{rating ? <OvrBadge ovr={p.value} size={30} /> : <b>{fmt(p.value)}</b>}</td>
                   <td className="num-col hide-narrow">{p.gp}</td>

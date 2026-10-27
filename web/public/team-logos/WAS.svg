@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Wizards">
+<title>Wizards</title>
+<defs>
+<clipPath id="fwas"><path d="M100 10 a90 90 0 1 0 .01 0 Z"/></clipPath>
+<pattern id="hwas" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gwas" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mwas"><rect width="200" height="200" fill="url(#gwas)"/></mask>
+</defs>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="#002B5C" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fwas)">
+<rect width="200" height="200" fill="url(#hwas)" mask="url(#mwas)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="none" stroke="#E31837" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.88) translate(-100 -100)"><ellipse cx="100" cy="128" rx="62" ry="15" fill="#E31837" stroke="#111" stroke-width="5" transform="rotate(0 100 128)"/><path d="M96 22 Q122 36 120 66 L136 122 L64 122 L80 70 Q86 50 96 22 Z" fill="#E31837" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M96 22 Q118 24 124 40 Q110 32 98 34 Z" fill="#E31837" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M70 108 Q100 118 130 108 L134 122 Q100 132 66 122 Z" fill="#F5F5F5" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M98.0 67.0 L100.9 74.0 L108.5 74.6 L102.8 79.5 L104.5 86.9 L98.0 83.0 L91.5 86.9 L93.2 79.5 L87.5 74.6 L95.1 74.0 Z" fill="#F5C84B" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M112.0 45.0 L113.8 49.6 L118.7 49.8 L114.9 52.9 L116.1 57.7 L112.0 55.0 L107.9 57.7 L109.1 52.9 L105.3 49.8 L110.2 49.6 Z" fill="#F5C84B" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M46 45 Q46 56 57 56 Q46 56 46 67 Q46 56 35 56 Q46 56 46 45 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M156 57 Q156 66 165 66 Q156 66 156 75 Q156 66 147 66 Q156 66 156 57 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

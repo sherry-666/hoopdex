@@ -276,7 +276,9 @@ def stat_leaders(season: str, team_games: int) -> dict[str, list[dict]]:
         out[key] = pool
     for key, (made, att, per_game) in LEADER_PCT.items():
         out[key] = [(r[made] / r[att], r) for r in rows if r[att] and r[made] is not None and r[made] >= per_game * team_games]
-    return {key: [{"player_id": r["player_id"], "name": r["name"], "team": r["team"], "gp": r["gp"], "value": round(v, 4)}
+    with_page = {r["player_id"] for r in q("SELECT DISTINCT player_id FROM feat.player_stats WHERE season <> 'career'")}
+    return {key: [{"player_id": r["player_id"], "name": r["name"], "team": r["team"], "gp": r["gp"], "value": round(v, 4),
+                   "page": r["player_id"] in with_page}
                   for v, r in sorted(pool, key=lambda x: -x[0])[:LEADER_SIZE]]
             for key, pool in out.items()}
 
@@ -292,8 +294,10 @@ def rankings(season: str, limit: int = 50) -> dict:
     qualified = q("SELECT 1 FROM feat.player_rating WHERE season = %s AND qualified LIMIT 1", (season,))
     players = q(
         """
-        SELECT player_id, name, team, gp, minutes, ovr, off, def FROM feat.player_rating
-        WHERE season = %s AND (qualified OR (%s AND minutes >= 60)) ORDER BY ovr DESC, minutes DESC LIMIT %s
+        SELECT player_id, name, team, gp, minutes, ovr, off, def,
+               EXISTS (SELECT 1 FROM feat.player_stats s WHERE s.player_id = r.player_id AND s.season <> 'career') AS page
+        FROM feat.player_rating r
+        WHERE r.season = %s AND (qualified OR (%s AND minutes >= 60)) ORDER BY ovr DESC, minutes DESC LIMIT %s
         """, (season, not qualified, min(limit, 200)))
     team_games = max(r["wins"] + r["losses"] for r in stand)
     return {"season": season, "updated_at": max(r["updated_at"] for r in stand), "team_games": team_games,

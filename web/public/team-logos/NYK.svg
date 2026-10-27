@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Knicks">
+<title>Knicks</title>
+<defs>
+<clipPath id="fnyk"><path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z"/></clipPath>
+<pattern id="hnyk" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gnyk" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mnyk"><rect width="200" height="200" fill="url(#gnyk)"/></mask>
+</defs>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="#006BB6" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fnyk)">
+<rect width="200" height="200" fill="url(#hnyk)" mask="url(#mnyk)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#F58426" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.9) translate(-100 -100)"><circle cx="100" cy="92" r="48" fill="#F58426" stroke="#111" stroke-width="5"/><rect x="32" y="112" width="24" height="38" fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="58" y="82" width="24" height="68" fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="84" y="56" width="32" height="94" fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="118" y="86" width="24" height="64" fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="144" y="116" width="26" height="34" fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round"/><rect x="38" y="124" width="4" height="6" fill="#F58426"/><rect x="64" y="94" width="4" height="6" fill="#F58426"/><rect x="64" y="108" width="4" height="6" fill="#F58426"/><rect x="64" y="122" width="4" height="6" fill="#F58426"/><rect x="90" y="68" width="4" height="6" fill="#F58426"/><rect x="90" y="82" width="4" height="6" fill="#F58426"/><rect x="90" y="96" width="4" height="6" fill="#F58426"/><rect x="90" y="110" width="4" height="6" fill="#F58426"/><rect x="90" y="124" width="4" height="6" fill="#F58426"/><rect x="99" y="68" width="4" height="6" fill="#F58426"/><rect x="99" y="82" width="4" height="6" fill="#F58426"/><rect x="99" y="96" width="4" height="6" fill="#F58426"/><rect x="99" y="110" width="4" height="6" fill="#F58426"/><rect x="99" y="124" width="4" height="6" fill="#F58426"/><rect x="124" y="98" width="4" height="6" fill="#F58426"/><rect x="124" y="112" width="4" height="6" fill="#F58426"/><rect x="124" y="126" width="4" height="6" fill="#F58426"/><rect x="150" y="128" width="4" height="6" fill="#F58426"/><rect x="159" y="128" width="4" height="6" fill="#F58426"/><path d="M100 56 L100 30" stroke="#111" stroke-width="5" stroke-linecap="round"/><rect x="24" y="150" width="152" height="8" fill="#fff" stroke="#111" stroke-width="4" stroke-linejoin="round"/></g>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Heat">
+<title>Heat</title>
+<defs>
+<clipPath id="fmia"><path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z"/></clipPath>
+<pattern id="hmia" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gmia" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mmia"><rect width="200" height="200" fill="url(#gmia)"/></mask>
+</defs>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="#98002E" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fmia)">
+<rect width="200" height="200" fill="url(#hmia)" mask="url(#mmia)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="none" stroke="#F9A01B" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.78) translate(-100 -100)"><path d="M100 22 C110 56 152 70 150 114 C148 148 126 168 100 168 C74 168 52 148 52 114 C52 88 72 76 80 50 C88 66 90 72 94 72 C94 56 96 40 100 22 Z" fill="#F9A01B" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M102 70 C108 92 134 100 132 124 C130 146 116 156 100 156 C84 156 70 146 70 124 C70 108 84 100 90 86 C94 96 98 98 100 98 Z" fill="#E03A1E" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M100 112 C106 124 118 128 116 140 C114 150 108 152 100 152 C92 152 86 150 86 140 C86 130 96 126 100 112 Z" fill="#FFE08A" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

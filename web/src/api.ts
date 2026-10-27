@@ -112,8 +112,8 @@ export interface Standing {
   games_behind: number | null; home: string | null; road: string | null; conf_record: string | null;
   last10: string | null; streak: string | null; pts_for: number | null; pts_against: number | null; clincher: string | null;
 }
-export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null }
-export interface Leader { player_id: number; name: string; team: string | null; gp: number; value: number }
+export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null; page: boolean }
+export interface Leader { player_id: number; name: string; team: string | null; gp: number; value: number; page: boolean }
 export interface Rankings {
   season: string; updated_at: string; team_games: number; leaders: Record<string, Leader[]>; east: Standing[]; west: Standing[]; players: RankedPlayer[]; players_early: boolean;
 }

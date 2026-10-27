@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Trail Blazers">
+<title>Trail Blazers</title>
+<defs>
+<clipPath id="fpor"><path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z"/></clipPath>
+<pattern id="hpor" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gpor" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mpor"><rect width="200" height="200" fill="url(#gpor)"/></mask>
+</defs>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="#111111" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fpor)">
+<rect width="200" height="200" fill="url(#hpor)" mask="url(#mpor)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#E03A3E" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.9) translate(-100 -100)"><path d="M46 160 L57 138 L51 138 L60 118 L51 118 L46 104 L41 118 L32 118 L41 138 L35 138 Z" fill="#1f6f3a" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M154 160 L165 138 L159 138 L168 118 L159 118 L154 104 L149 118 L140 118 L149 138 L143 138 Z" fill="#1f6f3a" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><g transform="rotate(-30 100 100)"><rect x="94" y="44" width="12" height="124" fill="#7a4a1a" stroke="#111" stroke-width="4" stroke-linejoin="round"/><path d="M106 46 C148 40 166 72 152 104 C142 88 126 84 106 90 Z" fill="#C4CED4" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M114 56 C136 54 148 66 150 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></g><path d="M50 45 Q50 56 61 56 Q50 56 50 67 Q50 56 39 56 Q50 56 50 45 Z" fill="#E03A3E" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

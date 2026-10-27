@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Thunder">
+<title>Thunder</title>
+<defs>
+<clipPath id="fokc"><path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z"/></clipPath>
+<pattern id="hokc" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gokc" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mokc"><rect width="200" height="200" fill="url(#gokc)"/></mask>
+</defs>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="#007AC1" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fokc)">
+<rect width="200" height="200" fill="url(#hokc)" mask="url(#mokc)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="none" stroke="#EF3B24" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M124.8 7.3 L138.0 34.2 L167.9 32.1 L165.8 62.0 L192.7 75.2 L176.0 100.0 L192.7 124.8 L165.8 138.0 L167.9 167.9 L138.0 165.8 L124.8 192.7 L100.0 176.0 L75.2 192.7 L62.0 165.8 L32.1 167.9 L34.2 138.0 L7.3 124.8 L24.0 100.0 L7.3 75.2 L34.2 62.0 L32.1 32.1 L62.0 34.2 L75.2 7.3 L100.0 24.0 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.78) translate(-100 -100)"><path d="M114 78 L74 124 L98 124 L84 172 L130 110 L106 110 Z" fill="#EF3B24" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M110 92 L90 118 L102 118 L96 140 L116 110 L104 110 Z" fill="#FFD23F" stroke="#111" stroke-width="0" stroke-linejoin="round" stroke-linecap="round"/><path d="M52 92 Q36 92 38 72 Q40 54 62 56 Q70 32 98 36 Q124 34 132 56 Q160 52 160 76 Q160 94 138 92 Z" fill="#34495e" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M56 78 Q60 66 74 64" stroke="#7f98ad" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+</svg>

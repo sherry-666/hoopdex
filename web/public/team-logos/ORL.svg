@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Magic">
+<title>Magic</title>
+<defs>
+<clipPath id="forl"><path d="M100 10 a90 90 0 1 0 .01 0 Z"/></clipPath>
+<pattern id="horl" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gorl" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="morl"><rect width="200" height="200" fill="url(#gorl)"/></mask>
+</defs>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="#0077C0" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#forl)">
+<rect width="200" height="200" fill="url(#horl)" mask="url(#morl)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="none" stroke="#C4CED4" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 10 a90 90 0 1 0 .01 0 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.88) translate(-100 -100)"><circle cx="100" cy="82" r="46" fill="#9fd4ff" stroke="#111" stroke-width="5"/><path d="M66 64 Q74 46 94 42" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M104 60 Q104 86 130 86 Q104 86 104 112 Q104 86 78 86 Q104 86 104 60 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M76 90 Q76 100 86 100 Q76 100 76 110 Q76 100 66 100 Q76 100 76 90 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M60 154 L140 154 L126 124 L74 124 Z" fill="#2b2f36" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><rect x="56" y="154" width="88" height="12" fill="#C4CED4" stroke="#111" stroke-width="4" stroke-linejoin="round"/><path d="M158 28 Q158 40 170 40 Q158 40 158 52 Q158 40 146 40 Q158 40 158 28 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M42 45 Q42 54 51 54 Q42 54 42 63 Q42 54 33 54 Q42 54 42 45 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

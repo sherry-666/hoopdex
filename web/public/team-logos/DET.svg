@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Pistons">
+<title>Pistons</title>
+<defs>
+<clipPath id="fdet"><path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z"/></clipPath>
+<pattern id="hdet" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx="4.5" cy="4.5" r="1.9" fill="#000"/></pattern>
+<linearGradient id="gdet" x1="0" y1="0" x2="1" y2="1"><stop offset=".45" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="mdet"><rect width="200" height="200" fill="url(#gdet)"/></mask>
+</defs>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="#1D42BA" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g clip-path="url(#fdet)">
+<rect width="200" height="200" fill="url(#hdet)" mask="url(#mdet)" opacity=".35"/>
+<path d="M0 0 H200 V60 Q100 30 0 80 Z" fill="#fff" opacity=".10"/>
+</g>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#C8102E" stroke-width="4" transform="translate(100 100) scale(.89) translate(-100 -100)" stroke-linejoin="round"/>
+<path d="M100 8 L180 52 L180 148 L100 192 L20 148 L20 52 Z" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/>
+<g transform="translate(100 100) scale(.9) translate(-100 -100)"><path d="M89.7 47.1 L92.0 30.5 L108.0 30.5 L110.3 47.1 L127.3 54.1 L140.6 44.0 L152.0 55.4 L141.9 68.7 L148.9 85.7 L165.5 88.0 L165.5 104.0 L148.9 106.3 L141.9 123.3 L152.0 136.6 L140.6 148.0 L127.3 137.9 L110.3 144.9 L108.0 161.5 L92.0 161.5 L89.7 144.9 L72.7 137.9 L59.4 148.0 L48.0 136.6 L58.1 123.3 L51.1 106.3 L34.5 104.0 L34.5 88.0 L51.1 85.7 L58.1 68.7 L48.0 55.4 L59.4 44.0 L72.7 54.1 Z" fill="#C0CAD0" stroke="#111" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="100" cy="96" r="34" fill="#C8102E" stroke="#111" stroke-width="5"/><circle cx="100" cy="96" r="17" fill="#1D42BA" stroke="#111" stroke-width="5"/><path d="M104 78 L88 100 L99 100 L94 116 L112 92 L101 92 Z" fill="#fff" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>
