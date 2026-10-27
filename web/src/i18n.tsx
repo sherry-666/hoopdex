@@ -112,6 +112,15 @@ const UI_EN: Record<string, string> = {
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
   "进攻体系": "Offensive system", "球队体系": "Team Systems", "防守体系": "Defensive system",
+  "防守体系看的是球队的轮换更依赖哪一种防守方式。每名球员的防守特征（抢断、干扰、护框次数、封盖、造犯规、对位三分和近筐出手占比、防守速度等）先归成 4 种防守原型，每人是这几种原型的混合。":
+    "A team's defensive system is the kind of defense its rotation leans on most. Each player's defensive traits (steals, deflections, rim contests, blocks, charges drawn, share of threes and rim shots defended, defensive speed) are grouped into 4 defensive archetypes, and every player is a mix of them.",
+  "球队的防守构成是轮换 9 人的防守原型按分钟加权，再和当季联盟比；标签取这支球队比联盟平均更突出的那一种。它是「最偏向」，不是球队唯一的防守方式，也不是聚类分出来的派系。":
+    "A team's defensive makeup is its 9-man rotation's defensive archetypes weighted by minutes and compared with that season's league; the label is the one the team stands out on most. It means \"leans most toward\", not the team's only way to defend, and it is not a cluster.",
+  "轮换里护框、封盖多，保护内线。": "Lots of rim protection and blocks in the rotation; protects the paint.",
+  "抢断、干扰多，靠主动出击制造失误。": "Lots of steals and deflections; forces turnovers by attacking.",
+  "防外线投手，封盖三分出手。": "Guards shooters on the perimeter and contests threes.",
+  "防守速度快、对位多，常被对手针对。": "Fast on defense and chases a lot; opponents often target them.",
+  "球队评分里的「防守」一半来自轮换球员的防守评分，一半来自球队实际的每百回合失分。": "The defense rating is half the rotation's defensive ratings and half the team's actual points allowed per 100 possessions.",
   "总评": "Overall", "分区": "Division", "战绩排名": "Standings",
   "大西洋": "Atlantic", "中部": "Central", "东南": "Southeast", "西北": "Northwest", "太平洋": "Pacific", "西南": "Southwest",
   "{season} 赛季每支球队怎么打：进攻体系、球队评分和主力轮换。": "How every team plays in {season}: offensive system, team ratings and rotation.",

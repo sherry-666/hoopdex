@@ -111,6 +111,11 @@ h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 400; line
   display: inline-flex; align-items: center; gap: 6px; font-size: var(--size-caption); }
 .chip[aria-pressed="true"], .btn.primary { background: var(--pop-yellow); color: var(--on-yellow); box-shadow: 2px 2px 0 var(--ink); }
 .btn.primary { border-color: #111; }
+.info-btn { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); background: var(--pop-yellow);
+  color: var(--on-yellow); font-family: var(--font-display); font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+.modal { border: var(--line) solid var(--ink); box-shadow: var(--hard-shadow); background: var(--panel); color: var(--ink);
+  padding: 18px; width: min(92vw, 760px); max-height: 86vh; overflow: auto; }
+.modal::backdrop { background: rgba(0, 0, 0, 0.5); }
 .seg { display: inline-flex; border: 2px solid var(--ink); }
 .seg button { border: 0; background: var(--panel); padding: 4px 14px; cursor: pointer; font-family: var(--font-display); font-size: 16px; }
 .seg button + button { border-left: 2px solid var(--ink); }

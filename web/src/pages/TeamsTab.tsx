@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { seriesColor, TeamProfile, useRankings, useTeams } from "../api";
 import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
@@ -16,8 +16,8 @@ function StyleTable({ styles, pick, onPick }: { styles: TeamStyle[]; pick: numbe
     return `color-mix(in srgb, var(${z >= 0 ? "--seq-hi" : "--seq-lo"}) ${a}%, var(--panel))`;
   };
   return (
-    <details className="panel" style={{ padding: "10px 14px" }}>
-      <summary style={{ cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种进攻体系的特征")}</summary>
+    <section style={{ marginTop: 16 }}>
+      <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{t("5 种进攻体系的特征")}</h3>
       <p className="note" style={{ margin: "8px 0" }}>{t("每格是这一类球队的平均值，单位是相对当季联盟的标准差（σ）：红色高于联盟，蓝色低于联盟。点列名筛选球队。")}</p>
       <div className="table-box">
         <table className="data" style={{ minWidth: 560 }}>
@@ -51,8 +51,31 @@ function StyleTable({ styles, pick, onPick }: { styles: TeamStyle[]; pick: numbe
           </tbody>
         </table>
       </div>
-    </details>
+    </section>
   );
+}
+
+function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="modal" onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+        <h2 style={{ fontSize: 24 }}>{title}</h2>
+        <button type="button" className="chip" onClick={onClose} aria-label="×">×</button>
+      </div>
+      {open && <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>{children}</div>}
+    </dialog>
+  );
+}
+
+function InfoButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button type="button" className="info-btn" aria-label={label} title={label} onClick={onClick}>!</button>;
 }
 
 function mixFrom(shares: Record<string, number>, order: string[]) {
@@ -141,6 +164,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
   const [off, setOff] = useState<number | null>(null);
   const [def, setDef] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("ovr");
+  const [info, setInfo] = useState<"off" | "def" | null>(null);
   // Conference standing (1 = best) per team, when the season has standings.
   const rank = useMemo(() => {
     const m = new Map<string, number>();
@@ -175,14 +199,9 @@ export default function TeamsTab({ season, early }: { season: string | undefined
   const picked = off == null ? undefined : styleOf.get(off);
   return (
     <>
-      <p className="note" style={{ maxWidth: "80ch", margin: 0 }}>
-        {t("进攻体系看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}{" "}
-        {t("「球员构成」是轮换 9 人的打法原型按分钟加权。")}{" "}
-        {t("交易过的球员算在他最后效力的球队。")}{" "}
-        {t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}
-      </p>
       {early && <p className="bubble" style={{ margin: 0 }}>{t("赛季初过渡值：进攻体系和球队评分按场次把本赛季和上赛季合成（本赛季权重 = 场次 ÷（场次 + 20）），轮换和风格还会变化。")}</p>}
       <div className="row">
+        <InfoButton label={t("进攻体系")} onClick={() => setInfo("off")} />
         <span className="note" style={{ minWidth: "5em" }}>{t("进攻体系")}</span>
         <button type="button" className="chip" aria-pressed={off === null} onClick={() => setOff(null)}>{t("全部")}</button>
         {styles.map((s) => (
@@ -193,6 +212,7 @@ export default function TeamsTab({ season, early }: { season: string | undefined
         ))}
       </div>
       <div className="row">
+        <InfoButton label={t("防守体系")} onClick={() => setInfo("def")} />
         <span className="note" style={{ minWidth: "5em" }}>{t("防守体系")}</span>
         <button type="button" className="chip" aria-pressed={def === null} onClick={() => setDef(null)}>{t("全部")}</button>
         {defTags.map((d) => (
@@ -202,7 +222,23 @@ export default function TeamsTab({ season, early }: { season: string | undefined
         ))}
       </div>
       {picked?.description && <p style={{ margin: 0, maxWidth: "70ch" }}>{t(picked.description)}</p>}
-      <StyleTable styles={styles} pick={off} onPick={setOff} />
+      <Modal open={info === "off"} onClose={() => setInfo(null)} title={t("进攻体系")}>
+        <p style={{ margin: 0 }}>{t("进攻体系看的是球队怎么打：战术类型占比（挡拆、单打、空切、背身……）、传球和触球、突破、出手分布和节奏，都和当季联盟比，再用 2015-16 以来的全部球队聚成 5 类。打法是连续的，归类表示「最接近」，不是严格的派系。")}</p>
+        <p style={{ margin: 0 }}>{t("「球员构成」是轮换 9 人的打法原型按分钟加权。")} {t("交易过的球员算在他最后效力的球队。")}</p>
+        <p style={{ margin: 0 }}>{t("球队评分（综合、进攻、防守）一半来自轮换球员的评分（按分钟加权），一半来自球队实际的每百回合净胜分、得分和失分，各自在当季 30 队里排名，80 分是联盟平均。")}</p>
+        <StyleTable styles={styles} pick={off} onPick={setOff} />
+      </Modal>
+      <Modal open={info === "def"} onClose={() => setInfo(null)} title={t("防守体系")}>
+        <p style={{ margin: 0 }}>{t("防守体系看的是球队的轮换更依赖哪一种防守方式。每名球员的防守特征（抢断、干扰、护框次数、封盖、造犯规、对位三分和近筐出手占比、防守速度等）先归成 4 种防守原型，每人是这几种原型的混合。")}</p>
+        <p style={{ margin: 0 }}>{t("球队的防守构成是轮换 9 人的防守原型按分钟加权，再和当季联盟比；标签取这支球队比联盟平均更突出的那一种。它是「最偏向」，不是球队唯一的防守方式，也不是聚类分出来的派系。")}</p>
+        <ul style={{ margin: 0, paddingLeft: "1.2em", display: "grid", gap: 4 }}>
+          <li><b>{t("护框型防守")}</b>：{t("轮换里护框、封盖多，保护内线。")}</li>
+          <li><b>{t("侵略型防守")}</b>：{t("抢断、干扰多，靠主动出击制造失误。")}</li>
+          <li><b>{t("外线封堵型防守")}</b>：{t("防外线投手，封盖三分出手。")}</li>
+          <li><b>{t("追防型防守")}</b>：{t("防守速度快、对位多，常被对手针对。")}</li>
+        </ul>
+        <p style={{ margin: 0 }}>{t("球队评分里的「防守」一半来自轮换球员的防守评分，一半来自球队实际的每百回合失分。")}</p>
+      </Modal>
       <div className="row">
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("排序")}
           <select className="select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
