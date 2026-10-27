@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TeamGame, TeamRosterRow, useDefaultSeason, useTeamPage, useTeamSeasons } from "../api";
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
@@ -14,17 +15,40 @@ function shortDate(iso: string, lang: "zh" | "en") {
   return new Date(y, m - 1, d).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", weekday: "short" });
 }
 
-/** Red cross next to an injured player; hover for status, body part and expected return. */
+/** Red cross next to an injured player; hover or focus for status, body part and expected return. */
 function InjuryMark({ injury }: { injury: NonNullable<TeamRosterRow["injury"]> }) {
   const { t, lang } = useLang();
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const where = injuryWhere(injury, lang);
-  const tip = [injury.status === "Out" ? t("伤停") : t("出战成疑"), where && (injury.detail && lang === "en" ? `${where} · ${injury.detail}` : where),
-    injury.return_date && t("预计 {date} 前后复出", { date: injury.return_date }), injury.short_comment].filter(Boolean).join(" · ");
+  const out = injury.status === "Out";
+  const show = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    setAt({ x: Math.min(r.left, window.innerWidth - 300), y: r.bottom + 6 });
+  };
   return (
-    <svg role="img" aria-label={tip} width="16" height="16" viewBox="0 0 16 16" style={{ marginLeft: 6, verticalAlign: "-2px", flex: "none" }}>
-      <title>{tip}</title>
-      <path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
-    </svg>
+    <span tabIndex={0} role="img" aria-label={`${out ? t("伤停") : t("出战成疑")} ${where ?? ""}`}
+      onMouseEnter={(e) => show(e.currentTarget)} onMouseLeave={() => setAt(null)}
+      onFocus={(e) => show(e.currentTarget)} onBlur={() => setAt(null)}
+      style={{ display: "inline-block", marginLeft: 6, verticalAlign: "-2px", cursor: "help" }}>
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
+      </svg>
+      {at && (
+        <div className="panel" style={{ position: "fixed", left: at.x, top: at.y, width: 280, zIndex: 50, margin: 0, padding: "10px 12px", background: "var(--panel)",
+          borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", textAlign: "left", fontWeight: 400, pointerEvents: "none" }}>
+          <div className="row" style={{ gap: 8 }}>
+            <span className="tag" style={{ background: out ? "var(--pop-red)" : "var(--pop-yellow)", color: out ? "#fff" : "var(--on-yellow)", fontWeight: 700 }}>
+              {out ? t("伤停") : t("出战成疑")}
+            </span>
+            {where && <b>{where}{injury.detail && lang === "en" ? ` · ${injury.detail}` : ""}</b>}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            {injury.return_date ? t("预计 {date} 前后复出", { date: injury.return_date }) : t("复出时间未定")}
+          </div>
+          {injury.short_comment && <p className="note" style={{ margin: "6px 0 0" }}>{injury.short_comment}</p>}
+        </div>
+      )}
+    </span>
   );
 }
 

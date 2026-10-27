@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, useRecentGames, useSeasons } from "../api";
-import { Burst, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } from "../components/comic";
+import { Burst, TeamLink, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere, label } from "../labels";
 import { teamName } from "../teams";
@@ -55,19 +55,19 @@ export default function PlayerPage() {
             <OffDef off={p.rating?.off} def={p.rating?.def} size={18} />
           </div>
           <div className="row">
-            <span className="tag">{teamName(p.team, lang, true)}</span>
+            <span className="tag"><TeamLink team={p.team} season={season} long /></span>
             <span className="tag">{t("{n} 场", { n: p.gp })}</span>
             <span className="tag">{t("{n} 分钟", { n: p.minutes.toLocaleString() })}</span>
             {off && <span className="tag" style={{ background: seriesColor(off.mix[0].id), color: "#fff", borderColor: "var(--ink)" }}>{name(off.style)}</span>}
           </div>
           {p.injury && season === playerSeasons.data?.[0] && <InjuryBanner injury={p.injury} />}
           {off?.blend_weight != null ? (
-            <p className="bubble" style={{ borderColor: "var(--pop-yellow)", margin: 0 }}>
+            <p className="bubble" style={{ "--bubble-edge": "var(--pop-yellow)", margin: 0 } as React.CSSProperties}>
               {t("赛季初过渡值：定位、超能力和评分按本赛季 {w} + {prior} 赛季 {pw} 合成，本赛季打得越多，占比越高。", {
                 w: `${Math.round(off.blend_weight * 100)}%`, prior: off.prior_season ?? "", pw: `${Math.round((1 - off.blend_weight) * 100)}%` })}
             </p>
           ) : !p.in_fit && (
-            <p className="bubble" style={{ borderColor: "var(--pop-red)", margin: 0 }}>
+            <p className="bubble" style={{ "--bubble-edge": "var(--pop-red)", margin: 0 } as React.CSSProperties}>
               {t("样本不足：上场不满 500 分钟，定位和超能力只是投影出来的参考，可信度低。")}
             </p>
           )}
@@ -166,7 +166,7 @@ function InjuryBanner({ injury }: { injury: Injury }) {
   const out = injury.status === "Out";
   const where = injuryWhere(injury, lang);
   return (
-    <div className="bubble" style={{ borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", margin: 0 }}>
+    <div className="bubble" style={{ "--bubble-edge": out ? "var(--pop-red)" : "var(--pop-yellow)", margin: 0 } as React.CSSProperties}>
       <div className="row" style={{ gap: 8 }}>
         <span className="tag" style={{ background: out ? "var(--pop-red)" : "var(--pop-yellow)", color: out ? "#fff" : "var(--on-yellow)", fontWeight: 700 }}>
           {out ? t("伤停") : t("出战成疑")}
@@ -183,7 +183,7 @@ function InjuryBanner({ injury }: { injury: Injury }) {
 }
 
 function RecentGames({ id }: { id: number }) {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const q = useRecentGames(id);
   const games = q.data ?? [];
   if (q.isLoading || games.length === 0) return null;
@@ -207,7 +207,7 @@ function RecentGames({ id }: { id: number }) {
               return (
                 <tr key={g.game_id}>
                   <td>{g.game_date.slice(5)}</td>
-                  <td>{g.home ? "vs" : "@"} {teamName(g.opp, lang)}</td>
+                  <td>{g.home ? "vs" : "@"} <TeamLink team={g.opp} /></td>
                   <td>{g.team_score == null ? "—" : `${won ? t("胜") : t("负")} ${g.team_score}-${g.opp_score}`}</td>
                   {g.dnp_reason ? (
                     <td colSpan={7} className="note">{t("未出场")} · {g.dnp_reason}</td>

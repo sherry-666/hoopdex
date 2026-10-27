@@ -134,10 +134,10 @@ select.select { border: 2px solid var(--ink); background: var(--panel); padding:
 .burst.blue { background: var(--pop-blue); color: var(--on-blue); }
 .burst .num { font-family: var(--font-latin); font-size: 30px; line-height: 1; letter-spacing: 1px; }
 .burst .lbl { font-size: 11px; font-weight: 700; }
-.bubble { position: relative; background: var(--panel); border: var(--line) solid var(--ink); border-radius: 22px;
+.bubble { --bubble-edge: var(--ink); position: relative; background: var(--panel); border: var(--line) solid var(--bubble-edge); border-radius: 22px;
   padding: 12px 16px; }
 .bubble::after { content: ""; position: absolute; left: 28px; bottom: -16px; width: 22px; height: 16px;
-  background: var(--ink); clip-path: polygon(0 0, 100% 0, 10% 100%); }
+  background: var(--bubble-edge); clip-path: polygon(0 0, 100% 0, 10% 100%); }
 .bubble::before { content: ""; position: absolute; left: 31px; bottom: -10px; width: 15px; height: 11px; z-index: 1;
   background: var(--panel); clip-path: polygon(0 0, 100% 0, 10% 100%); }
 .grade { font-family: var(--font-latin); font-size: 20px; width: 34px; height: 34px; display: inline-grid; place-items: center;

@@ -2,8 +2,24 @@ import { ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import { Power, SeasonInfo, seriesColor } from "../api";
 import { POWERS_EN, useLang } from "../i18n";
-import { teamName } from "../teams";
+import { divisionOf, teamName } from "../teams";
 import { OffDef, OvrBadge } from "./rating";
+
+/** A team's name as a link to its page; a traded player's "LAL/PHI" links each team. Teams without a page stay plain text. */
+export function TeamLink({ team, season, long = false }: { team: string; season?: string; long?: boolean }) {
+  const { lang } = useLang();
+  return (
+    <>
+      {team.split("/").map((abbr, i) => (
+        <span key={abbr}>
+          {i > 0 && " / "}
+          {divisionOf(abbr) < 0 ? teamName(abbr, lang, long)
+            : <Link to={`/teams/${abbr}${season ? `?season=${season}` : ""}`}>{teamName(abbr, lang, long)}</Link>}
+        </span>
+      ))}
+    </>
+  );
+}
 
 /** A team's comic emblem: /team-logos/<abbr>.webp when it exists, otherwise nothing. */
 export function TeamLogo({ team, size = 28 }: { team: string; size?: number }) {
