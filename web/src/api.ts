@@ -190,4 +190,5 @@ export interface RoleSynergyView {
   meta: { n_pairs: number; n_poss: number; cv_gain: number; seasons: string[] } | null;
   types: { type_id: number; name: string | null }[];
 }
-export const useRoleSynergy = () => useQuery({ queryKey: ["role-synergy"], queryFn: () => get<RoleSynergyView>("/api/roles/synergy") });
+export const useRoleSynergy = (side: Side) =>
+  useQuery({ queryKey: ["role-synergy", side], queryFn: () => get<RoleSynergyView>(`/api/roles/synergy/${side}`) });

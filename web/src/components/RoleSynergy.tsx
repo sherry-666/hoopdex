@@ -1,29 +1,31 @@
-import { seriesColor, useRoleSynergy } from "../api";
+import { seriesColor, Side, useRoleSynergy } from "../api";
 import { useLang } from "../i18n";
 import { shade, signed } from "../teamFeatures";
 
 const FULL = 3;   // net rating points per 100 possessions shown at full colour
 
-/** Offensive role x offensive role: net rating of two such teammates on court together, above what their
- *  own levels predict (lineup_synergy.py). A symmetric table; `pick` highlights one role's row and column. */
-export default function RoleSynergy({ pick }: { pick: number | null }) {
+/** Role x role on one side: how a team's offence (or defence) rates while two such teammates share the floor,
+ *  above what their own levels predict (lineup_synergy.py). A symmetric table; `pick` highlights one role's row and column. */
+export default function RoleSynergy({ side, pick }: { side: Side; pick: number | null }) {
   const { t, name } = useLang();
-  const q = useRoleSynergy();
+  const q = useRoleSynergy(side);
   const { cells, meta, types } = q.data ?? { cells: [], meta: null, types: [] };
   if (!meta) return null;
   const cell = (a: number, b: number) => cells.find((c) => c.type_a === Math.min(a, b) && c.type_b === Math.max(a, b));
   const lit = (id: number) => pick == null || pick === id;
   return (
     <section className="panel">
-      <span className="caption">{t("角色搭配")}</span>
+      <span className="caption">{t(side === "offense" ? "进攻角色搭配" : "防守角色搭配")}</span>
       <p className="note" style={{ margin: "8px 0" }}>
-        {t("两类进攻球员同时在场时，球队每 100 回合的净胜分比「两人各自水平」预测的多（红）或少（蓝）几分。对角线是两个同类球员搭配。")}
+        {t(side === "offense"
+          ? "两类进攻球员同时在场时，球队每 100 回合的进攻效率比「两人各自水平」预测的多（红）或少（蓝）几分。对角线是两个同类球员搭配。"
+          : "两类防守球员同时在场时，球队每 100 回合的防守效率（少丢分为好）比「两人各自水平」预测的好（红）或差（蓝）几分。对角线是两个同类球员搭配。")}
       </p>
       <div className="table-box">
         <table className="data" style={{ minWidth: 560 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: "left" }}>{t("进攻原型")}</th>
+              <th style={{ textAlign: "left" }}>{t(side === "offense" ? "进攻原型" : "防守原型")}</th>
               {types.map((o) => (
                 <th key={o.type_id} className="num-col" style={o.type_id === pick ? { textDecoration: "underline" } : undefined}>
                   <span className="swatch" style={{ background: seriesColor(o.type_id) }} /> {name(o.name ?? "")}
@@ -60,8 +62,8 @@ export default function RoleSynergy({ pick }: { pick: number | null }) {
           { n: meta.n_pairs.toLocaleString(), poss: meta.n_poss.toLocaleString(), from: meta.seasons[0], to: meta.seasons[meta.seasons.length - 1] })}
       </p>
       <p className="note" style={{ margin: "6px 0 0" }}>
-        {t("读法：效应很小（最大约 ±3 分 / 百回合），在没见过的球员对上加入它只让预测误差减少 {gain}%，所以这是倾向的描述，不能用来预测。同类射手重叠、持球人配内线是其中比较清楚的两条。",
-          { gain: (meta.cv_gain * 100).toFixed(1) })}
+        {t("读法：效应很小，在没见过的球员对上加入它只让预测误差减少 {gain}%，所以这是倾向的描述，不能用来预测。",
+          { gain: Math.max(meta.cv_gain * 100, 0).toFixed(1) })}
       </p>
     </section>
   );

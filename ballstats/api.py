@@ -84,17 +84,18 @@ def role_matchups() -> dict:
     return {"cells": cells, "meta": meta, "offense": types["offense"], "defense": types["defense"]}
 
 
-@app.get("/api/roles/synergy")
-def role_synergy() -> dict:
-    """Offensive archetype pairs: net-rating effect when two such players share the floor, or empty when not fitted."""
+@app.get("/api/roles/synergy/{side}")
+def role_synergy(side: str) -> dict:
+    """Archetype pairs of one side: rating effect when two such players share the floor, or empty when not fitted."""
+    check_side(side)
     if not q("SELECT to_regclass('feat.role_synergy') AS t")[0]["t"]:
         return {"cells": [], "meta": None, "types": []}
-    meta = q("SELECT n_pairs, n_poss, cv_gain, seasons FROM feat.role_synergy_meta LIMIT 1")
+    meta = q("SELECT n_pairs, n_poss, cv_gain, seasons FROM feat.role_synergy_meta WHERE side = %s LIMIT 1", (side,))
     latest = q("SELECT max(season) AS s FROM feat.role_type WHERE level = 'archetype'")[0]["s"]
-    return {"cells": q("SELECT type_a, type_b, effect, se FROM feat.role_synergy ORDER BY type_a, type_b"),
+    return {"cells": q("SELECT type_a, type_b, effect, se FROM feat.role_synergy WHERE side = %s ORDER BY type_a, type_b", (side,)),
             "meta": meta[0] if meta else None,
-            "types": q("SELECT type_id, name FROM feat.role_type WHERE season = %s AND side = 'offense'"
-                       " AND level = 'archetype' ORDER BY type_id", (latest,))}
+            "types": q("SELECT type_id, name FROM feat.role_type WHERE season = %s AND side = %s"
+                       " AND level = 'archetype' ORDER BY type_id", (latest, side))}
 
 
 @app.get("/api/roles/{season}/{side}")

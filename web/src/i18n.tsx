@@ -119,13 +119,15 @@ const UI_EN: Record<string, string> = {
   "结论：没有发现可靠的克制关系。{n} 场比赛里，各格的差别最多 {max} 分 / 场，和随机波动无法区分（整体检验 p = {p}）；风格对风格的优劣，远不如球队本身的强弱重要。": "Finding: no reliable matchup effect. Across {n} games no cell differs by more than {max} points per game, which cannot be told apart from chance (overall test p = {p}); style-on-style edges matter far less than how strong the teams are.",
   "{style} 进攻面对不同防守：每场得分比预期多 / 少": "{style} offence against each defence: points per game above / below expectation",
   "{tag} 面对不同进攻：对手得分比预期多 / 少（负 = 防守占优）": "{tag} against each offence: opponent points above / below expectation (negative = the defence has the edge)",
-  "角色搭配": "Role pairings", "进攻原型": "Offence archetype", "误差 ±{se}": "Error ±{se}",
-  "两类进攻球员同时在场时，球队每 100 回合的净胜分比「两人各自水平」预测的多（红）或少（蓝）几分。对角线是两个同类球员搭配。":
-    "Net points per 100 possessions a team gains (red) or loses (blue) when these two kinds of offensive player share the floor, beyond what their own levels predict. The diagonal is two players of the same kind.",
+  "进攻角色搭配": "Offensive role pairings", "防守角色搭配": "Defensive role pairings", "进攻原型": "Offence archetype", "防守原型": "Defence archetype", "误差 ±{se}": "Error ±{se}",
+  "两类进攻球员同时在场时，球队每 100 回合的进攻效率比「两人各自水平」预测的多（红）或少（蓝）几分。对角线是两个同类球员搭配。":
+    "Points per 100 possessions a team's offence scores above (red) or below (blue) what the two players' own levels predict while these two kinds of offensive player share the floor. The diagonal is two players of the same kind.",
+  "两类防守球员同时在场时，球队每 100 回合的防守效率（少丢分为好）比「两人各自水平」预测的好（红）或差（蓝）几分。对角线是两个同类球员搭配。":
+    "Points per 100 possessions a team's defence saves (red) or concedes (blue) compared with what the two players' own levels predict while these two kinds of defender share the floor. The diagonal is two players of the same kind.",
   "● 表示效应超过 2 个标准误（按球队赛季重抽样）。基于 {n} 对队友组合、{poss} 个回合，各赛季 {from}–{to}。":
     "● marks an effect beyond 2 standard errors (resampling team-seasons). Based on {n} teammate pairs and {poss} possessions, seasons {from}–{to}.",
-  "读法：效应很小（最大约 ±3 分 / 百回合），在没见过的球员对上加入它只让预测误差减少 {gain}%，所以这是倾向的描述，不能用来预测。同类射手重叠、持球人配内线是其中比较清楚的两条。":
-    "How to read it: the effects are small (at most about ±3 per 100 possessions), and adding them cuts held-out prediction error by only {gain}%, so this describes tendencies and cannot be used to predict. Overlapping spot-up shooters and a ball handler paired with a big are the two clearest.",
+  "读法：效应很小，在没见过的球员对上加入它只让预测误差减少 {gain}%，所以这是倾向的描述，不能用来预测。":
+    "How to read it: the effects are small, and adding them cuts held-out prediction error by only {gain}%, so this describes tendencies and cannot be used to predict.",
   "球员类型克制关系": "Player-type matchups",
   "每格是这类进攻球员面对这类防守球员时，每 100 个回合比「两人各自水平」预测的多（红）或少（蓝）几分，已剔除球员自身水平。数据是追踪数据里的对位回合（平均每 100 回合 {ppp} 分）。":
     "Each cell is how many points per 100 matchup possessions this kind of offensive player scores above (red) or below (blue) what the two players' own levels predict. Player talent is removed. Possessions come from tracked matchup data (average {ppp} points per 100).",

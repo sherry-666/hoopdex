@@ -104,7 +104,7 @@ export default function RolesLab() {
               <p className="note" style={{ margin: "8px 0" }}>{t("原型是最极端的纯粹打法，所以数值比大类更夸张。单位是相对联盟平均的标准差。")}</p>
               <ProfileHeatmap side={side} archetypes={view.data.archetypes} families={view.data.families} pick={pick} onPick={onPick} />
             </section>
-            <RoleSynergy pick={side === "offense" ? pick : null} />
+            <RoleSynergy side={side} pick={pick} />
             {!isCareer && <RoleMatchup pickOff={side === "offense" ? pick : null} pickDef={side === "defense" ? pick : null} />}
           </div>
         </>

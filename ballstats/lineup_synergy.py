@@ -1,12 +1,13 @@
-"""Role synergy: do two kinds of offensive player play better together than their own levels predict?
+"""Role synergy: do two kinds of player play better together than their own levels predict?
 
 Unit: a pair of teammates in a season (LeagueDashLineups, 2-man units, at least MIN_POSS possessions
-together) and the team's net rating while both are on court. Each player-season has its own level (ridge
-fixed effect), which also soaks up team quality; on top sits one term per unordered pair of offensive
-archetypes, from the two players' archetype mixes (feat.player_role weights).
+together) and the team's offensive rating (offence side) or defensive rating, sign flipped so higher is
+better (defence side), while both are on court. Each player-season has its own level (ridge fixed effect),
+which also soaks up team quality; on top sits one term per unordered pair of archetypes of that side,
+from the two players' archetype mixes (feat.player_role weights).
 
-The terms are small and do not improve held-out predictions (cv_gain ~ 0), so the table describes
-tendencies (two spot-up shooters overlap, a ball handler pairs well with a big) and is not a predictor.
+The terms are small and do not improve held-out predictions (cv_gain ~ 0), so the tables describe
+tendencies (two spot-up shooters overlap, a ball handler pairs well with a big) and are not predictors.
 Standard errors resample team-seasons, because pairs of one team share players.
 """
 
@@ -22,18 +23,20 @@ PAIR_RIDGE = 1000.0
 BOOTSTRAPS = 40
 FOLDS = 5
 SEED = 0
+SIDES = {"offense": ("OFF_RATING", 1.0), "defense": ("DEF_RATING", -1.0)}   # rating column, sign (higher = better)
 
 
-def load(conn: psycopg.Connection):
-    """Pair rows (season, team, a, b, poss, net rating) and each player's offensive archetype weights."""
+def load(conn: psycopg.Connection, side: str):
+    """Pair rows (season, team, a, b, poss, rating) and each player's archetype weights on this side."""
+    column, sign = SIDES[side]
     seasons = [r[0] for r in conn.execute(
         "SELECT DISTINCT params->>'season' FROM raw.raw_response WHERE endpoint = 'LeagueDashLineups' AND status = 'ok'"
         " AND params->>'group_quantity' = '2' ORDER BY 1")]
-    keys = sorted({int(k) for (w,) in conn.execute("SELECT weights FROM feat.player_role WHERE side = 'offense'") for k in w})
+    keys = sorted({int(k) for (w,) in conn.execute("SELECT weights FROM feat.player_role WHERE side = %s", (side,)) for k in w})
     weights, rows = {}, []
     for season in seasons:
         weights[season] = {p: np.array([w.get(str(k), 0.0) for k in keys]) for p, w in conn.execute(
-            "SELECT player_id, weights FROM feat.player_role WHERE season = %s AND side = 'offense'", (season,))}
+            "SELECT player_id, weights FROM feat.player_role WHERE season = %s AND side = %s", (season, side))}
         seen = set()
         for (body,) in conn.execute(
                 "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueDashLineups' AND status = 'ok' AND params->>'season' = %s"
@@ -45,7 +48,7 @@ def load(conn: psycopg.Connection):
                 if (d["TEAM_ID"], a, b) in seen or d["POSS"] < MIN_POSS or a not in weights[season] or b not in weights[season]:
                     continue                  # the league-wide and per-team requests overlap
                 seen.add((d["TEAM_ID"], a, b))
-                rows.append((season, d["TEAM_ID"], a, b, d["POSS"], d["NET_RATING"]))
+                rows.append((season, d["TEAM_ID"], a, b, d["POSS"], sign * d[column]))
     return seasons, keys, weights, rows
 
 
@@ -94,7 +97,11 @@ def cv_gain(F, C, y, w) -> float:
 
 
 def compute(conn: psycopg.Connection) -> dict:
-    seasons, keys, weights, rows = load(conn)
+    return {side: compute_side(conn, side) for side in SIDES}
+
+
+def compute_side(conn: psycopg.Connection, side: str) -> dict:
+    seasons, keys, weights, rows = load(conn, side)
     if not rows:
         return {"pairs": 0}
     F, C, y, w, pairs = design(rows, weights, len(keys))
@@ -109,11 +116,11 @@ def compute(conn: psycopg.Connection) -> dict:
     se = boots.std(axis=0)
     gain = cv_gain(F, C, y, w)
     with conn.transaction():
-        conn.execute("DELETE FROM feat.role_synergy")
-        conn.execute("DELETE FROM feat.role_synergy_meta")
+        conn.execute("DELETE FROM feat.role_synergy WHERE side = %s", (side,))
+        conn.execute("DELETE FROM feat.role_synergy_meta WHERE side = %s", (side,))
         for j, (x, z) in enumerate(pairs):
-            conn.execute("INSERT INTO feat.role_synergy (type_a, type_b, effect, se) VALUES (%s,%s,%s,%s)",
-                         (keys[x], keys[z], float(effect[j]), float(se[j])))
-        conn.execute("INSERT INTO feat.role_synergy_meta (n_pairs, n_poss, cv_gain, seasons) VALUES (%s,%s,%s,%s)",
-                     (len(rows), int(w.sum()), gain, seasons))
+            conn.execute("INSERT INTO feat.role_synergy (side, type_a, type_b, effect, se) VALUES (%s,%s,%s,%s,%s)",
+                         (side, keys[x], keys[z], float(effect[j]), float(se[j])))
+        conn.execute("INSERT INTO feat.role_synergy_meta (side, n_pairs, n_poss, cv_gain, seasons) VALUES (%s,%s,%s,%s,%s)",
+                     (side, len(rows), int(w.sum()), gain, seasons))
     return {"pairs": len(rows), "cv_gain": round(gain, 4), "max_z": round(float(np.abs(effect / se).max()), 1)}
