@@ -150,9 +150,7 @@ daily, after the last games end in the US):
 1. Dashboard → New → GitHub repo / empty service named `cron`; deploy the same source (`railway up --service cron`).
 2. Service → Settings → Config-as-code → file path `/railway.cron.json`.
 3. Service → Variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
-4. Run it once by hand with a longer look-back to fill the season so far: set the start command to
-   `python -m ballstats live-update --days 30`, deploy, then set it back (or run it locally with
-   `BALLSTATS_DSN` pointing at the public Postgres URL).
+4. The first run, with an empty `live.player_game`, looks back 45 days to fill the season so far.
 
 Comic portraits: drop `web/public/portraits/<player_id>.webp` (5:6 aspect, about 840x1008). Players without one show a placeholder.
 Superpowers come from `ballstats/powers.py`: a player's most extreme style stats (z >= 1 among 500+ minute players),

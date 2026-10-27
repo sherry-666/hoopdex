@@ -22,6 +22,7 @@ BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 EASTERN = ZoneInfo("America/New_York")
 # ESPN's team abbreviations that differ from stats.nba.com's.
 TEAM_ABBR = {"UTAH": "UTA", "NO": "NOP", "NY": "NYK", "SA": "SAS", "GS": "GSW", "WSH": "WAS"}
+BACKFILL_DAYS = 45
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
 
 session = requests.Session()
@@ -172,6 +173,8 @@ def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]
 
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
+    if not conn.execute("SELECT 1 FROM live.player_game LIMIT 1").fetchone():
+        days = max(days, BACKFILL_DAYS)   # first run: fill the season so far
     n_games, missed_g = update_games(conn, index, days)
     n_inj, missed_i = update_injuries(conn, index)
     unmatched = sorted(set(missed_g) | set(missed_i))
