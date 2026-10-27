@@ -8,7 +8,7 @@ from ballstats.collector import Collector, RunStopped, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
-OPTIONAL_GROUPS = ("careers", "history", "teams")   # run only when asked for
+OPTIONAL_GROUPS = ("careers", "history", "teams", "lineups")   # run only when asked for
 HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
 MATCHUP_MIN_MINUTES = 100   # players with fewer minutes are not asked for their matchups
 TEAMS_FROM = 2015     # first season with Synergy play types
@@ -74,6 +74,11 @@ def collect_season(args, conn, collector) -> int:
         # Players with real minutes; the rest barely appear in anyone's matchups.
         shooters = sorted({r["PLAYER_ID"] for r in result_rows(base or {}) if (r.get("MIN") or 0) >= MATCHUP_MIN_MINUTES})
         run_jobs(collector, catalog.matchup_jobs(args.season, args.season_type, shooters), "matchups", args.refresh)
+    if "lineups" in groups:
+        run_jobs(collector, catalog.lineup_jobs(args.season, args.season_type), "lineups", args.refresh)
+        five = collector.fetch("LeagueDashLineups", catalog.lineup_jobs(args.season, args.season_type)[1].params)
+        teams = sorted({r["TEAM_ID"] for r in result_rows(five or {})})
+        run_jobs(collector, catalog.team_pair_jobs(args.season, args.season_type, teams), "pairs", args.refresh)
     if "history" in groups:
         start = int(args.season[:4])
         seasons = [f"{y}-{(y + 1) % 100:02d}" for y in range(HISTORY_FROM, start + 1)]
@@ -200,6 +205,15 @@ def cmd_player_matchup(args) -> int:
     return 0
 
 
+def cmd_role_synergy(args) -> int:
+    from ballstats import lineup_synergy
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("role-synergy:", lineup_synergy.compute(conn))
+    return 0
+
+
 def cmd_live_update(args) -> int:
     from ballstats import live
 
@@ -270,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("teams", help="team style profiles and offensive systems (after roles and ratings)")
 
     sub.add_parser("player-matchup", help="offensive x defensive player-type matchups from LeagueSeasonMatchups (after roles and collect --groups matchups)")
+    sub.add_parser("role-synergy", help="offensive role pairs that play better or worse together (after roles and collect --groups lineups)")
     sub.add_parser("matchup", help="offence x defence system matchups with team quality removed (after teams and live-update)")
 
     live_p = sub.add_parser("live-update", help="finished games and the injury report from ESPN (the daily cron job)")
@@ -309,6 +324,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_daily_update(args)
     if args.command == "matchup":
         return cmd_matchup(args)
+    if args.command == "role-synergy":
+        return cmd_role_synergy(args)
     if args.command == "player-matchup":
         return cmd_player_matchup(args)
     return cmd_status(args)

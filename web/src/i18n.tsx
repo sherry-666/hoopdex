@@ -119,6 +119,22 @@ const UI_EN: Record<string, string> = {
   "结论：没有发现可靠的克制关系。{n} 场比赛里，各格的差别最多 {max} 分 / 场，和随机波动无法区分（整体检验 p = {p}）；风格对风格的优劣，远不如球队本身的强弱重要。": "Finding: no reliable matchup effect. Across {n} games no cell differs by more than {max} points per game, which cannot be told apart from chance (overall test p = {p}); style-on-style edges matter far less than how strong the teams are.",
   "{style} 进攻面对不同防守：每场得分比预期多 / 少": "{style} offence against each defence: points per game above / below expectation",
   "{tag} 面对不同进攻：对手得分比预期多 / 少（负 = 防守占优）": "{tag} against each offence: opponent points above / below expectation (negative = the defence has the edge)",
+  "角色搭配": "Role pairings", "进攻原型": "Offence archetype", "误差 ±{se}": "Error ±{se}",
+  "两类进攻球员同时在场时，球队每 100 回合的净胜分比「两人各自水平」预测的多（红）或少（蓝）几分。对角线是两个同类球员搭配。":
+    "Net points per 100 possessions a team gains (red) or loses (blue) when these two kinds of offensive player share the floor, beyond what their own levels predict. The diagonal is two players of the same kind.",
+  "● 表示效应超过 2 个标准误（按球队赛季重抽样）。基于 {n} 对队友组合、{poss} 个回合，各赛季 {from}–{to}。":
+    "● marks an effect beyond 2 standard errors (resampling team-seasons). Based on {n} teammate pairs and {poss} possessions, seasons {from}–{to}.",
+  "读法：效应很小（最大约 ±3 分 / 百回合），在没见过的球员对上加入它只让预测误差减少 {gain}%，所以这是倾向的描述，不能用来预测。同类射手重叠、持球人配内线是其中比较清楚的两条。":
+    "How to read it: the effects are small (at most about ±3 per 100 possessions), and adding them cuts held-out prediction error by only {gain}%, so this describes tendencies and cannot be used to predict. Overlapping spot-up shooters and a ball handler paired with a big are the two clearest.",
+  "球员类型克制关系": "Player-type matchups",
+  "每格是这类进攻球员面对这类防守球员时，每 100 个回合比「两人各自水平」预测的多（红）或少（蓝）几分，已剔除球员自身水平。数据是追踪数据里的对位回合（平均每 100 回合 {ppp} 分）。":
+    "Each cell is how many points per 100 matchup possessions this kind of offensive player scores above (red) or below (blue) what the two players' own levels predict. Player talent is removed. Possessions come from tracked matchup data (average {ppp} points per 100).",
+  "{n} 个赛季平均": "Average of {n} seasons", "进攻原型 ↓ / 防守原型 →": "Offence archetype ↓ / defence archetype →",
+  "各赛季之间的标准差 ±{sd}": "Spread across seasons ±{sd}",
+  "基于 {n} 个球员对位组合、{poss} 个回合。": "Based on {n} player pairs and {poss} possessions.", "整体检验 p = {p}。": "Overall test p = {p}.",
+  "各赛季的表格之间平均相关 r = {r}，说明格局很稳定。": "The tables of different seasons correlate at r = {r} on average: the pattern is stable.",
+  "读法：这是「谁守谁」的描述，不是因果上的克制。教练会让护框的人去守对方内线，数值会混有这种安排。我们用 9 个赛季回测过：把它加进球队强弱之上，并不能更好地预测比赛胜负，所以没有用在预测里。":
+    "How to read it: this describes who guards whom, not a causal counter. Coaches send rim protectors to the other team's bigs, and the numbers carry that assignment. We backtested it over 9 seasons: added on top of team strength it does not predict game results better, so it is not used in predictions.",
   "进攻体系 ↓ / 防守体系 →": "Offence system ↓ / defence system →",
   "只有 {n} 支球队属于这个体系，结果更像这几支球队自己的特点。": "Only {n} team-seasons belong to this system, so the result reflects those teams' own habits.",
   "原始 {raw} 分，误差 ±{se}，{n} 场": "raw {raw} pts, ±{se}, {n} games",

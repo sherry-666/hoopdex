@@ -71,6 +71,32 @@ def seasons() -> list[dict]:
     return rows
 
 
+@app.get("/api/roles/matchups")
+def role_matchups() -> dict:
+    """Offensive archetype x defensive archetype table, per season and pooled ('all'), or empty when not fitted."""
+    if not q("SELECT to_regclass('feat.role_matchup') AS t")[0]["t"]:
+        return {"cells": [], "meta": [], "offense": [], "defense": []}
+    cells = q("SELECT season, off_type, def_type, effect, spread FROM feat.role_matchup ORDER BY season, off_type, def_type")
+    meta = q("SELECT season, n_pairs, n_poss, mean_ppp, p_value, season_corr FROM feat.role_matchup_meta ORDER BY season")
+    latest = q("SELECT max(season) AS s FROM feat.role_type WHERE level = 'archetype'")[0]["s"]
+    types = {side: q("SELECT type_id, name FROM feat.role_type WHERE season = %s AND side = %s AND level = 'archetype'"
+                     " ORDER BY type_id", (latest, side)) for side in SIDES}
+    return {"cells": cells, "meta": meta, "offense": types["offense"], "defense": types["defense"]}
+
+
+@app.get("/api/roles/synergy")
+def role_synergy() -> dict:
+    """Offensive archetype pairs: net-rating effect when two such players share the floor, or empty when not fitted."""
+    if not q("SELECT to_regclass('feat.role_synergy') AS t")[0]["t"]:
+        return {"cells": [], "meta": None, "types": []}
+    meta = q("SELECT n_pairs, n_poss, cv_gain, seasons FROM feat.role_synergy_meta LIMIT 1")
+    latest = q("SELECT max(season) AS s FROM feat.role_type WHERE level = 'archetype'")[0]["s"]
+    return {"cells": q("SELECT type_a, type_b, effect, se FROM feat.role_synergy ORDER BY type_a, type_b"),
+            "meta": meta[0] if meta else None,
+            "types": q("SELECT type_id, name FROM feat.role_type WHERE season = %s AND side = 'offense'"
+                       " AND level = 'archetype' ORDER BY type_id", (latest,))}
+
+
 @app.get("/api/roles/{season}/{side}")
 def role_view(season: str, side: str) -> dict:
     """Everything the role explorer draws for one side: families, archetypes with

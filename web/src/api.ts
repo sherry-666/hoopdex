@@ -177,3 +177,17 @@ export interface MatchupView {
   meta: { model_version: string; seasons: string[]; n_games: number; p_value: number; season_corr: number | null; tau: number } | null;
 }
 export const useMatchups = () => useQuery({ queryKey: ["matchups"], queryFn: () => get<MatchupView>("/api/matchups") });
+
+export interface RoleMatchupView {
+  cells: { season: string; off_type: number; def_type: number; effect: number; spread: number | null }[];
+  meta: { season: string; n_pairs: number; n_poss: number; mean_ppp: number; p_value: number | null; season_corr: number | null }[];
+  offense: { type_id: number; name: string | null }[]; defense: { type_id: number; name: string | null }[];
+}
+export const useRoleMatchups = () => useQuery({ queryKey: ["role-matchups"], queryFn: () => get<RoleMatchupView>("/api/roles/matchups") });
+
+export interface RoleSynergyView {
+  cells: { type_a: number; type_b: number; effect: number; se: number }[];
+  meta: { n_pairs: number; n_poss: number; cv_gain: number; seasons: string[] } | null;
+  types: { type_id: number; name: string | null }[];
+}
+export const useRoleSynergy = () => useQuery({ queryKey: ["role-synergy"], queryFn: () => get<RoleSynergyView>("/api/roles/synergy") });

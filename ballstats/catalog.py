@@ -158,6 +158,27 @@ def career_jobs(player_ids: list[int]) -> list[Job]:
             for pid in player_ids]
 
 
+def lineup_jobs(season: str, season_type: str) -> list[Job]:
+    """Every 5-man and 2-man unit's totals, in the Base and the Advanced (ratings, pace) measure types."""
+    return [Job("LeagueDashLineups", {"season": season, "season_type_all_star": season_type, "per_mode_detailed": "Totals",
+                                      "group_quantity": quantity, "measure_type_detailed_defense": measure})
+            for quantity in (5, 2) for measure in ("Base", "Advanced")]
+
+
+def team_pair_jobs(season: str, season_type: str, team_ids: list[int]) -> list[Job]:
+    """2-man units per team: the league-wide list stops at 2000 rows, which drops most of the pairs."""
+    return [Job("LeagueDashLineups", {"season": season, "season_type_all_star": season_type, "per_mode_detailed": "Totals",
+                                      "group_quantity": 2, "measure_type_detailed_defense": "Advanced", "team_id_nullable": team})
+            for team in team_ids]
+
+
+def matchup_jobs(season: str, season_type: str, player_ids: list[int]) -> list[Job]:
+    """Every defender each of these players faced, with possessions, points and shots (from 2017-18 on)."""
+    return [Job("LeagueSeasonMatchups", {"season": season, "season_type_playoffs": season_type,
+                                         "per_mode_simple": "Totals", "off_player_id_nullable": pid})
+            for pid in player_ids]
+
+
 def player_jobs(season: str, season_type: str, roster: list[tuple[int, int]]) -> list[Job]:
     common = {"season": season, "season_type_all_star": season_type,
               "per_mode_simple": "Totals"}
