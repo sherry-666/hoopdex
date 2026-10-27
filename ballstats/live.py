@@ -202,10 +202,10 @@ def update_standings(conn) -> int:
         for child in data["children"]:
             conf = "East" if child["name"].startswith("East") else "West"
             entries = child["standings"]["entries"]
-            if end == current:   # early on, ESPN's seeds and order say little: win % then point difference
+            if end == current:   # early on, ESPN's seeds and order say little: win %, then wins (4-0 above 2-0), then point difference
                 def key(e):
                     st = {s["name"]: s.get("value") for s in e["stats"]}
-                    return -(fnum(st.get("winPercent")) or 0), -((fnum(st.get("avgPointsFor")) or 0) - (fnum(st.get("avgPointsAgainst")) or 0))
+                    return -(fnum(st.get("winPercent")) or 0), -(fnum(st.get("wins")) or 0), -((fnum(st.get("avgPointsFor")) or 0) - (fnum(st.get("avgPointsAgainst")) or 0))
             else:   # final standings: ESPN's list is not in seed order, its playoffSeed is
                 def key(e):
                     return fnum(next((s.get("value") for s in e["stats"] if s["name"] == "playoffSeed"), None)) or 99
