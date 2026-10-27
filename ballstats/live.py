@@ -248,6 +248,53 @@ def get_standings(end_year: int) -> dict:
     raise RuntimeError(f"ESPN standings {end_year} failed: {last}")
 
 
+def schedule_rows(season: str, stype: int, events: list[dict]) -> list[tuple]:
+    """One row per team per game from a team's schedule feed."""
+    out = []
+    for e in events:
+        comp = e["competitions"][0]
+        if e["seasonType"]["type"] != stype:
+            continue
+        tipoff = dt.datetime.fromisoformat(e["date"].replace("Z", "+00:00"))
+        done = bool(comp["status"]["type"]["completed"])
+        sides = {c["homeAway"]: c for c in comp["competitors"]}
+        for me, opp in (("home", "away"), ("away", "home")):
+            score = lambda c: to_int((c.get("score") or {}).get("displayValue")) if done else None
+            out.append((season, stype, e["id"], abbr(sides[me]["team"]["abbreviation"]), abbr(sides[opp]["team"]["abbreviation"]),
+                        me == "home", tipoff, tipoff.astimezone(EASTERN).date(), done, score(sides[me]), score(sides[opp])))
+    return out
+
+
+def update_schedule(conn) -> int:
+    """Games, played and still to play, of every season that has team profiles. Finished seasons are
+    fetched once; the current one is refreshed every run."""
+    seasons = [r[0] for r in conn.execute("SELECT DISTINCT season FROM feat.team_profile ORDER BY season")]
+    teams = [r[0] for r in conn.execute("SELECT DISTINCT team FROM feat.team_profile")]
+    espn = {v: k for k, v in TEAM_ABBR.items()}
+    current = current_season()
+    n = 0
+    for season in seasons:
+        if season != current and conn.execute("SELECT 1 FROM live.game WHERE season = %s LIMIT 1", (season,)).fetchone():
+            continue
+        end = int(season[:4]) + 1
+        rows: dict[tuple[str, str], tuple] = {}
+        for team in teams:
+            for stype in (2, 3):
+                data = get_json(f"teams/{espn.get(team, team).lower()}/schedule", season=end, seasontype=stype)
+                for r in schedule_rows(season, stype, data.get("events", [])):
+                    rows[(r[2], r[3])] = r
+        if not rows:
+            continue
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("DELETE FROM live.game WHERE season = %s", (season,))
+            cur.executemany(
+                "INSERT INTO live.game (season, season_type, game_id, team, opp, home, tipoff, game_date, completed,"
+                " team_score, opp_score) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", list(rows.values()))
+        n += len(rows)
+        log.info("schedule %s: %d team games", season, len(rows))
+    return n
+
+
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
     # Rows from before season_type was stored may include preseason games; refetch them.
@@ -257,9 +304,10 @@ def update(conn, days: int = 3) -> dict:
     n_games, missed_g = update_games(conn, index, days)
     n_inj, missed_i = update_injuries(conn, index)
     n_stand = update_standings(conn)
+    n_sched = update_schedule(conn)
     unmatched = sorted(set(missed_g) | set(missed_i))
     conn.execute("INSERT INTO live.update_log (games, injuries, unmatched) VALUES (%s, %s, %s)",
                  (n_games, n_inj, unmatched))
     if unmatched:
         log.warning("%d names without an NBA id: %s", len(unmatched), ", ".join(unmatched[:20]))
-    return {"games": n_games, "injuries": n_inj, "standings": n_stand, "unmatched": len(unmatched)}
+    return {"games": n_games, "injuries": n_inj, "standings": n_stand, "schedule": n_sched, "unmatched": len(unmatched)}

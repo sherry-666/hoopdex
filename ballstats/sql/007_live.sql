@@ -69,3 +69,22 @@ CREATE TABLE IF NOT EXISTS live.standing (
     PRIMARY KEY (season, team)
 );
 ALTER TABLE live.standing ADD COLUMN IF NOT EXISTS v smallint;   -- ranking logic version, see live.STANDINGS_V
+
+-- Every game of a team's season, finished or not, from ESPN's team schedule feed: two rows per game, one per team.
+-- Past seasons are final once stored; the current one is refreshed on every run (live.update_schedule).
+CREATE TABLE IF NOT EXISTS live.game (
+    season       text NOT NULL,
+    season_type  smallint NOT NULL,       -- ESPN: 2 regular season, 3 playoffs
+    game_id      text NOT NULL,           -- ESPN event id
+    team         text NOT NULL,
+    opp          text NOT NULL,
+    home         boolean NOT NULL,
+    tipoff       timestamptz NOT NULL,
+    game_date    date NOT NULL,           -- US Eastern calendar date
+    completed    boolean NOT NULL,
+    team_score   integer,
+    opp_score    integer,
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (game_id, team)
+);
+CREATE INDEX IF NOT EXISTS game_team_season_idx ON live.game (team, season, tipoff);

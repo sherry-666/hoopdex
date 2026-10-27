@@ -151,7 +151,7 @@ function TeamCard({ t, season, archetypes, style, rank }: { t: TeamProfile; seas
     <article className="panel pop-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
         <div style={{ minWidth: 0 }}>
-          <h3 style={{ fontSize: 24, lineHeight: 1.1 }}><TeamLogo team={t.team} size={40} />{teamName(t.team, lang, lang === "en")}</h3>
+          <h3 style={{ fontSize: 24, lineHeight: 1.1 }}><Link to={`/teams/${t.team}?season=${season}`}><TeamLogo team={t.team} size={40} />{teamName(t.team, lang, lang === "en")}</Link></h3>
           <div className="row" style={{ gap: 6, marginTop: 6 }}>
             {style && <span className="tag" style={{ background: "var(--pop-yellow)", color: "var(--on-yellow)" }} title={tr("进攻体系")}>{tr("攻")} · {name(style.name)}</span>}
             <span className="tag" title={tr("防守体系")}>{tr("守")} · {name(t.defense_tag)}</span>
@@ -293,10 +293,10 @@ export default function TeamsTab({ season, early }: { season: string | undefined
         <p style={{ margin: 0 }}>{t("防守体系看的是球队的轮换更依赖哪一种防守方式。每名球员的防守特征（抢断、干扰、护框次数、封盖、造犯规、对位三分和近筐出手占比、防守速度等）先归成 4 种防守原型，每人是这几种原型的混合。")}</p>
         <p style={{ margin: 0 }}>{t("球队的防守构成是轮换 9 人的防守原型按分钟加权，再和当季联盟比；标签取这支球队比联盟平均更突出的那一种。它是「最偏向」，不是球队唯一的防守方式，也不是聚类分出来的派系。")}</p>
         <ul style={{ margin: 0, paddingLeft: "1.2em", display: "grid", gap: 4 }}>
-          <li><b>{t("护框型防守")}</b>：{t("轮换里护框、封盖多，保护内线。")}</li>
-          <li><b>{t("侵略型防守")}</b>：{t("抢断、干扰多，靠主动出击制造失误。")}</li>
-          <li><b>{t("外线封堵型防守")}</b>：{t("防外线投手，封盖三分出手。")}</li>
-          <li><b>{t("追防型防守")}</b>：{t("防守速度快、对位多，常被对手针对。")}</li>
+          <li><b>{name("护框型防守")}</b>{lang === "zh" ? "：" : ": "}{t("轮换里护框、封盖多，保护内线。")}</li>
+          <li><b>{name("侵略型防守")}</b>{lang === "zh" ? "：" : ": "}{t("抢断、干扰多，靠主动出击制造失误。")}</li>
+          <li><b>{name("外线封堵型防守")}</b>{lang === "zh" ? "：" : ": "}{t("防外线投手，封盖三分出手。")}</li>
+          <li><b>{name("追防型防守")}</b>{lang === "zh" ? "：" : ": "}{t("防守速度快、对位多，常被对手针对。")}</li>
         </ul>
         <p style={{ margin: 0 }}>{t("球队评分里的「防守」一半来自轮换球员的防守评分，一半来自球队实际的每百回合失分。")}</p>
         <DefenseTable season={season} pick={def} onPick={setDef} />

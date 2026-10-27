@@ -32,7 +32,7 @@ function StandingsTable({ title, rows, season }: { title: string; rows: Standing
               <tr key={r.team} style={r.rank === cut + 1 ? { borderTop: "3px solid var(--ink)" } : r.rank === 11 && hasPlayIn(season) ? { borderTop: "2px dashed var(--ink)" } : undefined}>
                 <td className="num-col">{r.rank}</td>
                 <td>
-                  <TeamLogo team={r.team} size={28} />{teamName(r.team, lang, true)}
+                  <Link to={`/teams/${r.team}?season=${season}`}><TeamLogo team={r.team} size={28} />{teamName(r.team, lang, true)}</Link>
                   {r.clincher && CLINCH[r.clincher] && <span className="tag" style={{ marginLeft: 6 }}>{t(CLINCH[r.clincher])}</span>}
                 </td>
                 <td className="num-col">{r.wins}</td><td className="num-col">{r.losses}</td>

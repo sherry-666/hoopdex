@@ -114,6 +114,19 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
+  "主": "H",
+  "客": "A",
+  "没有这支球队": "No such team",
+  "{team} {season} 阵容、评分与赛程": "{team} {season}: roster, ratings and schedule",
+  "球员阵容与数据": "Roster and stats",
+  "本赛季结束时效力这支球队的球员，按上场时间排序；场均数据是整个赛季的常规赛场均。": "Players who finished the season with this team, by minutes; per-game numbers are regular-season averages for the whole season.",
+  "打法": "Style",
+  "未来赛程": "Upcoming games",
+  "已打比赛": "Played games",
+  "还没有打过比赛。": "No games played yet.",
+  "← 全部球队体系": "← All team systems",
+  "主场": "Home",
+  "客场": "Away",
   "进攻体系": "Offensive system", "球队体系": "Team Systems", "防守体系": "Defensive system", "4 种防守体系的特征": "What defines the 4 defensive systems",
   "每格是这一类防守球员的平均值，单位是相对联盟球员的标准差（σ）：红色高于联盟，蓝色低于联盟。球队的防守体系由轮换球员的这些类型按分钟加权得出。点列名筛选球队。":
     "Each cell is the average of players of this defensive type, in standard deviations (σ) from the league's players: red is above the league, blue below. A team's defensive system comes from its rotation's types weighted by minutes. Click a column to filter teams.",

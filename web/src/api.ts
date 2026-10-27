@@ -146,3 +146,24 @@ export function useDefaultSeason(): string | undefined {
 export const seriesColor = (i: number) => `var(--series-${(i % 7) + 1})`;
 export const pct = (v: number | null | undefined, digits = 0) => (v == null ? "—" : `${(v * 100).toFixed(digits)}%`);
 export const num = (v: number | null | undefined, digits = 1) => (v == null ? "—" : v.toFixed(digits));
+
+export interface TeamGame {
+  game_id: string; season_type: number; opp: string; home: boolean; tipoff: string; game_date: string;
+  completed: boolean; team_score: number | null; opp_score: number | null;
+}
+export interface TeamRosterRow {
+  player_id: number; name: string; gp: number; minutes: number; ts_pct: number | null;
+  off_style: string | null; def_style: string | null; ovr: number | null; off: number | null; def: number | null;
+  pts: number | null; reb: number | null; ast: number | null;
+}
+export interface TeamPageData {
+  team: string; season: string; seasons: string[]; games: TeamGame[]; roster: TeamRosterRow[];
+  standing: { conf: "East" | "West"; rank: number; wins: number; losses: number; win_pct: number | null; home: string | null; road: string | null;
+    last10: string | null; streak: string | null; pts_for: number | null; pts_against: number | null } | null;
+  profile: { style_id: number; style_name: string | null; defense_tag: string; ovr: number | null; off: number | null; def: number | null;
+    ortg: number | null; drtg: number | null };
+}
+export const useTeamSeasons = (team: string) =>
+  useQuery({ queryKey: ["team-seasons", team], queryFn: () => get<string[]>(`/api/team/${team}/seasons`) });
+export const useTeamPage = (team: string, season: string | undefined) =>
+  useQuery({ queryKey: ["team-page", team, season], queryFn: () => get<TeamPageData>(`/api/team/${team}/${season}`), enabled: !!season });

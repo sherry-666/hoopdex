@@ -6,6 +6,7 @@ import RolesLab from "./pages/RolesLab";
 import Roster from "./pages/Roster";
 import Rankings from "./pages/Rankings";
 import Teams from "./pages/Teams";
+import TeamPage from "./pages/TeamPage";
 import PlayerPage from "./pages/PlayerPage";
 import ComingSoon from "./pages/ComingSoon";
 
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/players" element={<Roster />} />
           <Route path="/players/:id" element={<PlayerPage />} />
           <Route path="/teams" element={<Teams />} />
+          <Route path="/teams/:team" element={<TeamPage />} />
           <Route path="/rankings" element={<Rankings />} />
           <Route path="/predict" element={<ComingSoon title={t("比赛预测")} line={t("选两支球队，看胜率和分差。球员影响力模型完成后上线。")} />} />
           <Route path="/trade" element={<ComingSoon title={t("交易模拟")} line={t("把球员拖到另一队，看强度和适配度怎么变。比赛预测上线后接着做。")} />} />

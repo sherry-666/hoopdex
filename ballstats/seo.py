@@ -206,6 +206,22 @@ def teams(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
     return Page(200, title, desc, "/teams", {"season": season} if explicit_season else {}, body=body)
 
 
+def team(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
+    zh = lang == "zh"
+    abbr, prof = view["team"], view["profile"]
+    name = team_name(abbr, lang)
+    title = f"{name} {season} {'阵容、评分与赛程' if zh else 'roster, ratings and schedule'} · {SITE_NAME}"
+    st = view.get("standing")
+    record = f"{st['wins']}-{st['losses']}" if st else ""
+    desc = (f"{name} {season} 赛季球队评分 {prof.get('ovr')}，{record}。球员阵容、球员评分、数据和赛程。" if zh else
+            f"{name} {season}: team rating {prof.get('ovr')}, {record}. Roster, player ratings, stats and schedule.")
+    players = "".join(f"<li>{_link(f'/players/{p['player_id']}', p['name'], lang, {'season': season})} · OVR {p['ovr']}</li>"
+                      for p in view["roster"] if p.get("ovr") is not None)
+    body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
+            f"<main><p>{html.escape(desc)}</p><ul>{players}</ul></main>")
+    return Page(200, title, desc, f"/teams/{abbr}", {"season": season} if explicit_season else {}, body=body)
+
+
 def rankings(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
     zh = lang == "zh"
     title = f"{'NBA 排名：东西部排名与球员评分' if zh else 'NBA rankings: standings and player ratings'} {season} · {SITE_NAME}"

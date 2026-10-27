@@ -320,6 +320,46 @@ def team_view(season: str) -> dict:
             "archetypes": {side: [r["name"] for r in arch if r["side"] == side] for side in SIDES}}
 
 
+@app.get("/api/team/{team}/seasons")
+def team_season_list(team: str) -> list[str]:
+    """Seasons this team has a profile for, newest first."""
+    return [r["season"] for r in q("SELECT season FROM feat.team_profile WHERE team = %s ORDER BY season DESC", (team.upper(),))]
+
+
+@app.get("/api/team/{team}/{season}")
+def team_page(team: str, season: str) -> dict:
+    """One team's season: rating and systems, record, roster with ratings and per-game stats, and every game
+    (played and still to play). Roster = players who finished the season with the team."""
+    team = team.upper()
+    prof = q("SELECT p.style_id, p.defense_tag, p.off_mix, p.def_mix, p.ovr, p.off, p.def, p.ortg, p.drtg, p.core,"
+             " st.name AS style_name FROM feat.team_profile p LEFT JOIN feat.team_style st USING (style_id)"
+             " WHERE p.season = %s AND p.team = %s", (season, team))
+    if not prof:
+        raise HTTPException(404, f"no profile for {team} {season}")
+    standing = q("SELECT conf, rank, wins, losses, win_pct, games_behind, home, road, conf_record, last10, streak,"
+                 " pts_for, pts_against, clincher FROM live.standing WHERE season = %s AND team = %s", (season, team))
+    totals = {r["player_id"]: r for r in season_totals(season)}
+    roster = q(
+        """
+        SELECT s.player_id, s.name, s.gp, s.minutes, (s.stats ->> 'ts_pct')::float AS ts_pct,
+               o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def
+        FROM feat.player_stats s
+        LEFT JOIN feat.player_rating rt ON rt.season = s.season AND rt.player_id = s.player_id
+        LEFT JOIN feat.player_role o ON o.season = s.season AND o.player_id = s.player_id AND o.side = 'offense'
+        LEFT JOIN feat.player_role d ON d.season = s.season AND d.player_id = s.player_id AND d.side = 'defense'
+        WHERE s.season = %s AND s.team = %s ORDER BY s.minutes DESC
+        """, (season, team))
+    for r in roster:
+        t = totals.get(r["player_id"])
+        gp = t["gp"] if t else 0
+        for k in ("pts", "reb", "ast"):
+            r[k] = round(t[k] / gp, 1) if t and gp and t[k] is not None else None
+    games = q("SELECT game_id, season_type, opp, home, tipoff, game_date, completed, team_score, opp_score"
+              " FROM live.game WHERE season = %s AND team = %s ORDER BY tipoff", (season, team))
+    return {"team": team, "season": season, "profile": prof[0], "standing": standing[0] if standing else None,
+            "roster": roster, "games": games, "seasons": team_season_list(team)}
+
+
 @app.get("/api/player/{player_id}/seasons")
 def player_seasons(player_id: int) -> list[str]:
     """Seasons this player has style and role data for, newest first."""
@@ -385,6 +425,13 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         if not explicit and season not in team_seasons:
             season = team_seasons[0]
         return seo.teams(lang, season, bool(explicit), team_view(season))
+    if m := re.fullmatch(r"/teams/([A-Za-z]{3})", path):
+        team = m.group(1).upper()
+        played = team_season_list(team)
+        if not played or (explicit and explicit not in played):
+            return seo.not_found(lang, path)
+        season = explicit if explicit else (season if season in played else played[0])
+        return seo.team(lang, season, bool(explicit), team_page(team, season))
     if path == "/rankings":
         rank_seasons = ranking_seasons()
         if not rank_seasons or (explicit and explicit not in rank_seasons):
@@ -413,6 +460,7 @@ def robots(request: Request) -> PlainTextResponse:
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap(request: Request) -> Response:
     pages = [("/", {}), ("/roles", {}), ("/players", {}), ("/teams", {}), ("/rankings", {})]
+    pages += [(f"/teams/{r['team']}", {}) for r in q("SELECT DISTINCT team FROM feat.team_profile ORDER BY team")]
     ids = q("SELECT DISTINCT player_id FROM feat.player_stats WHERE season <> 'career' ORDER BY player_id")
     pages += [(f"/players/{r['player_id']}", {}) for r in ids]
     return Response(seo.sitemap(site_base(request), pages), media_type="application/xml")
