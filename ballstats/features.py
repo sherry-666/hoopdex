@@ -53,7 +53,8 @@ def _synergy(conn, season: str, side: str) -> pd.DataFrame:
     rows = conn.execute(
         "SELECT params->>'play_type_nullable', body FROM raw.raw_response"
         " WHERE endpoint = 'SynergyPlayTypes' AND status = 'ok'"
-        " AND params->>'season' = %s AND params->>'type_grouping_nullable' = %s",
+        " AND params->>'season' = %s AND params->>'type_grouping_nullable' = %s"
+        " AND params->>'player_or_team_abbreviation' = 'P'",
         (season, side),
     ).fetchall()
     for play_type, body in rows:
@@ -82,9 +83,11 @@ def build(conn: psycopg.Connection, season: str) -> tuple[pd.DataFrame, pd.DataF
     scoring = _load(conn, "LeagueDashPlayerStats", season, measure_type_detailed_defense="Scoring").set_index("PLAYER_ID")
     bio = _load(conn, "LeagueDashPlayerBioStats", season).set_index("PLAYER_ID")
     hustle = _load(conn, "LeagueHustleStatsPlayer", season).set_index("PLAYER_ID")
-    pt = {m: _load(conn, "LeagueDashPtStats", season, pt_measure_type=m).set_index("PLAYER_ID")
+    pt = {m: _load(conn, "LeagueDashPtStats", season, pt_measure_type=m, player_or_team="Player").set_index("PLAYER_ID")
           for m in ["Possessions", "Drives", "CatchShoot", "PullUpShot", "Defense", "SpeedDistance"]}
-    dfd = {c: _load(conn, "LeagueDashPtDefend", season, defense_category=c).set_index("CLOSE_DEF_PERSON_ID")
+    # A defender listed twice (a rare duplicate in some seasons) keeps the line with more games.
+    dfd = {c: _load(conn, "LeagueDashPtDefend", season, defense_category=c).sort_values("GP", ascending=False)
+           .drop_duplicates("CLOSE_DEF_PERSON_ID").set_index("CLOSE_DEF_PERSON_ID")
            for c in ["Overall", "3 Pointers", "Less Than 6Ft"]}
 
     minutes = base["MIN"]

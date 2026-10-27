@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { seriesColor, TeamProfile, TeamStyle, useTeams } from "../api";
+import { MatchupCell, seriesColor, TeamProfile, TeamStyle, useMatchups, useTeams } from "../api";
 import { useLang } from "../i18n";
-import { DEFENSE_TAGS, FEATURE_GROUPS, signature, teamFeature } from "../teamFeatures";
+import { DEFENSE_TAGS, FEATURE_GROUPS, shade, signature, signed, teamFeature } from "../teamFeatures";
+import MatchupMatrix from "./MatchupMatrix";
 import { teamName } from "../teams";
 
 const N = (v: number | null | undefined) => (v == null ? "—" : String(Math.round(v)));
@@ -152,6 +153,47 @@ function DefenseCard({ me, teams, defenseNames, season }: { me: TeamProfile; tea
   );
 }
 
+/** This team's two systems read off the matchup table: how its offence fares against each defence, and its defence against each offence. */
+function MatchupCard({ me, styles }: { me: TeamProfile; styles: TeamStyle[] }) {
+  const { t, name } = useLang();
+  const q = useMatchups();
+  if (!q.data?.meta) return null;
+  const { cells } = q.data;
+  const solid = (q.data.meta?.p_value ?? 1) < 0.05;   // otherwise the cells are noise: say so, do not list them
+  const mineOff = cells.filter((c) => c.off_style === me.style_id);
+  const mineDef = cells.filter((c) => c.def_tag === me.defense_tag);
+  const chip = (label: string, c: MatchupCell, effect: number) => (
+    <span key={label} className="tag" style={{ background: shade(effect, 1.6), color: Math.abs(effect) > 1.3 ? "#fff" : "var(--ink)", fontVariantNumeric: "tabular-nums" }}
+      title={t("原始 {raw} 分，误差 ±{se}，{n} 场", { raw: signed(c.raw_effect), se: c.se.toFixed(1), n: c.n })}>
+      {label} {signed(effect)}
+    </span>
+  );
+  return (
+    <section className="panel" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <span className="caption" style={{ alignSelf: "flex-start" }}>{t("克制关系")}</span>
+      {solid && (
+        <>
+          <div>
+            <div className="note" style={{ marginBottom: 4 }}>
+              {t("{style} 进攻面对不同防守：每场得分比预期多 / 少", { style: name(styles.find((s) => s.style_id === me.style_id)?.name ?? "") })}
+            </div>
+            <div className="row" style={{ gap: 6 }}>{mineOff.map((c) => chip(name(c.def_tag), c, c.effect))}</div>
+          </div>
+          <div>
+            <div className="note" style={{ marginBottom: 4 }}>
+              {t("{tag} 面对不同进攻：对手得分比预期多 / 少（负 = 防守占优）", { tag: name(me.defense_tag) })}
+            </div>
+            <div className="row" style={{ gap: 6 }}>
+              {mineDef.map((c) => chip(name(styles.find((s) => s.style_id === c.off_style)?.name ?? ""), c, c.effect))}
+            </div>
+          </div>
+        </>
+      )}
+      <MatchupMatrix offStyle={me.style_id} defTag={me.defense_tag} />
+    </section>
+  );
+}
+
 /** Every team as a dot by offense and defense rating; this one highlighted, colour = offensive system. */
 function LeagueScatter({ me, teams, season }: { me: TeamProfile; teams: TeamProfile[]; season: string }) {
   const { t, lang } = useLang();
@@ -207,6 +249,7 @@ export default function TeamAnalysis({ team, season }: { team: string; season: s
         <OffenseCard me={me} teams={teams} styles={styles} season={season} />
         <DefenseCard me={me} teams={teams} defenseNames={archetypes.defense} season={season} />
       </div>
+      <MatchupCard me={me} styles={styles} />
       <LeagueScatter me={me} teams={teams} season={season} />
     </section>
   );

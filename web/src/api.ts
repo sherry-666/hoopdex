@@ -170,3 +170,10 @@ export const useTeamSeasons = (team: string) =>
   useQuery({ queryKey: ["team-seasons", team], queryFn: () => get<string[]>(`/api/team/${team}/seasons`) });
 export const useTeamPage = (team: string, season: string | undefined) =>
   useQuery({ queryKey: ["team-page", team, season], queryFn: () => get<TeamPageData>(`/api/team/${team}/${season}`), enabled: !!season });
+
+export interface MatchupCell { off_style: number; def_tag: string; raw_effect: number; effect: number; se: number; n: number; off_teams: number }
+export interface MatchupView {
+  cells: MatchupCell[]; styles: { style_id: number; name: string | null }[];
+  meta: { model_version: string; seasons: string[]; n_games: number; p_value: number; season_corr: number | null; tau: number } | null;
+}
+export const useMatchups = () => useQuery({ queryKey: ["matchups"], queryFn: () => get<MatchupView>("/api/matchups") });

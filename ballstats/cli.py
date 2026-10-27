@@ -173,6 +173,15 @@ def cmd_parse(args) -> int:
     return 0
 
 
+def cmd_matchup(args) -> int:
+    from ballstats import matchup
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("matchup:", matchup.compute(conn))
+    return 0
+
+
 def cmd_live_update(args) -> int:
     from ballstats import live
 
@@ -242,6 +251,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("ratings", help="compute season OVR and peak / career ratings")
     sub.add_parser("teams", help="team style profiles and offensive systems (after roles and ratings)")
 
+    sub.add_parser("matchup", help="offence x defence system matchups with team quality removed (after teams and live-update)")
+
     live_p = sub.add_parser("live-update", help="finished games and the injury report from ESPN (the daily cron job)")
     live_p.add_argument("--days", type=int, default=3, help="look back this many days for games not stored yet")
 
@@ -277,4 +288,6 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_teams(args)
     if args.command == "daily-update":
         return cmd_daily_update(args)
+    if args.command == "matchup":
+        return cmd_matchup(args)
     return cmd_status(args)

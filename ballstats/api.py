@@ -322,6 +322,21 @@ def team_view(season: str) -> dict:
             "archetypes": {side: [r["name"] for r in arch if r["side"] == side] for side in SIDES}}
 
 
+@app.get("/api/matchups")
+def matchups() -> dict:
+    """Offence x defence system matchups with team quality removed (matchup.py), or empty when not fitted yet."""
+    if not q("SELECT to_regclass('feat.style_matchup') AS t")[0]["t"]:
+        return {"cells": [], "meta": None, "styles": []}
+    meta = q("SELECT model_version, seasons, n_games, p_value, season_corr, tau FROM feat.matchup_meta"
+             " ORDER BY fitted_at DESC LIMIT 1")
+    if not meta:
+        return {"cells": [], "meta": None, "styles": []}
+    cells = q("SELECT off_style, def_tag, raw_effect, effect, se, n, off_teams FROM feat.style_matchup"
+              " WHERE model_version = %s ORDER BY off_style, def_tag", (meta[0]["model_version"],))
+    styles = q("SELECT style_id, name FROM feat.team_style ORDER BY style_id")
+    return {"cells": cells, "meta": meta[0], "styles": styles}
+
+
 @app.get("/api/team/{team}/seasons")
 def team_season_list(team: str) -> list[str]:
     """Seasons this team has a profile for, newest first."""

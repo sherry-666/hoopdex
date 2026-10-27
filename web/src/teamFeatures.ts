@@ -33,3 +33,10 @@ export function signature(features: Record<string, number> | null | undefined, n
 
 /** A defensive archetype's name on a team card is its team-level tag. */
 export const DEFENSE_TAGS: Record<string, string> = { 护框: "护框型防守", 抢断干扰: "侵略型防守", 外线防投手: "外线封堵型防守", 追防与被针对: "追防型防守" };
+
+/** Background for a z-like value on the red (high) / blue (low) scale shared by the heat tables. */
+export const shade = (z: number, full = 1.6) => {
+  const a = Math.round(Math.min(1, Math.abs(z) / full) * 85);
+  return `color-mix(in srgb, var(${z >= 0 ? "--seq-hi" : "--seq-lo"}) ${a}%, var(--panel))`;
+};
+export const signed = (z: number, digits = 1) => `${z > 0 ? "+" : z < 0 ? "−" : ""}${Math.abs(z).toFixed(digits)}`;

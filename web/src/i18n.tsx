@@ -115,6 +115,18 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
+  "整体检验显示进攻体系和防守体系之间存在克制关系（p = {p}）；单格要看 ● 标记和误差，别过度解读。": "The overall test finds matchup structure between offensive and defensive systems (p = {p}); read single cells by their ● mark and error, and do not over-read them.",
+  "结论：没有发现可靠的克制关系。{n} 场比赛里，各格的差别最多 {max} 分 / 场，和随机波动无法区分（整体检验 p = {p}）；风格对风格的优劣，远不如球队本身的强弱重要。": "Finding: no reliable matchup effect. Across {n} games no cell differs by more than {max} points per game, which cannot be told apart from chance (overall test p = {p}); style-on-style edges matter far less than how strong the teams are.",
+  "{style} 进攻面对不同防守：每场得分比预期多 / 少": "{style} offence against each defence: points per game above / below expectation",
+  "{tag} 面对不同进攻：对手得分比预期多 / 少（负 = 防守占优）": "{tag} against each offence: opponent points above / below expectation (negative = the defence has the edge)",
+  "进攻体系 ↓ / 防守体系 →": "Offence system ↓ / defence system →",
+  "只有 {n} 支球队属于这个体系，结果更像这几支球队自己的特点。": "Only {n} team-seasons belong to this system, so the result reflects those teams' own habits.",
+  "原始 {raw} 分，误差 ±{se}，{n} 场": "raw {raw} pts, ±{se}, {n} games",
+  "每格是这类进攻在这类防守面前，每场比分比「两队自身水平」预测的多（红）或少（蓝）几分；已剔除球队强弱（球员水平、教练、节奏）和主场。● 表示效应超过 2 个标准误；数值已向 0 收缩，噪声大的格子收得更多。": "Each cell: points per game this kind of offence scores against this kind of defence above (red) or below (blue) what the two teams' own levels predict. Team strength (player talent, coaching, pace) and home court are removed. ● = effect beyond 2 standard errors; values are shrunk toward 0, more so where the data are noisy.",
+  "基于 {seasons} 共 {n} 场常规赛；整体检验 p = {p}": "Based on {n} regular-season games in {seasons}; overall test p = {p}",
+  "；前后两个赛季的格子相关 r = {r}": "; first vs last season cell correlation r = {r}",
+  "；真实效应的标准差约 {tau} 分 / 场。": "; the true effects have an sd of about {tau} points per game.",
+  "克制关系": "Matchups",
   "联盟第 {n}": "League rank {n}",
   "每百回合得分": "Points scored / 100",
   "节奏": "Pace",

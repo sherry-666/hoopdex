@@ -33,7 +33,6 @@ from ballstats import blend, team_features
 NUM_ROTATION = 9
 N_STYLES = 5
 SEED = 0
-MIN_TEAM_MINUTES = 1500     # archetype z-scores are scaled on seasons whose rotations reach this
 MIN_FIT_GP = 60             # styles are fitted on seasons whose teams have played this many games
 TEAM_MID, TEAM_SD = 80.0, 6.0
 ROSTER_SHARE = 0.5          # the rest comes from actual results
@@ -189,12 +188,18 @@ def compute(conn: psycopg.Connection) -> dict:
             if (prior, t) in Z.index:
                 Z.loc[(s, t)] = w * Z.loc[(s, t)] + (1 - w) * Z.loc[(prior, t)]
     T = pd.concat([T, _team_ratings(T, weights)], axis=1)
-    complete = T.groupby("season")["minutes"].median()
-    arch_seasons = sorted(complete[complete >= MIN_TEAM_MINUTES].index)
-    fit_mask = T.season.isin(arch_seasons).to_numpy()
     off, de = np.vstack(T["off"]), np.vstack(T["def"])
-    Zo = (off - off[fit_mask].mean(0)) / off[fit_mask].std(0)
-    Zd = (de - de[fit_mask].mean(0)) / de[fit_mask].std(0)
+
+    def within_season(M: np.ndarray) -> np.ndarray:
+        """z-scores against that season's own teams: player stats drift between eras, so a team's mix
+        is only comparable to its own league's."""
+        out = np.zeros_like(M)
+        for season in T.season.unique():
+            m = (T.season == season).to_numpy()
+            out[m] = (M[m] - M[m].mean(0)) / M[m].std(0)
+        return out
+
+    Zo, Zd = within_season(off), within_season(de)
     T["_row"] = range(len(T))    # row of Zo / Zd, kept through the filter below
 
     gp = f["gp"].groupby(level="season").median()
