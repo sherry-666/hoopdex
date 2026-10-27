@@ -23,6 +23,7 @@
   --seq-hi: #e23b2e; --seq-lo: #1e5bd8; --seq-mid: #f2ece0;  /* diverging heatmap */
 
   --font-latin: "Bangers", "Impact", sans-serif;
+  --font-num: "Orbitron", "Impact", sans-serif; /* Bangers draws 7 like 1; rating numbers use this */
   --font-display: "ZCOOL KuaiLe", "Noto Sans SC", sans-serif;
   --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --size-caption: 0.8125rem;
@@ -205,6 +206,7 @@ table.data tr:hover td { background: var(--tone); }
   background: linear-gradient(160deg, #2a2536, #121019); border: 2px solid var(--edge);
   box-shadow: 2px 2px 0 #111, 0 0 var(--glow) var(--edge); }
 /* The tier gradients are tuned for light pages; on the dark plate their low ends vanish, so lift them. */
+.plate { font-weight: 800; }   /* Orbitron is thin at 400 */
 .plate .tier-num { -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.85); position: relative; z-index: 1; }
 .plate .tier-bronze { background-image: linear-gradient(180deg, #ffd0a8, #cf8854 60%, #ebab78); }
 .plate .tier-gold { background-image: linear-gradient(110deg, #e6a824 0%, #fff0a0 30%, #f2bd3a 50%, #fffbd0 65%, #e6a824 100%); }

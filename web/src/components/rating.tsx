@@ -14,7 +14,7 @@ export function OvrBadge({ ovr, size = 40 }: { ovr: number | null | undefined; s
   if (ovr == null) return null;
   return (
     <span aria-label={`OVR ${ovr}`} className={`plate plate-${tierOf(ovr)}`} style={{
-      width: size, height: size, fontFamily: "var(--font-latin)", fontSize: size * 0.55, lineHeight: 1,
+      width: size, height: size, fontFamily: "var(--font-num)", fontSize: size * 0.55, lineHeight: 1,
     }}><TierNumber value={ovr} /></span>
   );
 }
@@ -26,7 +26,7 @@ export function OffDef({ off, def, size = 15 }: { off: number | null | undefined
   const cell = (k: "off" | "def", v: number | null | undefined) => v == null ? null : (
     <span aria-label={`${RATING_SHORT[k].en} ${v}`} style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
       <span style={{ fontSize: size * 0.72, color: "var(--muted)", fontWeight: 700 }}>{RATING_SHORT[k][lang]}</span>
-      <span className={`plate plate-sm plate-${tierOf(v)}`} style={{ fontFamily: "var(--font-latin)", fontSize: size * 1.15, lineHeight: 1, padding: "2px 5px" }}>
+      <span className={`plate plate-sm plate-${tierOf(v)}`} style={{ fontFamily: "var(--font-num)", fontSize: size * 1.15, lineHeight: 1, padding: "2px 5px" }}>
         <TierNumber value={v} />
       </span>
     </span>
@@ -192,7 +192,7 @@ function Score({ label, value, digits = 0, sub }: { label: string; value: number
   return (
     <div>
       <span className="note">{label}</span>
-      <div style={{ fontFamily: "var(--font-latin)", fontSize: 30, lineHeight: 1 }}><TierNumber value={value} digits={digits} /></div>
+      <div style={{ fontFamily: "var(--font-num)", fontSize: 30, lineHeight: 1 }}><TierNumber value={value} digits={digits} /></div>
       {sub && <span className="note">{sub}</span>}
     </div>
   );
