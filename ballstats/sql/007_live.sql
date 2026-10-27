@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS live.player_game (
     oreb integer, dreb integer, plus_minus integer,
     PRIMARY KEY (player_id, game_id)
 );
+ALTER TABLE live.player_game ADD COLUMN IF NOT EXISTS season_type smallint;   -- ESPN: 2 regular season, 3 playoffs
 CREATE INDEX IF NOT EXISTS player_game_date_idx ON live.player_game (player_id, game_date DESC);
 
 CREATE TABLE IF NOT EXISTS live.update_log (

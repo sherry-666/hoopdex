@@ -147,7 +147,7 @@ def game_rows(event: dict, index: dict[str, int], unmatched: set[str]) -> list[t
 
 
 GAME_COLS = ("player_id, game_id, game_date, season, team, opp, home, team_score, opp_score, started, dnp_reason,"
-             " min, pts, reb, ast, stl, blk, tov, pf, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, plus_minus")
+             " min, pts, reb, ast, stl, blk, tov, pf, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, plus_minus, season_type")
 
 
 def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]]:
@@ -159,12 +159,13 @@ def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]
     for back in range(days, -1, -1):
         day = today - dt.timedelta(days=back)
         for event in get_json("scoreboard", dates=day.strftime("%Y%m%d"))["events"]:
-            if event["status"]["type"]["name"] != "STATUS_FINAL" or event["id"] in have:
+            stype = event["season"]["type"]
+            if stype < 2 or event["status"]["type"]["name"] != "STATUS_FINAL" or event["id"] in have:   # no preseason
                 continue
-            rows = game_rows(event, index, unmatched)
+            rows = [r + (stype,) for r in game_rows(event, index, unmatched)]
             with conn.transaction(), conn.cursor() as cur:
                 cur.executemany(
-                    f"INSERT INTO live.player_game ({GAME_COLS}) VALUES ({', '.join(['%s'] * 28)})"
+                    f"INSERT INTO live.player_game ({GAME_COLS}) VALUES ({', '.join(['%s'] * 29)})"
                     " ON CONFLICT (player_id, game_id) DO NOTHING", rows)
             n_games += 1
             log.info("%s %s: %d player lines", day, event["shortName"], len(rows))
@@ -173,6 +174,8 @@ def update_games(conn, index: dict[str, int], days: int) -> tuple[int, list[str]
 
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
+    # Rows from before season_type was stored may include preseason games; refetch them.
+    conn.execute("DELETE FROM live.player_game WHERE season_type IS NULL")
     if not conn.execute("SELECT 1 FROM live.player_game LIMIT 1").fetchone():
         days = max(days, BACKFILL_DAYS)   # first run: fill the season so far
     n_games, missed_g = update_games(conn, index, days)
