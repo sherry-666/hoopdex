@@ -42,6 +42,11 @@ export default function RolesLab() {
         </p>
       </section>
 
+      <div className="seg seg-lg" role="group" aria-label={t("进攻或防守")}>
+        {(["offense", "defense"] as Side[]).map((s) => (
+          <button key={s} type="button" aria-pressed={side === s} onClick={() => { setSide(s); setPick(null); }}>{t(SIDE_LABEL[s])}</button>
+        ))}
+      </div>
       <div className="row">
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("赛季")}
           <select className="select" value={season ?? ""} onChange={(e) => { setParams({ season: e.target.value }, { replace: true }); setPick(null); }}>
@@ -51,11 +56,6 @@ export default function RolesLab() {
             ))}
           </select>
         </label>
-        <div className="seg" role="group" aria-label={t("进攻或防守")}>
-          {(["offense", "defense"] as Side[]).map((s) => (
-            <button key={s} type="button" aria-pressed={side === s} onClick={() => { setSide(s); setPick(null); }}>{t(SIDE_LABEL[s])}</button>
-          ))}
-        </div>
         {view.data?.archetypes.map((a) => (
           <button key={a.type_id} type="button" className="chip" aria-pressed={pick === a.type_id}
             onClick={() => setPick(pick === a.type_id ? null : a.type_id)}>
