@@ -156,6 +156,7 @@ export interface TeamRosterRow {
   off_style: string | null; def_style: string | null; ovr: number | null; off: number | null; def: number | null;
   pts: number | null; reb: number | null; ast: number | null;
   injury: Pick<Injury, "status" | "body_part" | "detail" | "side" | "return_date" | "short_comment"> | null;
+  departed: boolean;   // played for the team, then was traded away
   avail: number;   // how much he counts toward the team's rating: 0 = left out, 1 = fully
 }
 export interface TeamPageData {

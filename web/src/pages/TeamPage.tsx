@@ -157,7 +157,7 @@ export default function TeamPage() {
 
       <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span className="caption" style={{ fontSize: 20, alignSelf: "flex-start" }}>{t("球员阵容与数据")}</span>
-        <p className="note" style={{ margin: 0 }}>{t("本赛季结束时效力这支球队的球员，按上场时间排序；场均数据是整个赛季的常规赛场均。")}</p>
+        <p className="note" style={{ margin: 0 }}>{t("本赛季为这支球队打过球的球员，按上场时间排序；场均数据是他在这支球队的常规赛场均。")}</p>
         {roster.some((r) => r.avail < 1) && (
           <p className="note" style={{ margin: 0 }}>
             {t("球队评分和阵容构成会考虑伤病：伤停超过一个月的球员（{names}）不计入，较短的缺阵按出战比例折算。", {
@@ -184,7 +184,7 @@ export default function TeamPage() {
             <tbody>
               {roster.map((r) => (
                 <tr key={r.player_id}>
-                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</td>
+                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.departed && <span className="tag" style={{ marginLeft: 6 }}>{t("已离队")}</span>}{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</td>
                   <td className="num-col"><OvrBadge ovr={r.ovr} size={30} /></td>
                   <td className="num-col">{r.off ?? "—"}</td>
                   <td className="num-col">{r.def ?? "—"}</td>

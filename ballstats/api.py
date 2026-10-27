@@ -340,22 +340,46 @@ def team_page(team: str, season: str) -> dict:
         raise HTTPException(404, f"no profile for {team} {season}")
     standing = q("SELECT conf, rank, wins, losses, win_pct, games_behind, home, road, conf_record, last10, streak,"
                  " pts_for, pts_against, clincher FROM live.standing WHERE season = %s AND team = %s", (season, team))
-    totals = {r["player_id"]: r for r in season_totals(season)}
+    # Everyone who played for the team that season, however few minutes: this season's games come per team
+    # stint from live.player_game; finished seasons from the season box, which lists a traded player under
+    # the team he finished with. Ratings and roles join in where the player has them.
+    if q("SELECT 1 FROM live.player_game WHERE season = %s AND season_type = 2 LIMIT 1", (season,)):
+        played = q("SELECT g.player_id, p.name, count(*) AS gp, sum(g.min) AS min, sum(g.pts) AS pts, sum(g.reb) AS reb, sum(g.ast) AS ast"
+                   " FROM live.player_game g LEFT JOIN core.player p USING (player_id)"
+                   " WHERE g.season = %s AND g.team = %s AND g.season_type = 2 AND g.dnp_reason IS NULL"
+                   " GROUP BY g.player_id, p.name", (season, team))
+    elif q("SELECT to_regclass('feat.player_season_box') AS t")[0]["t"]:
+        played = q("SELECT player_id, name, gp, min, pts, reb, ast FROM feat.player_season_box WHERE season = %s AND team = %s",
+                   (season, team))
+    else:
+        played = []
+    totals = {r["player_id"]: r for r in played}
     roster = q(
         """
-        SELECT s.player_id, s.name, s.gp, s.minutes, (s.stats ->> 'ts_pct')::float AS ts_pct,
+        SELECT p.player_id, coalesce(s.name, p.name) AS name, s.team AS final_team, s.minutes, s.gp,
+               (s.stats ->> 'ts_pct')::float AS ts_pct,
                o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def
-        FROM feat.player_stats s
-        LEFT JOIN feat.player_rating rt ON rt.season = s.season AND rt.player_id = s.player_id
-        LEFT JOIN feat.player_role o ON o.season = s.season AND o.player_id = s.player_id AND o.side = 'offense'
-        LEFT JOIN feat.player_role d ON d.season = s.season AND d.player_id = s.player_id AND d.side = 'defense'
-        WHERE s.season = %s AND s.team = %s ORDER BY s.minutes DESC
-        """, (season, team))
+        FROM core.player p
+        LEFT JOIN feat.player_stats s ON s.season = %(season)s AND s.player_id = p.player_id
+        LEFT JOIN feat.player_rating rt ON rt.season = %(season)s AND rt.player_id = p.player_id
+        LEFT JOIN feat.player_role o ON o.season = %(season)s AND o.player_id = p.player_id AND o.side = 'offense'
+        LEFT JOIN feat.player_role d ON d.season = %(season)s AND d.player_id = p.player_id AND d.side = 'defense'
+        WHERE p.player_id = ANY(%(ids)s) OR (s.team = %(team)s)
+        """, {"season": season, "team": team, "ids": list(totals)})
+    # Players the ratings tables and core.player do not know (a few games, a short stay) still get a row.
+    roster += [{"player_id": i, "name": t["name"] or str(i), "final_team": None, "minutes": None, "gp": t["gp"], "ts_pct": None,
+                "off_style": None, "def_style": None, "ovr": None, "off": None, "def": None}
+               for i, t in totals.items() if i not in {r["player_id"] for r in roster}]
     for r in roster:
         t = totals.get(r["player_id"])
-        gp = t["gp"] if t else 0
+        if t:   # his games with this team
+            r["gp"], r["minutes"] = t["gp"], float(t["min"] or 0)
+        final = r.pop("final_team")
+        r["departed"] = final is not None and final != team   # traded away after playing for this team
+        gp = r["gp"] or 0
         for k in ("pts", "reb", "ast"):
             r[k] = round(t[k] / gp, 1) if t and gp and t[k] is not None else None
+    roster.sort(key=lambda r: -(r["minutes"] or 0))
     # The injury report is a snapshot of today, so it only means something for the season in progress.
     hurt = {}
     if season == default_season() and roster:
