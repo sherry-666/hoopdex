@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from "react-router-dom";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type Lang = "zh" | "en";
@@ -114,6 +115,7 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
+  "复出时间未定": "Return date not set",
   "主": "H",
   "客": "A",
   "没有这支球队": "No such team",
@@ -266,21 +268,20 @@ function fill(s: string, vars?: Record<string, string | number>) {
 }
 
 export function LangProvider({ children }: { children: ReactNode }) {
-  // ?lang=en in the URL wins (it's the English page search engines index), then the saved choice.
-  const [lang, setLangState] = useState<Lang>(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("lang");
-    if (fromUrl === "en" || fromUrl === "zh") return fromUrl;
-    try { return (localStorage.getItem("lang") as Lang) || "zh"; } catch { return "zh"; }
-  });
-  const setLang = useCallback((l: Lang) => {
-    setLangState(l);
-    try { localStorage.setItem("lang", l); } catch { /* storage blocked */ }
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("lang")) {
-      if (l === "en") url.searchParams.set("lang", "en"); else url.searchParams.delete("lang");
-      window.history.replaceState(window.history.state, "", url);
-    }
-  }, []);
+  // The URL is the source of truth: ?lang=en is the English page (what gets shared and indexed),
+  // no param is Chinese. Whatever navigation drops the param is put back below.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [lang, setLangState] = useState<Lang>(() =>
+    new URLSearchParams(window.location.search).get("lang") === "en" ? "en" : "zh");
+  const setLang = useCallback((l: Lang) => setLangState(l), []);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if ((params.get("lang") === "en") === (lang === "en") && (lang === "en" || !params.has("lang"))) return;
+    if (lang === "en") params.set("lang", "en"); else params.delete("lang");
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash }, { replace: true, state: location.state });
+  }, [lang, location, navigate]);
   useEffect(() => {
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
   }, [lang]);

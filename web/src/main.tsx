@@ -11,11 +11,11 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 5 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <LangProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <LangProvider>
           <App />
-        </BrowserRouter>
-      </LangProvider>
+        </LangProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>,
 );
