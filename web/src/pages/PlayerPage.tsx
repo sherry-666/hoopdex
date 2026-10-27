@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { CareerLine, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, useSeasons } from "../api";
+import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, useRecentGames, useSeasons } from "../api";
 import { Burst, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { label } from "../labels";
@@ -60,6 +60,7 @@ export default function PlayerPage() {
             <span className="tag">{t("{n} 分钟", { n: p.minutes.toLocaleString() })}</span>
             {off && <span className="tag" style={{ background: seriesColor(off.mix[0].id), color: "#fff", borderColor: "var(--ink)" }}>{name(off.style)}</span>}
           </div>
+          {p.injury && season === playerSeasons.data?.[0] && <InjuryBanner injury={p.injury} />}
           {off?.blend_weight != null ? (
             <p className="bubble" style={{ borderColor: "var(--pop-yellow)", margin: 0 }}>
               {t("赛季初过渡值：定位、超能力和评分按本赛季 {w} + {prior} 赛季 {pw} 合成，本赛季打得越多，占比越高。", {
@@ -153,8 +154,93 @@ export default function PlayerPage() {
         </div>
       </section>
 
+      <RecentGames id={p.player_id} />
+
       <CareerTable id={p.player_id} season={season} />
     </>
+  );
+}
+
+const BODY_EN: Record<string, string> = {
+  Foot: "Foot", Ankle: "Ankle", Knee: "Knee", Hamstring: "Hamstring", Calf: "Calf", Back: "Back", Hip: "Hip", Groin: "Groin",
+  Shoulder: "Shoulder", Wrist: "Wrist", Hand: "Hand", Finger: "Finger", Thumb: "Thumb", Elbow: "Elbow", Thigh: "Thigh",
+  Quadricep: "Quad", Achilles: "Achilles", Head: "Head", Neck: "Neck", Toe: "Toe", Illness: "Illness", Rest: "Rest",
+};
+const BODY_ZH: Record<string, string> = {
+  Foot: "脚", Ankle: "脚踝", Knee: "膝盖", Hamstring: "腿筋", Calf: "小腿", Back: "背部", Hip: "髋部", Groin: "腹股沟",
+  Shoulder: "肩膀", Wrist: "手腕", Hand: "手", Finger: "手指", Thumb: "拇指", Elbow: "手肘", Thigh: "大腿",
+  Quadricep: "股四头肌", Achilles: "跟腱", Head: "头部", Neck: "颈部", Toe: "脚趾", Illness: "生病", Rest: "轮休",
+};
+const SIDE_ZH: Record<string, string> = { Left: "左", Right: "右" };
+
+function InjuryBanner({ injury }: { injury: Injury }) {
+  const { t, lang } = useLang();
+  const out = injury.status === "Out";
+  const part = injury.body_part ? (lang === "zh" ? BODY_ZH : BODY_EN)[injury.body_part] ?? injury.body_part : null;
+  const side = injury.side && lang === "zh" ? SIDE_ZH[injury.side] ?? "" : injury.side ?? "";
+  const where = part ? (lang === "zh" ? `${side}${part}` : `${side} ${part}`.trim()) : null;
+  return (
+    <div className="bubble" style={{ borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", margin: 0 }}>
+      <div className="row" style={{ gap: 8 }}>
+        <span className="tag" style={{ background: out ? "var(--pop-red)" : "var(--pop-yellow)", color: out ? "#fff" : "var(--on-yellow)", fontWeight: 700 }}>
+          {out ? t("伤停") : t("出战成疑")}
+        </span>
+        {where && <b>{where}{injury.detail && lang === "en" ? ` · ${injury.detail}` : ""}</b>}
+        {injury.return_date && <span className="note">{t("预计 {date} 前后复出", { date: injury.return_date })}</span>}
+      </div>
+      {injury.short_comment && <p className="note" style={{ margin: "8px 0 0" }}>{injury.short_comment}</p>}
+      <p className="note" style={{ margin: "6px 0 0" }}>
+        {t("来源 ESPN，{date} 更新。", { date: new Date(injury.updated_at).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US") })}
+      </p>
+    </div>
+  );
+}
+
+function RecentGames({ id }: { id: number }) {
+  const { t, lang } = useLang();
+  const q = useRecentGames(id);
+  const games = q.data ?? [];
+  if (q.isLoading || games.length === 0) return null;
+  const n = (v: number | null) => (v == null ? "—" : String(v));
+  return (
+    <section className="panel">
+      <span className="caption">{t("近期比赛")}</span>
+      <div className="table-box" style={{ marginTop: 12, maxHeight: "none" }}>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>{t("日期")}</th><th>{t("对手")}</th><th>{t("比分")}</th><th className="num-col">{t("分钟")}</th>
+              <th className="num-col">{t("得分")}</th><th className="num-col">{t("篮板")}</th><th className="num-col">{t("助攻")}</th>
+              <th className="num-col hide-narrow">{t("投篮")}</th><th className="num-col hide-narrow">{t("三分")}</th>
+              <th className="num-col hide-narrow">+/-</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((g) => {
+              const won = g.team_score != null && g.opp_score != null && g.team_score > g.opp_score;
+              return (
+                <tr key={g.game_id}>
+                  <td>{g.game_date.slice(5)}</td>
+                  <td>{g.home ? "vs" : "@"} {teamName(g.opp, lang)}</td>
+                  <td>{g.team_score == null ? "—" : `${won ? t("胜") : t("负")} ${g.team_score}-${g.opp_score}`}</td>
+                  {g.dnp_reason ? (
+                    <td colSpan={7} className="note">{t("未出场")} · {g.dnp_reason}</td>
+                  ) : (
+                    <>
+                      <td className="num-col">{n(g.min)}</td><td className="num-col"><b>{n(g.pts)}</b></td>
+                      <td className="num-col">{n(g.reb)}</td><td className="num-col">{n(g.ast)}</td>
+                      <td className="num-col hide-narrow">{g.fgm}-{g.fga}</td><td className="num-col hide-narrow">{g.fg3m}-{g.fg3a}</td>
+                      <td className="num-col hide-narrow">{g.plus_minus == null ? "—" : g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="note" style={{ marginTop: 10 }}>{t("每天自动更新，来源 ESPN；只含最近同步到的比赛。")}</p>
+    </section>
   );
 }
 

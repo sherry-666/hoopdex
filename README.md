@@ -127,12 +127,32 @@ railway up --service web                         # build and deploy this folder
 railway domain --service web                     # public URL
 ```
 
-Load the data (only `feat` by default; the site needs nothing else). Collection and model fitting stay on
+Load the data (only `feat` by default; the site needs nothing else). This needs a TCP Proxy on the Postgres
+service (dashboard: Postgres → Settings → Networking, port 5432); remove it again once the data is loaded. Collection and model fitting stay on
 this machine, since stats.nba.com blocks cloud IPs; re-run this after `ballstats roles`:
 
 ```bash
-REMOTE_DATABASE_URL="$(railway variables --service Postgres --json | jq -r .DATABASE_PUBLIC_URL)" scripts/push_db.sh
+REMOTE_DATABASE_URL="$(railway variables --service Postgres --json | jq -r '"postgresql://postgres:\(.POSTGRES_PASSWORD)@\(.RAILWAY_TCP_PROXY_DOMAIN):\(.RAILWAY_TCP_PROXY_PORT)/railway"')" scripts/push_db.sh
 ```
+
+### Daily update (cron)
+
+`python -m ballstats live-update [--days 3]` pulls finished games' box scores and the current injury report
+from ESPN's public feeds (which, unlike stats.nba.com, answer cloud IPs) into the `live` schema
+(`live.player_game`, `live.injury`; `ballstats/live.py`). Players are matched to NBA ids by name; names it
+cannot match (mostly rookies not in the data yet) are logged and skipped. The player page shows the injury
+as a banner (current season only) and the last 10 games. It does not touch `feat`: ratings, roles and
+team styles still come from the local pipeline. `push_db.sh` only replaces `raw` / `feat`, so `live` survives it.
+
+On Railway it is a second service from the same repo and image, run on a schedule (`railway.cron.json`, 11:00 UTC
+daily, after the last games end in the US):
+
+1. Dashboard → New → GitHub repo / empty service named `cron`; deploy the same source (`railway up --service cron`).
+2. Service → Settings → Config-as-code → file path `/railway.cron.json`.
+3. Service → Variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+4. Run it once by hand with a longer look-back to fill the season so far: set the start command to
+   `python -m ballstats live-update --days 30`, deploy, then set it back (or run it locally with
+   `BALLSTATS_DSN` pointing at the public Postgres URL).
 
 Comic portraits: drop `web/public/portraits/<player_id>.webp` (5:6 aspect, about 840x1008). Players without one show a placeholder.
 Superpowers come from `ballstats/powers.py`: a player's most extreme style stats (z >= 1 among 500+ minute players),

@@ -162,6 +162,15 @@ def cmd_parse(args) -> int:
     return 0
 
 
+def cmd_live_update(args) -> int:
+    from ballstats import live
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("live-update:", live.update(conn, args.days))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ballstats")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -183,6 +192,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("parse", help="parse raw responses into the core tables (players, seasons, careers)")
     sub.add_parser("ratings", help="compute season OVR and peak / career ratings")
     sub.add_parser("teams", help="team style profiles and offensive systems (after roles and ratings)")
+
+    live_p = sub.add_parser("live-update", help="finished games and the injury report from ESPN (the daily cron job)")
+    live_p.add_argument("--days", type=int, default=3, help="look back this many days for games not stored yet")
 
     roles_p = sub.add_parser("roles", help="fit role families and archetype mixes for a season")
     roles_p.add_argument("--season", default=current_season())
@@ -206,6 +218,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_parse(args)
     if args.command == "ratings":
         return cmd_ratings(args)
+    if args.command == "live-update":
+        return cmd_live_update(args)
     if args.command == "teams":
         return cmd_teams(args)
     return cmd_status(args)

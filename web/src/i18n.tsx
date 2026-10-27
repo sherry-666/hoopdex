@@ -19,6 +19,11 @@ const UI_EN: Record<string, string> = {
   "每名球员一张卡：超能力、战力数值、风格构成。": "One card per player: superpowers, power stats and style mix.",
   "按上场球员算两队实力，给出胜率和分差。即将登场。": "Team strength from the players on the floor, with win probability and margin. Coming soon.",
   "得分火力最猛的球员": "Top scorers", "（{season} · 每 36 分钟得分）": "({season} · points per 36)",
+  // injuries and recent games
+  "伤停": "Out", "出战成疑": "Day-to-day", "预计 {date} 前后复出": "Expected back around {date}",
+  "来源 ESPN，{date} 更新。": "Source: ESPN, updated {date}.", "近期比赛": "Recent games", "日期": "Date", "对手": "Opponent",
+  "比分": "Score", "投篮": "FG", "三分": "3PT", "胜": "W", "负": "L", "未出场": "Did not play",
+  "每天自动更新，来源 ESPN；只含最近同步到的比赛。": "Updated daily from ESPN; only games synced so far.",
   // roster
   "{season} 赛季的全部球员。搜名字或球队，按进攻大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive family.",
   "Stephen Curry、DEN……": "Stephen Curry, DEN…", "搜索球员或球队": "Search players or teams", "排序": "Sort",

@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import config, powers, roles, seo
+from ballstats import config, db, powers, roles, seo
 
 app = FastAPI(title="ballstats")
 WEB_DIST: Path = config.WEB_DIST
@@ -29,6 +29,9 @@ pool = ConnectionPool(config.DSN, min_size=1, max_size=8, kwargs={"row_factory":
 @app.on_event("startup")
 def _open_pool() -> None:
     pool.open()
+    # The live tables are filled by the cron job, but the pages read them from the first request on.
+    with pool.connection() as conn:
+        db.init_schema(conn, only="007_live.sql")
 
 
 @app.on_event("shutdown")
@@ -199,7 +202,23 @@ def player(season: str, player_id: int) -> dict:
         "powers": powers.powers_for(z, values),
         "rating": rating_for(season, player_id),
         "career_rating": career_rating_for(player_id),
+        "injury": injury_for(player_id),
     }
+
+
+def injury_for(player_id: int) -> dict | None:
+    """Current injury report entry (live.injury, refreshed daily by `ballstats live-update`)."""
+    rows = q("SELECT status, body_part, detail, side, return_date, short_comment, long_comment, reported_at, updated_at"
+             " FROM live.injury WHERE player_id = %s ORDER BY reported_at DESC NULLS LAST LIMIT 1", (player_id,))
+    return rows[0] if rows else None
+
+
+@app.get("/api/player/{player_id}/recent")
+def player_recent(player_id: int, limit: int = 10) -> list[dict]:
+    """His latest games, newest first, including games he sat out (dnp_reason set)."""
+    return q("SELECT game_id, game_date, team, opp, home, team_score, opp_score, started, dnp_reason, min, pts, reb,"
+             " ast, stl, blk, tov, fgm, fga, fg3m, fg3a, ftm, fta, plus_minus FROM live.player_game"
+             " WHERE player_id = %s ORDER BY game_date DESC, game_id DESC LIMIT %s", (player_id, min(limit, 30)))
 
 
 def rating_for(season: str, player_id: int) -> dict | None:

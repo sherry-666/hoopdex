@@ -40,6 +40,18 @@ export interface PlayerDetail {
   stats: Record<string, number | null>; percentiles: Record<string, number>; compare_season: string;
   rating: SeasonRating | null; career_rating: CareerRating | null;
   roles: Partial<Record<Side, SideRole>>; powers: Power[];
+  injury: Injury | null;
+}
+export interface Injury {
+  status: "Out" | "Day-To-Day" | string; body_part: string | null; detail: string | null; side: string | null;
+  return_date: string | null; short_comment: string | null; long_comment: string | null;
+  reported_at: string | null; updated_at: string;
+}
+export interface RecentGame {
+  game_id: string; game_date: string; team: string; opp: string; home: boolean; team_score: number | null; opp_score: number | null;
+  started: boolean | null; dnp_reason: string | null; min: number | null; pts: number | null; reb: number | null; ast: number | null;
+  stl: number | null; blk: number | null; tov: number | null; fgm: number | null; fga: number | null; fg3m: number | null;
+  fg3a: number | null; ftm: number | null; fta: number | null; plus_minus: number | null;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -95,6 +107,8 @@ export const usePlayerSeasons = (id: number) =>
   useQuery({ queryKey: ["player-seasons", id], queryFn: () => get<string[]>(`/api/player/${id}/seasons`) });
 export const useCareer = (id: number) =>
   useQuery({ queryKey: ["career", id], queryFn: () => get<Career>(`/api/player/${id}/career`) });
+export const useRecentGames = (id: number) =>
+  useQuery({ queryKey: ["recent", id], queryFn: () => get<RecentGame[]>(`/api/player/${id}/recent`) });
 export const useRoleView = (season: string | undefined, side: Side) =>
   useQuery({ queryKey: ["roles", season, side], queryFn: () => get<RoleView>(`/api/roles/${season}/${side}`), enabled: !!season });
 export const usePlayers = (season: string | undefined) =>
