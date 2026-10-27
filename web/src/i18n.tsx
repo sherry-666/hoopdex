@@ -115,6 +115,11 @@ const UI_EN: Record<string, string> = {
   "本赛季刚开始，还没有球员满 500 分钟：下面显示全部球员，位置和定位都是低置信度的参考。":
     "The season has just started and nobody has 500 minutes yet: everyone is shown, and positions and roles are low-confidence.",
   // teams
+  "伤停超过一个月：不计入球队的评分和阵容构成。": "Out for over a month: left out of the team's rating and rotation.",
+  "球队评分里按 {pct}% 计算。": "Counts {pct}% toward the team rating.",
+  "球队评分和阵容构成会考虑伤病：伤停超过一个月的球员（{names}）不计入，较短的缺阵按出战比例折算。": "Team ratings and rotation account for injuries: players out for over a month ({names}) are left out, shorter absences are discounted.",
+  "、": ", ",
+  "无": "none",
   "复出时间未定": "Return date not set",
   "主": "H",
   "客": "A",

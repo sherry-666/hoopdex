@@ -18,6 +18,7 @@ against that season's teams:
            (from TeamPlayerOnOffSummary: any player's on-court plus off-court minutes)
 """
 
+import datetime as dt
 import json
 from importlib import resources
 
@@ -36,7 +37,38 @@ MIN_TEAM_MINUTES = 1500     # archetype z-scores are scaled on seasons whose rot
 MIN_FIT_GP = 60             # styles are fitted on seasons whose teams have played this many games
 TEAM_MID, TEAM_SD = 80.0, 6.0
 ROSTER_SHARE = 0.5          # the rest comes from actual results
+# Injuries (live.injury) for the season in progress: out for longer than a month = left out of the rotation;
+# a shorter absence discounts the player's weight (down to SHORT_OUT_FLOOR at a month out), day-to-day a little.
+LONG_OUT_DAYS = 30
+SHORT_OUT_FLOOR = 0.5
+DAY_TO_DAY_FACTOR = 0.95
+REPLACEMENT_QUANTILE = 0.25   # the minutes lost to injury go to a player this far up the league's ratings
 DEFENSE_TAGS = {"护框": "护框型防守", "抢断干扰": "侵略型防守", "外线防投手": "外线封堵型防守", "追防与被针对": "追防型防守"}
+
+
+def availability(status: str | None, return_date: dt.date | None, today: dt.date) -> float:
+    """How much of a player counts toward his team now: 0 when out for more than LONG_OUT_DAYS,
+    between SHORT_OUT_FLOOR and 1 for a shorter absence, DAY_TO_DAY_FACTOR when day-to-day."""
+    if status == "Out":
+        if return_date is None:
+            return SHORT_OUT_FLOOR
+        days = max((return_date - today).days, 0)
+        if days > LONG_OUT_DAYS:
+            return 0.0
+        return 1 - (1 - SHORT_OUT_FLOOR) * days / LONG_OUT_DAYS
+    return DAY_TO_DAY_FACTOR if status else 1.0
+
+
+def injury_availability(conn: psycopg.Connection) -> dict[int, float]:
+    """Availability of every player on the injury report who is below 1 (absent = fully available)."""
+    today = dt.date.today()
+    out = {}
+    for pid, status, ret in conn.execute("SELECT DISTINCT ON (player_id) player_id, status, return_date FROM live.injury"
+                                         " WHERE player_id IS NOT NULL ORDER BY player_id, reported_at DESC NULLS LAST"):
+        f = availability(status, ret, today)
+        if f < 1:
+            out[pid] = f
+    return out
 
 
 def _style_names(version: str) -> dict[int, dict]:
@@ -105,22 +137,40 @@ def compute(conn: psycopg.Connection) -> dict:
         "SELECT DISTINCT type_id, name FROM feat.role_type WHERE side = %s AND level = 'archetype'", (side,))}
         for side in ("offense", "defense")}
 
+    ongoing = blend.ongoing_season(conn)
+    hurt = injury_availability(conn) if ongoing else {}
+    replacement = (df[df.season == ongoing].drop_duplicates("pid")[["ovr", "off", "def"]].quantile(REPLACEMENT_QUANTILE)
+                   if ongoing else None)
     teams = []
     for (season, team), g in df.groupby(["season", "team"]):
-        off = g[g.side == "offense"].sort_values("min", ascending=False).head(NUM_ROTATION)
+        off = g[g.side == "offense"]
+        # Minutes the full-strength rotation would give its rated players; injuries are charged against this.
+        full = off.sort_values("min", ascending=False).head(NUM_ROTATION).dropna(subset=["ovr"])["min"].sum()
+        if season == ongoing:   # out for over a month: not part of the rotation; shorter absences count less
+            off = off[off.pid.map(lambda p: hurt.get(p, 1.0)) > 0]
+        off = off.sort_values("min", ascending=False).head(NUM_ROTATION)
         ids, minutes = list(off.pid), off.set_index("pid")["min"]
+        avail = pd.Series([hurt.get(p, 1.0) if season == ongoing else 1.0 for p in ids], index=ids)
+        weight = minutes * avail
         mixes = {}
         for side in ("offense", "defense"):
             gg = g[(g.side == side) & g.pid.isin(ids)].set_index("pid").loc[ids]
             W = np.array([[w.get(str(i), 0.0) for i in sorted(arch[side])] for w in gg.w])
-            mixes[side] = np.average(W, axis=0, weights=minutes.loc[ids])
+            mixes[side] = np.average(W, axis=0, weights=weight.loc[ids])
         ovr = off.dropna(subset=["ovr"])
-        roster = {k: float(np.average(ovr[k], weights=ovr["min"])) if len(ovr) else np.nan for k in ("ovr", "off", "def")}
+        ovr_w = ovr["min"] * ovr.pid.map(avail)
+        roster = {k: float(np.average(ovr[k], weights=ovr_w)) if len(ovr) else np.nan for k in ("ovr", "off", "def")}
+        if season == ongoing and len(ovr) and full:
+            # Injured players' minutes (all of them when out for a month, part when short) go to a replacement-level
+            # player, so a team that loses rotation players does not look better for dropping its weaker ones.
+            gap = full - ovr_w.sum()
+            roster = {k: (float((ovr[k] * ovr_w).sum()) + gap * float(replacement[k])) / full for k in roster}
         teams.append({**{f"roster_{k}": v for k, v in roster.items()},
             "season": season, "team": team, "minutes": float(minutes.sum()),
             "off": mixes["offense"], "def": mixes["defense"],
-            "avg_ovr": float(np.average(ovr.ovr, weights=ovr["min"])) if len(ovr) else None,
+            "avg_ovr": float(np.average(ovr.ovr, weights=ovr_w)) if len(ovr) else None,
             "core": [{"player_id": int(r.pid), "name": r["name"], "minutes": int(r["min"]), "style": r["style"],
+                      **({"avail": round(float(avail[r.pid]), 2)} if avail[r.pid] < 1 else {}),
                       "ovr": None if pd.isna(r.ovr) else int(r.ovr), "off": None if pd.isna(r["off"]) else int(r["off"]),
                       "def": None if pd.isna(r["def"]) else int(r["def"])} for _, r in off.iterrows()],
         })
@@ -132,7 +182,6 @@ def compute(conn: psycopg.Connection) -> dict:
     Z = team_features.standardize(f).dropna(axis=1)
     # The season in progress: blend each team's style with its last season by games played.
     weights: dict[tuple[str, str], float] = {}
-    ongoing = blend.ongoing_season(conn)
     if ongoing:
         prior = blend.previous(ongoing)
         for s, t in [i for i in Z.index if i[0] == ongoing]:

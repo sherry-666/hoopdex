@@ -3,6 +3,7 @@
 Run: .venv/bin/uvicorn ballstats.api:app --port 8000
 """
 
+import datetime as dt
 import re
 from functools import lru_cache
 from urllib.parse import urlencode
@@ -16,6 +17,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from ballstats import config, db, powers, roles, seo
+from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
 WEB_DIST: Path = config.WEB_DIST
@@ -361,8 +363,12 @@ def team_page(team: str, season: str) -> dict:
             "SELECT DISTINCT ON (player_id) player_id, status, body_part, detail, side, return_date, short_comment"
             " FROM live.injury WHERE player_id = ANY(%s) ORDER BY player_id, reported_at DESC NULLS LAST",
             ([r["player_id"] for r in roster],))}
+    today = dt.date.today()
     for r in roster:
-        r["injury"] = {k: v for k, v in hurt[r["player_id"]].items() if k != "player_id"} if r["player_id"] in hurt else None
+        h = hurt.get(r["player_id"])
+        r["injury"] = {k: v for k, v in h.items() if k != "player_id"} if h else None
+        # How much he counts toward the team's rating and rotation (teams.py); 1 = fully.
+        r["avail"] = round(team_model.availability(h["status"], h["return_date"], today), 2) if h else 1.0
     games = q("SELECT game_id, season_type, opp, home, tipoff, game_date, completed, team_score, opp_score"
               " FROM live.game WHERE season = %s AND team = %s ORDER BY tipoff", (season, team))
     return {"team": team, "season": season, "profile": prof[0], "standing": standing[0] if standing else None,

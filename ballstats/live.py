@@ -295,6 +295,19 @@ def update_schedule(conn) -> int:
     return n
 
 
+def refresh_teams(conn) -> bool:
+    """Rebuild team ratings and rotations so they follow today's injury report (teams.py). Best effort:
+    a failure here must not fail the rest of the daily update."""
+    from ballstats import teams
+
+    try:
+        teams.compute(conn)
+        return True
+    except Exception:
+        log.exception("team ratings not refreshed")
+        return False
+
+
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
     # Rows from before season_type was stored may include preseason games; refetch them.
@@ -305,9 +318,10 @@ def update(conn, days: int = 3) -> dict:
     n_inj, missed_i = update_injuries(conn, index)
     n_stand = update_standings(conn)
     n_sched = update_schedule(conn)
+    teams_ok = refresh_teams(conn)
     unmatched = sorted(set(missed_g) | set(missed_i))
     conn.execute("INSERT INTO live.update_log (games, injuries, unmatched) VALUES (%s, %s, %s)",
                  (n_games, n_inj, unmatched))
     if unmatched:
         log.warning("%d names without an NBA id: %s", len(unmatched), ", ".join(unmatched[:20]))
-    return {"games": n_games, "injuries": n_inj, "standings": n_stand, "schedule": n_sched, "unmatched": len(unmatched)}
+    return {"games": n_games, "injuries": n_inj, "standings": n_stand, "schedule": n_sched, "teams_refreshed": teams_ok, "unmatched": len(unmatched)}

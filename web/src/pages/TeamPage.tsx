@@ -16,7 +16,7 @@ function shortDate(iso: string, lang: "zh" | "en") {
 }
 
 /** Red cross next to an injured player; hover or focus for status, body part and expected return. */
-function InjuryMark({ injury }: { injury: NonNullable<TeamRosterRow["injury"]> }) {
+function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["injury"]>; avail: number }) {
   const { t, lang } = useLang();
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const where = injuryWhere(injury, lang);
@@ -45,6 +45,11 @@ function InjuryMark({ injury }: { injury: NonNullable<TeamRosterRow["injury"]> }
           <div style={{ marginTop: 6 }}>
             {injury.return_date ? t("预计 {date} 前后复出", { date: injury.return_date }) : t("复出时间未定")}
           </div>
+          {avail < 1 && (
+            <div className="note" style={{ marginTop: 6 }}>
+              {avail === 0 ? t("伤停超过一个月：不计入球队的评分和阵容构成。") : t("球队评分里按 {pct}% 计算。", { pct: Math.round(avail * 100) })}
+            </div>
+          )}
           {injury.short_comment && <p className="note" style={{ margin: "6px 0 0" }}>{injury.short_comment}</p>}
         </div>
       )}
@@ -153,6 +158,13 @@ export default function TeamPage() {
       <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span className="caption" style={{ fontSize: 20, alignSelf: "flex-start" }}>{t("球员阵容与数据")}</span>
         <p className="note" style={{ margin: 0 }}>{t("本赛季结束时效力这支球队的球员，按上场时间排序；场均数据是整个赛季的常规赛场均。")}</p>
+        {roster.some((r) => r.avail < 1) && (
+          <p className="note" style={{ margin: 0 }}>
+            {t("球队评分和阵容构成会考虑伤病：伤停超过一个月的球员（{names}）不计入，较短的缺阵按出战比例折算。", {
+              names: roster.filter((r) => r.avail === 0).map((r) => r.name).join(t("、")) || t("无"),
+            })}
+          </p>
+        )}
         <div className="table-box" style={{ maxHeight: "none" }}>
           <table className="data" style={{ minWidth: 640 }}>
             <thead>
@@ -172,7 +184,7 @@ export default function TeamPage() {
             <tbody>
               {roster.map((r) => (
                 <tr key={r.player_id}>
-                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} />}</td>
+                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</td>
                   <td className="num-col"><OvrBadge ovr={r.ovr} size={30} /></td>
                   <td className="num-col">{r.off ?? "—"}</td>
                   <td className="num-col">{r.def ?? "—"}</td>
