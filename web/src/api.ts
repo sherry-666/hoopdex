@@ -155,6 +155,7 @@ export interface TeamRosterRow {
   player_id: number; name: string; gp: number; minutes: number; ts_pct: number | null;
   off_style: string | null; def_style: string | null; ovr: number | null; off: number | null; def: number | null;
   pts: number | null; reb: number | null; ast: number | null;
+  injury: Pick<Injury, "status" | "body_part" | "detail" | "side" | "return_date" | "short_comment"> | null;
 }
 export interface TeamPageData {
   team: string; season: string; seasons: string[]; games: TeamGame[]; roster: TeamRosterRow[];

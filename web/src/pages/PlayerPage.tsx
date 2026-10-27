@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, useRecentGames, useSeasons } from "../api";
 import { Burst, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
-import { label } from "../labels";
+import { injuryWhere, label } from "../labels";
 import { teamName } from "../teams";
 import { OffDef, OvrBadge, RatingPanel } from "../components/rating";
 
@@ -161,24 +161,10 @@ export default function PlayerPage() {
   );
 }
 
-const BODY_EN: Record<string, string> = {
-  Foot: "Foot", Ankle: "Ankle", Knee: "Knee", Hamstring: "Hamstring", Calf: "Calf", Back: "Back", Hip: "Hip", Groin: "Groin",
-  Shoulder: "Shoulder", Wrist: "Wrist", Hand: "Hand", Finger: "Finger", Thumb: "Thumb", Elbow: "Elbow", Thigh: "Thigh",
-  Quadricep: "Quad", Achilles: "Achilles", Head: "Head", Neck: "Neck", Toe: "Toe", Illness: "Illness", Rest: "Rest",
-};
-const BODY_ZH: Record<string, string> = {
-  Foot: "脚", Ankle: "脚踝", Knee: "膝盖", Hamstring: "腿筋", Calf: "小腿", Back: "背部", Hip: "髋部", Groin: "腹股沟",
-  Shoulder: "肩膀", Wrist: "手腕", Hand: "手", Finger: "手指", Thumb: "拇指", Elbow: "手肘", Thigh: "大腿",
-  Quadricep: "股四头肌", Achilles: "跟腱", Head: "头部", Neck: "颈部", Toe: "脚趾", Illness: "生病", Rest: "轮休",
-};
-const SIDE_ZH: Record<string, string> = { Left: "左", Right: "右" };
-
 function InjuryBanner({ injury }: { injury: Injury }) {
   const { t, lang } = useLang();
   const out = injury.status === "Out";
-  const part = injury.body_part ? (lang === "zh" ? BODY_ZH : BODY_EN)[injury.body_part] ?? injury.body_part : null;
-  const side = injury.side && lang === "zh" ? SIDE_ZH[injury.side] ?? "" : injury.side ?? "";
-  const where = part ? (lang === "zh" ? `${side}${part}` : `${side} ${part}`.trim()) : null;
+  const where = injuryWhere(injury, lang);
   return (
     <div className="bubble" style={{ borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", margin: 0 }}>
       <div className="row" style={{ gap: 8 }}>

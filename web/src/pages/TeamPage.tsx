@@ -1,8 +1,9 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { TeamGame, useDefaultSeason, useTeamPage, useTeamSeasons } from "../api";
+import { TeamGame, TeamRosterRow, useDefaultSeason, useTeamPage, useTeamSeasons } from "../api";
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
+import { injuryWhere } from "../labels";
 import { teamName } from "../teams";
 
 const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
@@ -11,6 +12,20 @@ const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%
 function shortDate(iso: string, lang: "zh" | "en") {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", weekday: "short" });
+}
+
+/** Red cross next to an injured player; hover for status, body part and expected return. */
+function InjuryMark({ injury }: { injury: NonNullable<TeamRosterRow["injury"]> }) {
+  const { t, lang } = useLang();
+  const where = injuryWhere(injury, lang);
+  const tip = [injury.status === "Out" ? t("伤停") : t("出战成疑"), where && (injury.detail && lang === "en" ? `${where} · ${injury.detail}` : where),
+    injury.return_date && t("预计 {date} 前后复出", { date: injury.return_date }), injury.short_comment].filter(Boolean).join(" · ");
+  return (
+    <svg role="img" aria-label={tip} width="16" height="16" viewBox="0 0 16 16" style={{ marginLeft: 6, verticalAlign: "-2px", flex: "none" }}>
+      <title>{tip}</title>
+      <path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function GameRow({ g, season }: { g: TeamGame; season: string }) {
@@ -133,7 +148,7 @@ export default function TeamPage() {
             <tbody>
               {roster.map((r) => (
                 <tr key={r.player_id}>
-                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link></td>
+                  <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} />}</td>
                   <td className="num-col"><OvrBadge ovr={r.ovr} size={30} /></td>
                   <td className="num-col">{r.off ?? "—"}</td>
                   <td className="num-col">{r.def ?? "—"}</td>

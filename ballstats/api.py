@@ -354,6 +354,15 @@ def team_page(team: str, season: str) -> dict:
         gp = t["gp"] if t else 0
         for k in ("pts", "reb", "ast"):
             r[k] = round(t[k] / gp, 1) if t and gp and t[k] is not None else None
+    # The injury report is a snapshot of today, so it only means something for the season in progress.
+    hurt = {}
+    if season == default_season() and roster:
+        hurt = {r["player_id"]: r for r in q(
+            "SELECT DISTINCT ON (player_id) player_id, status, body_part, detail, side, return_date, short_comment"
+            " FROM live.injury WHERE player_id = ANY(%s) ORDER BY player_id, reported_at DESC NULLS LAST",
+            ([r["player_id"] for r in roster],))}
+    for r in roster:
+        r["injury"] = {k: v for k, v in hurt[r["player_id"]].items() if k != "player_id"} if r["player_id"] in hurt else None
     games = q("SELECT game_id, season_type, opp, home, tipoff, game_date, completed, team_score, opp_score"
               " FROM live.game WHERE season = %s AND team = %s ORDER BY tipoff", (season, team))
     return {"team": team, "season": season, "profile": prof[0], "standing": standing[0] if standing else None,

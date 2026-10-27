@@ -62,3 +62,22 @@ export const PROFILE_FEATURES: Record<"offense" | "defense", string[]> = {
     "def_pt_Isolation", "def_pt_PRBallHandler", "def_pt_PRRollman", "def_pt_Postup", "def_pt_Spotup",
     "def_pt_Handoff", "def_pt_OffScreen"],
 };
+
+const BODY_EN: Record<string, string> = {
+  Foot: "Foot", Ankle: "Ankle", Knee: "Knee", Hamstring: "Hamstring", Calf: "Calf", Back: "Back", Hip: "Hip", Groin: "Groin",
+  Shoulder: "Shoulder", Wrist: "Wrist", Hand: "Hand", Finger: "Finger", Thumb: "Thumb", Elbow: "Elbow", Thigh: "Thigh",
+  Quadricep: "Quad", Achilles: "Achilles", Head: "Head", Neck: "Neck", Toe: "Toe", Illness: "Illness", Rest: "Rest",
+};
+const BODY_ZH: Record<string, string> = {
+  Foot: "脚", Ankle: "脚踝", Knee: "膝盖", Hamstring: "腿筋", Calf: "小腿", Back: "背部", Hip: "髋部", Groin: "腹股沟",
+  Shoulder: "肩膀", Wrist: "手腕", Hand: "手", Finger: "手指", Thumb: "拇指", Elbow: "手肘", Thigh: "大腿",
+  Quadricep: "股四头肌", Achilles: "跟腱", Head: "头部", Neck: "颈部", Toe: "脚趾", Illness: "生病", Rest: "轮休",
+};
+const SIDE_ZH: Record<string, string> = { Left: "左", Right: "右" };
+
+/** "Left Knee" / "左膝盖": where the injury is, or null when ESPN gives no body part. */
+export function injuryWhere(injury: { body_part: string | null; side: string | null }, lang: "zh" | "en"): string | null {
+  const part = injury.body_part ? (lang === "zh" ? BODY_ZH : BODY_EN)[injury.body_part] ?? injury.body_part : null;
+  const side = injury.side && lang === "zh" ? SIDE_ZH[injury.side] ?? "" : injury.side ?? "";
+  return part ? (lang === "zh" ? `${side}${part}` : `${side} ${part}`.trim()) : null;
+}
