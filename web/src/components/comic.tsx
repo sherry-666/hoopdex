@@ -5,6 +5,16 @@ import { POWERS_EN, useLang } from "../i18n";
 import { teamName } from "../teams";
 import { OffDef, OvrBadge } from "./rating";
 
+/** A team's comic emblem: /team-logos/<abbr>.webp when it exists, otherwise nothing. */
+export function TeamLogo({ team, size = 28 }: { team: string; size?: number }) {
+  const [missing, setMissing] = useState(false);
+  if (missing) return null;
+  return (
+    <img src={`/team-logos/${team}.webp`} alt="" width={size} height={size} onError={() => setMissing(true)}
+      style={{ display: "inline-block", width: size, height: size, objectFit: "contain", verticalAlign: "middle", marginRight: 6, flex: "none" }} />
+  );
+}
+
 /** A player's comic portrait: /portraits/<id>.webp when it exists, otherwise an
  * inked silhouette on halftone in the colour of his main archetype. */
 export function Portrait({ id, name, archetype, size = 220 }: { id: number; name: string; archetype?: number | null; size?: number }) {

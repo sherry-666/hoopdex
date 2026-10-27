@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { seriesColor, TeamProfile, useTeams } from "../api";
-import { Failed, Loading, MixBar } from "../components/comic";
+import { Failed, Loading, MixBar, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang } from "../i18n";
 import { teamName } from "../teams";
@@ -67,7 +67,7 @@ function TeamCard({ t, season, archetypes }: { t: TeamProfile; season: string; a
     <article className="panel pop-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
         <div style={{ minWidth: 0 }}>
-          <h3 style={{ fontSize: 24, lineHeight: 1.1 }}>{teamName(t.team, lang, lang === "en")}</h3>
+          <h3 style={{ fontSize: 24, lineHeight: 1.1 }}><TeamLogo team={t.team} size={40} />{teamName(t.team, lang, lang === "en")}</h3>
           <span className="tag" style={{ marginTop: 6 }}>{name(t.defense_tag)}</span>
         </div>
         <div style={{ textAlign: "center", display: "grid", justifyItems: "center", gap: 4 }}>

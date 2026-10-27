@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Rankings as RankingsData, Standing, useRankings, useRankingSeasons, useSeasons } from "../api";
-import { Failed, Loading, SeasonSelect } from "../components/comic";
+import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { OvrBadge } from "../components/rating";
 import { teamName } from "../teams";
@@ -32,7 +32,7 @@ function StandingsTable({ title, rows, season }: { title: string; rows: Standing
               <tr key={r.team} style={r.rank === cut + 1 ? { borderTop: "3px solid var(--ink)" } : r.rank === 11 && hasPlayIn(season) ? { borderTop: "2px dashed var(--ink)" } : undefined}>
                 <td className="num-col">{r.rank}</td>
                 <td>
-                  {teamName(r.team, lang, true)}
+                  <TeamLogo team={r.team} size={28} />{teamName(r.team, lang, true)}
                   {r.clincher && CLINCH[r.clincher] && <span className="tag" style={{ marginLeft: 6 }}>{t(CLINCH[r.clincher])}</span>}
                 </td>
                 <td className="num-col">{r.wins}</td><td className="num-col">{r.losses}</td>
