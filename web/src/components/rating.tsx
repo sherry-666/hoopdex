@@ -222,7 +222,7 @@ export function RatingPanel({ rating, career, lines, season }: {
             {career && (
               <div style={{ display: "grid", gap: 6 }}>
                 <Score label={t("巅峰评分")} value={career.peak} digits={1}
-                  sub={career.peak_from === career.peak_to ? career.peak_from : `${career.peak_from} – ${career.peak_to}`} />
+                  sub={career.peak_from === career.peak_to ? career.peak_from : `${t("三季平均")} ${career.peak_from} – ${career.peak_to}`} />
                 <Score label={t("生涯评分")} value={career.career} digits={1}
                   sub={t("{n} 个赛季，其中 {q} 季满 500 分钟", { n: career.seasons, q: career.qualified_seasons })} />
               </div>

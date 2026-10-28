@@ -95,7 +95,7 @@ const UI_EN: Record<string, string> = {
   "{first} 至 {last}": "{first} to {last}",
   // ratings
   "能力值": "Rating", "{season} 综合评分": "{season} OVR", "这个赛季还没有评分。": "No rating for this season yet.",
-  "巅峰评分": "Peak", "生涯评分": "Career", "{n} 个赛季，其中 {q} 季满 500 分钟": "{n} seasons, {q} with 500+ minutes",
+  "巅峰评分": "Peak", "三季平均": "3-season avg", "生涯评分": "Career", "{n} 个赛季，其中 {q} 季满 500 分钟": "{n} seasons, {q} with 500+ minutes",
   "综合贡献": "Contribution", "PIE {v}：他占场上所有统计事件的份额": "PIE {v}: his share of all box-score events in his games",
   "得分效率与量": "Scoring volume and efficiency", "使用率 {usg}，真实命中率 {ts}（联盟 {lg}）": "Usage {usg}, true shooting {ts} (league {lg})",
   "在场表现": "On-court", "他在场时球队每 100 回合净胜 {net} 分": "Team net {net} points per 100 possessions with him on the floor",
