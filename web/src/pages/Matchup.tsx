@@ -92,6 +92,7 @@ function Prediction({ p }: { p: GamePrediction }) {
       <div style={{ maxWidth: 420 }}>
         {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
         {row(t("主场"), 2.15)}
+        {row(t("背靠背{who}", { who: [p.away, p.home].filter((tm) => p.back_to_back[tm]).map((tm) => ` · ${teamName(tm, lang, true)}${t("昨天也打了")}`).join("") }), p.rest)}
         <Detail label={t("阵容适配（两队各前 5 名可出战球员）")} total={p.fit} cap={p.component_cap}
           lines={Object.fromEntries(Object.entries(p.fit_items).map(([tm, items]) => [tm, items.map((i: FitItem) => ({
             points: i.points,

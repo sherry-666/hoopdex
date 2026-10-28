@@ -208,7 +208,7 @@ export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () 
 
 export interface GamePrediction {
   season: string; date: string; away: string; home: string; rating: Record<string, number>;
-  base_margin: number; fit: number; matchup: number; margin: number; home_win: number;
+  base_margin: number; rest: number; back_to_back: Record<string, boolean>; fit: number; matchup: number; margin: number; home_win: number;
   fit_items: Record<string, FitItem[]>; matchup_items: Record<string, MatchupItem[]>; component_cap: number;
   key_players: Record<string, { player_id: number; name: string; ovr: number }[]>;   // the five that count in fit and matchup
   best_player: Record<string, number | null>;   // highest-rated player who can play in full that day

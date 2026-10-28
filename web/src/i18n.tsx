@@ -10,7 +10,7 @@ const UI_EN: Record<string, string> = {
   "这一天没有比赛。": "No games on this day.", "已结束": "Final", "阵容": "Roster", "预测": "Prediction", "预计分差": "Expected margin", "主队 {pct}%": "Home {pct}%",
   "球队评分差（按当天能出战的球员）": "Team rating gap (players able to play that day)",
   "阵容适配（两队各前 5 名可出战球员）": "Lineup fit (each team's top 5 available players)", "主力克制（两队各前 5 名可出战球员）": "Key-player matchup (each team's top 5 available players)",
-  "合计（主队减客队）": "Total (home minus away)", "主力球员": "Key players", "合计 {v} 分": "total {v} pts", "另有 {n} 对影响较小": "{n} more pairs with smaller effects",
+  "合计（主队减客队）": "Total (home minus away)", "主力球员": "Key players", "背靠背{who}": "Back-to-back{who}", "昨天也打了": " played yesterday", "合计 {v} 分": "total {v} pts", "另有 {n} 对影响较小": "{n} more pairs with smaller effects",
   "单队合计超过上限 ±{cap} 分，按上限计。": "A team's total is over the ±{cap} point limit and counts at the limit.",
   "进攻搭配": "offence pairing", "防守搭配": "defence pairing", "回合": "poss.", "分": "pts",
   "阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。": "Lineup fit and star matchup showed almost no predictive power in backtests, so they count at a quarter and at most ±1.5 points each.", "最强球员": "Best players", "场均篮板": "Rebounds per game", "场均助攻": "Assists per game", "球队对比": "Team comparison", "进攻效率": "Offensive rating", "防守效率": "Defensive rating", "场均得分": "Points per game", "场均失分": "Points allowed per game", "今天": "Today", "赛程": "the schedule",

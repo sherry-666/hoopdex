@@ -1,12 +1,13 @@
 """Game prediction for the days ahead.
 
 margin (home minus away, points) =
-    K * (rating gap on the game day) + HOME_EDGE + fit + matchup
+    K * (rating gap on the game day) + HOME_EDGE + back-to-back + fit + matchup
 
   rating gap   each team's rating (feat.team_profile, built with today's injury report) corrected for who can
                actually play on the game day: a player listed Out is left out unless his return date is on or before
                that day; day-to-day players count at teams.DAY_TO_DAY_FACTOR. The correction is the change in the
                rotation's minutes-weighted rating (teams._roster_with_injuries), in team-rating points.
+  back-to-back a team that also played the day before loses BACK_TO_BACK points (fatigue), either side.
   fit          the team's NUM_KEY best-rated players among those fully able to play that day, pairwise: do two such kinds of player share the
                floor better or worse than their own levels predict (feat.role_synergy, offence and defence).
   matchup      each side's key players against the other side's key players: offence archetype x defence archetype
@@ -32,6 +33,7 @@ NUM_KEY = 5                     # the key players: the five best rated among tho
                                 # (by rating, not minutes: early in a season minutes are a few games' worth)
 K = 0.79                        # points of margin per team-rating point
 HOME_EDGE = 2.15
+BACK_TO_BACK = 2.0              # points a team loses when it also played the day before (11 seasons: -1.9 at home, -2.2 away)
 SIGMA = 13.1                    # sd of a game's margin around the prediction
 FIT_OVERLAP = 0.5               # share of a game two stars are on the floor together
 MATCHUP_POSS = 4                # partial possessions of one star-pair matchup per game
@@ -76,6 +78,14 @@ def _pair_effects(conn: psycopg.Connection):
     syn = {(s, a, b): e for s, a, b, e in conn.execute("SELECT side, type_a, type_b, effect FROM feat.role_synergy")}
     mat = {(o, d): e for o, d, e in conn.execute("SELECT off_type, def_type, effect FROM feat.role_matchup WHERE season = 'all'")}
     return syn, mat
+
+
+def _game_days(conn: psycopg.Connection, season: str) -> dict[str, set[dt.date]]:
+    """The dates each team plays this season, played or still to come (US Eastern)."""
+    days: dict[str, set[dt.date]] = {}
+    for team, d in conn.execute("SELECT team, game_date FROM live.game WHERE season = %s", (season,)):
+        days.setdefault(team, set()).add(d)
+    return days
 
 
 def _cap(v: float) -> float:
@@ -156,6 +166,7 @@ def _context(conn: psycopg.Connection) -> dict:
         "league_sd": float(np.nanstd([_rotation_ovr(g, hurt_now, replacement) for _, g in df.groupby("team")])),
         "rating": dict(conn.execute("SELECT team, ovr FROM feat.team_profile WHERE season = %s", (season,)).fetchall()),
         "pairs": _pair_effects(conn),
+        "game_days": _game_days(conn, season),
         "type_names": {(side, tid): name for side, tid, name in conn.execute(
             "SELECT side, type_id, name FROM feat.role_type WHERE level = 'archetype'"
             " AND season = (SELECT max(season) FROM feat.role_type WHERE level = 'archetype')")},
@@ -178,13 +189,15 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
     fit = _total(fit_items[home]) - _total(fit_items[away])
     matchup = _total(match_items[home]) - _total(match_items[away])
     base = K * (side[home] - side[away]) + HOME_EDGE
-    margin = base + fit + matchup
+    tired = {team: (day - dt.timedelta(days=1)) in ctx["game_days"].get(team, ()) for team in (away, home)}
+    rest = BACK_TO_BACK * (tired[away] - tired[home])
+    margin = base + rest + fit + matchup
     key_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr)} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
     best = lambda team: int(_able(df, team, inj, day).sort_values("ovr", ascending=False).pid.iloc[0]) if len(_able(df, team, inj, day)) else None
     return {
         "season": ctx["season"], "date": day.isoformat(), "away": away, "home": home,
         "rating": {away: round(float(side[away]), 1), home: round(float(side[home]), 1)},
-        "base_margin": round(float(base), 1), "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
+        "base_margin": round(float(base), 1), "rest": round(float(rest), 2), "back_to_back": tired, "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),
         "fit_items": fit_items, "matchup_items": match_items, "component_cap": COMPONENT_CAP,
         "key_players": {away: key_rows(sa), home: key_rows(sh)}, "best_player": {away: best(away), home: best(home)},
