@@ -79,7 +79,8 @@ export default function Home() {
             {t(sec.title)} <span className="note">{t(sec.note, { season: season ?? "" })}</span>
           </h2>
           <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr} off={p.off} def={p.def}
+            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr}
+              off={"titles" in p ? undefined : p.off} def={"titles" in p ? undefined : p.def}
               extra={"titles" in p ? <Honors p={p as HallRow} /> : undefined} />)}
           </div>
         </section>
