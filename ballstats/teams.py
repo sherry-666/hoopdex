@@ -113,12 +113,32 @@ def _team_ratings(T: pd.DataFrame, weights: dict[tuple[str, str], float]) -> pd.
             if (s, t) in row and prior is not None and pd.notna(res_z.iloc[prior]):
                 i = row[(s, t)]
                 res_z.iloc[i] = w * res_z.iloc[i] + (1 - w) * res_z.iloc[prior] if pd.notna(res_z.iloc[i]) else res_z.iloc[prior]
-        z = ROSTER_SHARE * zs(f"roster_{k}") + (1 - ROSTER_SHARE) * res_z.fillna(zs(f"roster_{k}"))
-        T["_z"] = z
-        z = zs("_z")
+        # Results were earned with the injured players on the floor, so what the injuries take away from the roster
+        # counts in full on top of the blend, not just through the roster's half.
+        lost = (T[f"roster_{k}"] - T[f"healthy_{k}"]).fillna(0) / T.groupby("season")[f"roster_{k}"].transform("std")
+        T["_z"] = ROSTER_SHARE * zs(f"healthy_{k}") + (1 - ROSTER_SHARE) * res_z.fillna(zs(f"healthy_{k}"))
+        # Centred and scaled without the injuries, so a team's rating does not move with other teams' absences.
+        z = (T["_z"] + lost - T.groupby("season")["_z"].transform("mean")) / T.groupby("season")["_z"].transform("std")
         out[f"rating_{k}"] = np.clip(np.round(TEAM_MID + TEAM_SD * z), 50, 99)
     T.drop(columns=[c for c in T.columns if c.startswith("_")], inplace=True)
     return out
+
+
+def _roster_with_injuries(top: pd.DataFrame, everyone: pd.DataFrame, hurt: dict[int, float],
+                          replacement: pd.Series) -> dict[str, float]:
+    """The healthy rotation's minutes-weighted ratings, with the minutes injuries take away handed to teammates
+    rated below the injured player (the stronger ones already play the most they can), in proportion to their
+    minutes; to a replacement-level player when nobody on the team is weaker."""
+    avail = lambda pids: pids.map(lambda p: hurt.get(p, 1.0))
+    keys = ("ovr", "off", "def")
+    total = {k: float((top[k] * top["min"] * avail(top.pid)).sum()) for k in keys}
+    for _, p in top[avail(top.pid) < 1].iterrows():
+        lost = p["min"] * (1 - hurt[p.pid])
+        pool = everyone[(everyone.ovr < p.ovr) & (avail(everyone.pid) > 0)]
+        w = pool["min"] * avail(pool.pid)
+        for k in keys:
+            total[k] += lost * (float((pool[k] * w).sum() / w.sum()) if w.sum() > 0 else float(replacement[k]))
+    return {k: v / top["min"].sum() for k, v in total.items()}
 
 
 def compute(conn: psycopg.Connection) -> dict:
@@ -144,7 +164,9 @@ def compute(conn: psycopg.Connection) -> dict:
     for (season, team), g in df.groupby(["season", "team"]):
         off = g[g.side == "offense"]
         # Minutes the full-strength rotation would give its rated players; injuries are charged against this.
-        full = off.sort_values("min", ascending=False).head(NUM_ROTATION).dropna(subset=["ovr"])["min"].sum()
+        off_all = off.dropna(subset=["ovr"])
+        top = off.sort_values("min", ascending=False).head(NUM_ROTATION).dropna(subset=["ovr"])
+        healthy = {k: float(np.average(top[k], weights=top["min"])) if len(top) else np.nan for k in ("ovr", "off", "def")}
         if season == ongoing:   # out for over a month: not part of the rotation; shorter absences count less
             off = off[off.pid.map(lambda p: hurt.get(p, 1.0)) > 0]
         off = off.sort_values("min", ascending=False).head(NUM_ROTATION)
@@ -159,12 +181,9 @@ def compute(conn: psycopg.Connection) -> dict:
         ovr = off.dropna(subset=["ovr"])
         ovr_w = ovr["min"] * ovr.pid.map(avail)
         roster = {k: float(np.average(ovr[k], weights=ovr_w)) if len(ovr) else np.nan for k in ("ovr", "off", "def")}
-        if season == ongoing and len(ovr) and full:
-            # Injured players' minutes (all of them when out for a month, part when short) go to a replacement-level
-            # player, so a team that loses rotation players does not look better for dropping its weaker ones.
-            gap = full - ovr_w.sum()
-            roster = {k: (float((ovr[k] * ovr_w).sum()) + gap * float(replacement[k])) / full for k in roster}
-        teams.append({**{f"roster_{k}": v for k, v in roster.items()},
+        if season == ongoing and len(top):
+            roster = _roster_with_injuries(top, off_all, hurt, replacement)
+        teams.append({**{f"roster_{k}": v for k, v in roster.items()}, **{f"healthy_{k}": v for k, v in healthy.items()},
             "season": season, "team": team, "minutes": float(minutes.sum()),
             "off": mixes["offense"], "def": mixes["defense"],
             "avg_ovr": float(np.average(ovr.ovr, weights=ovr_w)) if len(ovr) else None,
