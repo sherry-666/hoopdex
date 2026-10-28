@@ -83,8 +83,13 @@ function Prediction({ p }: { p: GamePrediction }) {
   );
 }
 
-const bestPlayer = (d: TeamPageData) =>
-  d.roster.filter((r) => !r.departed && r.ovr != null).sort((x, y) => (y.ovr ?? 0) - (x.ovr ?? 0))[0];
+/** The team's highest-rated player who can play on the game day: fully available per the prediction's star list,
+ *  or, below the star line, simply not on the injury report. */
+const bestPlayer = (d: TeamPageData, team: string, pred: GamePrediction | undefined) => {
+  const ok = new Set(pred?.stars[team]?.filter((s) => s.available).map((s) => s.player_id));
+  const rated = d.roster.filter((r) => !r.departed && r.ovr != null).sort((x, y) => (y.ovr ?? 0) - (x.ovr ?? 0));
+  return rated.find((r) => ok.has(r.player_id)) ?? rated.find((r) => !r.injury);
+};
 
 function Star({ r, season, team }: { r: TeamRosterRow; season: string; team: string }) {
   const { t, name, lang } = useLang();
@@ -133,7 +138,7 @@ export default function Matchup() {
   const a = useTeamPage(away, season), h = useTeamPage(home, season);
   const pred = usePrediction(away, home, qs.get("date"));
   usePageTitle(`${teamName(away, lang, true)} @ ${teamName(home, lang, true)}`);
-  if (!season || a.isLoading || h.isLoading) return <Loading what="球队" />;
+  if (!season || a.isLoading || h.isLoading || pred.isLoading) return <Loading what="球队" />;
   if (a.error || h.error || !a.data || !h.data) return <Failed error={a.error ?? h.error} />;
   const pa = a.data.profile, ph = h.data.profile, sa = a.data.standing, sh = h.data.standing;
   return (
@@ -165,7 +170,7 @@ export default function Matchup() {
       </section>
 
       {(() => {
-        const sa2 = bestPlayer(a.data), sh2 = bestPlayer(h.data);
+        const sa2 = bestPlayer(a.data, away, pred.data), sh2 = bestPlayer(h.data, home, pred.data);
         if (!sa2 && !sh2) return null;
         return (
           <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
