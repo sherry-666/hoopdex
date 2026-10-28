@@ -148,7 +148,7 @@ team styles still come from the local pipeline. `push_db.sh` only replaces `raw`
 On Railway it is a second service from the same repo and image, run on a schedule (`railway.cron.json`, 11:00 UTC
 daily, after the last games end in the US):
 
-1. Dashboard → New → GitHub repo / empty service named `cron`; deploy the same source (`railway up --service cron`).
+1. Dashboard → New → GitHub repo / empty service named `espn-cron`; deploy the same source (`railway up --service espn-cron`).
 2. Service → Settings → Config-as-code → file path `/railway.cron.json`.
 3. Service → Variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 4. The first run, with an empty `live.player_game`, looks back 45 days to fill the season so far.
