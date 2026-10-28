@@ -231,6 +231,15 @@ def cmd_live_update(args) -> int:
     return 0
 
 
+def cmd_schedule_update(args) -> int:
+    from ballstats import live
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("schedule-update:", live.update_light(conn))
+    return 0
+
+
 def cmd_daily_update(args) -> int:
     """The nightly nba stats refresh: collect the season so far, then rebuild what is derived from it.
 
@@ -298,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
     live_p = sub.add_parser("live-update", help="finished games and the injury report from ESPN (the daily cron job)")
     live_p.add_argument("--days", type=int, default=3, help="look back this many days for games not stored yet")
 
+    sub.add_parser("schedule-update", help="schedule and scores, injury report and standings from ESPN (the hourly cron job)")
+
     daily_p = sub.add_parser("daily-update", help="nba stats refresh of the current season, then roles / ratings / teams (the nightly job)")
     daily_p.add_argument("--season", default=current_season())
     daily_p.add_argument("--reference", help="role model season (default: the previous season)")
@@ -324,6 +335,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_parse(args)
     if args.command == "ratings":
         return cmd_ratings(args)
+    if args.command == "schedule-update":
+        return cmd_schedule_update(args)
     if args.command == "live-update":
         return cmd_live_update(args)
     if args.command == "teams":

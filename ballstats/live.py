@@ -308,6 +308,17 @@ def refresh_teams(conn) -> bool:
         return False
 
 
+def update_light(conn) -> dict:
+    """The part of update() that changes within a day and is cheap: schedule and scores, injury report, standings.
+    Leaves box scores and the team ratings to the daily run."""
+    n_inj, missed = update_injuries(conn, player_index(conn))
+    n_stand = update_standings(conn)
+    n_sched = update_schedule(conn)
+    if missed:
+        log.warning("%d injury names without an NBA id: %s", len(set(missed)), ", ".join(sorted(set(missed))[:20]))
+    return {"injuries": n_inj, "standings": n_stand, "schedule": n_sched}
+
+
 def update(conn, days: int = 3) -> dict:
     index = player_index(conn)
     # Rows from before season_type was stored may include preseason games; refetch them.
