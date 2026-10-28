@@ -145,8 +145,8 @@ as a banner (current season only) and the last 10 games. It also keeps the confe
 which feed the Rankings tab together with the player ratings in `feat`. It does not touch `feat`: ratings, roles and
 team styles still come from the local pipeline. `push_db.sh` only replaces `raw` / `feat`, so `live` survives it.
 
-On Railway it is a second service from the same repo and image, run on a schedule (`railway.cron.json`, 11:00 UTC
-daily, after the last games end in the US):
+On Railway it is a second service from the same repo and image, run on a schedule (`railway.cron.json`, 11:00 and 21:00 UTC
+daily: after the last games end in the US, and again before the evening tip-offs so the injury report is fresh):
 
 1. Dashboard → New → GitHub repo / empty service named `espn-cron`; deploy the same source (`railway up --service espn-cron`).
 2. Service → Settings → Config-as-code → file path `/railway.cron.json`.
