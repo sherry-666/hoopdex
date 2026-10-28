@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { FitItem, GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
+import { GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -91,14 +91,15 @@ function Prediction({ p }: { p: GamePrediction }) {
         </div>
       </div>
       <div style={{ flex: "1 1 360px", maxWidth: 480, marginLeft: "auto" }}>
-        {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
-        {row(t("主场"), 2.15)}
+        {row(t("主场"), p.home_edge)}
+        {row(t("阵容评分差（按当天能出战的球员）"), p.roster)}
+        {Object.entries(p.injury_hit).some(([, v]) => v < -0.05) && (
+          <div className="note" style={{ padding: "2px 0 4px 12px" }}>
+            {t("其中伤病影响")}：{[p.away, p.home].map((tm) => `${teamName(tm, lang, true)} ${signed(p.injury_hit[tm])}`).join(" · ")}
+          </div>
+        )}
+        {row(t("近期状态（最近 20 场平均分差）"), p.form)}
         {row(t("背靠背{who}", { who: [p.away, p.home].filter((tm) => p.back_to_back[tm]).map((tm) => ` · ${teamName(tm, lang, true)}${t("昨天也打了")}`).join("") }), p.rest)}
-        <Detail label={t("阵容适配（两队各前 5 名可出战球员）")} total={p.fit} cap={p.component_cap}
-          lines={Object.fromEntries(Object.entries(p.fit_items).map(([tm, items]) => [tm, items.map((i: FitItem) => ({
-            points: i.points,
-            text: `${withType(i.a)} + ${withType(i.b)}：${i.side === "offense" ? t("进攻搭配") : t("防守搭配")} ${signed(i.effect)}/100 ${t("回合")} → ${signed(i.points)} ${t("分")}`,
-          }))]))} />
         <Detail label={t("主力克制（两队各前 5 名可出战球员）")} total={p.matchup} cap={p.component_cap}
           lines={Object.fromEntries(Object.entries(p.matchup_items).map(([tm, items]) => [tm, items.map((i: MatchupItem) => ({
             points: i.points,

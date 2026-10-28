@@ -1,22 +1,25 @@
 """Game prediction for the days ahead.
 
 margin (home minus away, points) =
-    K * (rating gap on the game day) + HOME_EDGE + back-to-back + fit + matchup
+    HOME_EDGE + C_ROSTER * (roster rating gap on the game day) + C_FORM * (recent-form gap)
+              + back-to-back + matchup
 
-  rating gap   each team's rating (feat.team_profile, built with today's injury report) corrected for who can
-               actually play on the game day: a player listed Out is left out unless his return date is on or before
-               that day; day-to-day players count at teams.DAY_TO_DAY_FACTOR. The correction is the change in the
-               rotation's minutes-weighted rating (teams._roster_with_injuries), in team-rating points.
+  roster       each team's rotation, minutes-weighted player ratings (minutes per game played, so a star with few games
+               still counts), with who can actually play on the game day: a player listed Out is left out unless his
+               return date is on or before that day; day-to-day players count at teams.DAY_TO_DAY_FACTOR. The minutes an
+               absence frees go to weaker teammates (teams._roster_with_injuries). Season-level data say a team loses
+               about INJURY_AMP times what that reshuffle alone predicts (the system has to be rebuilt), so the injury
+               part is scaled by INJURY_AMP.
+  form         mean margin of the team's last FORM_GAMES games this season, shrunk toward 0 by FORM_SHRINK pseudo-games.
   back-to-back a team that also played the day before loses BACK_TO_BACK points (fatigue), either side.
-  fit          the team's NUM_KEY best-rated players among those fully able to play that day, pairwise: do two such kinds of player share the
-               floor better or worse than their own levels predict (feat.role_synergy, offence and defence).
-  matchup      each side's key players against the other side's key players: offence archetype x defence archetype
-               (feat.role_matchup, pooled seasons).
+  matchup      each side's key players (the NUM_KEY best rated able to play) against the other side's: offence
+               archetype x defence archetype (feat.role_matchup, pooled seasons). Scaled down (STAR_SHARE) and capped.
+  fit          shown (feat.role_synergy pairs of the key players) but not part of the margin: in the backtest it
+               explains nothing.
 
-K, HOME_EDGE and SIGMA come from regressing 13212 regular-season games of 2015-16..2025-26 on the end-of-season
-rating gap (in-sample, so K leans high). The fit and matchup tables were backtested and add next to nothing
-(matchup.py, lineup_synergy.py): they are scaled down (STAR_SHARE), capped, and reported as their own lines so the
-page can show them apart from the rating-based margin.
+The coefficients come from scripts/backtest_predictor.py (2016-17..2025-26, 11982 games, leave-one-season-out:
+64% right with roster + back-to-back, 66% with form; always picking the home team is 56%). That backtest has
+no per-game injuries; INJURY_AMP is fitted on team-season games missed (300 team-seasons, see the commit message).
 """
 
 import datetime as dt
@@ -31,10 +34,13 @@ from ballstats import blend, live, teams
 
 NUM_KEY = 5                     # the key players: the five best rated among those able to play that day
                                 # (by rating, not minutes: early in a season minutes are a few games' worth)
-K = 0.79                        # points of margin per team-rating point
-HOME_EDGE = 2.15
-BACK_TO_BACK = 2.0              # points a team loses when it also played the day before (11 seasons: -1.9 at home, -2.2 away)
-SIGMA = 13.1                    # sd of a game's margin around the prediction
+HOME_EDGE = 2.0
+C_ROSTER = 0.78                 # points of margin per point of rotation rating
+C_FORM = 0.73                   # points of margin per point of (shrunk) recent average margin
+FORM_GAMES, FORM_SHRINK, MIN_FORM = 20, 10, 3
+INJURY_AMP = 1.8                # an absence costs this times what moving its minutes to weaker teammates predicts
+BACK_TO_BACK = 2.3              # points a team loses when it also played the day before
+SIGMA = 13.5                    # sd of a game's margin around the prediction
 FIT_OVERLAP = 0.5               # share of a game two stars are on the floor together
 MATCHUP_POSS = 4                # partial possessions of one star-pair matchup per game
 STAR_SHARE = 0.25               # the pair tables explain next to nothing held out: count a quarter of them
@@ -51,13 +57,13 @@ def can_play(status: str | None, return_date: dt.date | None, day: dt.date) -> f
 def _load(conn: psycopg.Connection, season: str):
     rows = conn.execute(
         """
-        SELECT s.team, s.player_id, s.name, s.minutes, rt.ovr, rt.off, rt.def,
+        SELECT s.team, s.player_id, s.name, s.minutes / greatest(s.gp, 1), rt.ovr, rt.off, rt.def,
                (SELECT top_archetype_id FROM feat.player_role r WHERE r.season = s.season AND r.player_id = s.player_id AND r.side = 'offense') AS off_type,
                (SELECT top_archetype_id FROM feat.player_role r WHERE r.season = s.season AND r.player_id = s.player_id AND r.side = 'defense') AS def_type
         FROM feat.player_stats s LEFT JOIN feat.player_rating rt USING (season, player_id)
         WHERE s.season = %s AND s.team IS NOT NULL
         """, (season,)).fetchall()
-    df = pd.DataFrame(rows, columns=["team", "pid", "name", "min", "ovr", "off", "def", "off_type", "def_type"])
+    df = pd.DataFrame(rows, columns=["team", "pid", "name", "min", "ovr", "off", "def", "off_type", "def_type"])   # min: per game played
     for c in ("min", "ovr", "off", "def"):
         df[c] = df[c].astype(float)
     inj = {pid: (status, ret) for pid, status, ret in conn.execute(
@@ -86,6 +92,22 @@ def _game_days(conn: psycopg.Connection, season: str) -> dict[str, set[dt.date]]
     for team, d in conn.execute("SELECT team, game_date FROM live.game WHERE season = %s", (season,)):
         days.setdefault(team, set()).add(d)
     return days
+
+
+def _margins(conn: psycopg.Connection, season: str) -> dict[str, list[tuple[dt.date, float]]]:
+    """Each team's finished regular-season games this season in date order, as (date, margin)."""
+    out: dict[str, list[tuple[dt.date, float]]] = {}
+    for team, d, m in conn.execute("SELECT team, game_date, team_score - opp_score FROM live.game"
+                                   " WHERE season = %s AND season_type = 2 AND completed AND team_score IS NOT NULL"
+                                   " ORDER BY game_date", (season,)):
+        out.setdefault(team, []).append((d, float(m)))
+    return out
+
+
+def _form(margins: list[tuple[dt.date, float]], day: dt.date) -> float:
+    """Recent form before `day`: sum of the last FORM_GAMES margins over (games + FORM_SHRINK); 0 until MIN_FORM games."""
+    ms = [m for d, m in margins if d < day][-FORM_GAMES:]
+    return sum(ms) / (len(ms) + FORM_SHRINK) if len(ms) >= MIN_FORM else 0.0
 
 
 def _cap(v: float) -> float:
@@ -158,15 +180,12 @@ def predict_many(conn: psycopg.Connection, games: list[tuple[str, str, dt.date]]
 def _context(conn: psycopg.Connection) -> dict:
     season = blend.ongoing_season(conn) or conn.execute("SELECT max(season) FROM feat.team_profile").fetchone()[0]
     df, inj = _load(conn, season)
-    today = dt.datetime.now(live.EASTERN).date()
-    hurt_now = {p: f for p, (st, ret) in inj.items() if (f := teams.availability(st, ret, today)) < 1}
     replacement = df.drop_duplicates("pid")[["ovr", "off", "def"]].quantile(teams.REPLACEMENT_QUANTILE)
     return {
-        "season": season, "df": df, "inj": inj, "hurt_now": hurt_now, "replacement": replacement,
-        "league_sd": float(np.nanstd([_rotation_ovr(g, hurt_now, replacement) for _, g in df.groupby("team")])),
-        "rating": dict(conn.execute("SELECT team, ovr FROM feat.team_profile WHERE season = %s", (season,)).fetchall()),
+        "season": season, "df": df, "inj": inj, "replacement": replacement,
         "pairs": _pair_effects(conn),
         "game_days": _game_days(conn, season),
+        "margins": _margins(conn, season),
         "type_names": {(side, tid): name for side, tid, name in conn.execute(
             "SELECT side, type_id, name FROM feat.role_type WHERE level = 'archetype'"
             " AND season = (SELECT max(season) FROM feat.role_type WHERE level = 'archetype')")},
@@ -176,11 +195,14 @@ def _context(conn: psycopg.Connection) -> dict:
 def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
     df, inj, replacement = ctx["df"], ctx["inj"], ctx["replacement"]
     hurt_day = {p: f for p, (st, ret) in inj.items() if (f := can_play(st, ret, day)) < 1}
-    side = {}
+    healthy, played, eff, form = {}, {}, {}, {}
     for team in (away, home):
         g = df[df.team == team]
-        shift = (_rotation_ovr(g, hurt_day, replacement) - _rotation_ovr(g, ctx["hurt_now"], replacement)) / ctx["league_sd"] * teams.TEAM_SD
-        side[team] = float(ctx["rating"][team]) + (0.0 if math.isnan(shift) else shift)
+        healthy[team] = _rotation_ovr(g, {}, replacement)
+        played[team] = _rotation_ovr(g, hurt_day, replacement)
+        eff[team] = healthy[team] + INJURY_AMP * (played[team] - healthy[team])
+        form[team] = _form(ctx["margins"].get(team, []), day)
+    injury_hit = {t: C_ROSTER * INJURY_AMP * (played[t] - healthy[t]) for t in (away, home)}
     syn, mat = ctx["pairs"]
     sa, sh = _key_players(df, away, inj, day), _key_players(df, home, inj, day)
     names = ctx["type_names"]
@@ -188,16 +210,18 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
     match_items = {away: _matchup_items(away, sa, sh, mat, names), home: _matchup_items(home, sh, sa, mat, names)}
     fit = _total(fit_items[home]) - _total(fit_items[away])
     matchup = _total(match_items[home]) - _total(match_items[away])
-    base = K * (side[home] - side[away]) + HOME_EDGE
+    roster = C_ROSTER * (eff[home] - eff[away])
+    form_gap = C_FORM * (form[home] - form[away])
     tired = {team: (day - dt.timedelta(days=1)) in ctx["game_days"].get(team, ()) for team in (away, home)}
     rest = BACK_TO_BACK * (tired[away] - tired[home])
-    margin = base + rest + fit + matchup
+    margin = HOME_EDGE + roster + form_gap + rest + matchup
     key_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr)} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
     best = lambda team: int(_able(df, team, inj, day).sort_values("ovr", ascending=False).pid.iloc[0]) if len(_able(df, team, inj, day)) else None
     return {
         "season": ctx["season"], "date": day.isoformat(), "away": away, "home": home,
-        "rating": {away: round(float(side[away]), 1), home: round(float(side[home]), 1)},
-        "base_margin": round(float(base), 1), "rest": round(float(rest), 2), "back_to_back": tired, "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
+        "home_edge": HOME_EDGE, "roster": round(float(roster), 2), "form": round(float(form_gap), 2),
+        "injury_hit": {t: round(float(v), 2) for t, v in injury_hit.items()},
+        "rest": round(float(rest), 2), "back_to_back": tired, "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),
         "fit_items": fit_items, "matchup_items": match_items, "component_cap": COMPONENT_CAP,
         "key_players": {away: key_rows(sa), home: key_rows(sh)}, "best_player": {away: best(away), home: best(home)},
