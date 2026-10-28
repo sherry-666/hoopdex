@@ -14,16 +14,16 @@ import re
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
 
-SITE_NAME = "HoopDex"
+SITE_NAME = "Hoopedia"
 LANGS = ("zh", "en")
 HTML_LANG = {"zh": "zh-CN", "en": "en"}
 OG_LOCALE = {"zh": "zh_CN", "en": "en_US"}
 
-SITE_TITLE = {"zh": "HoopDex · NBA 球员图鉴：打法原型、超能力与数据",
-              "en": "HoopDex · NBA Player Dex: archetypes, superpowers and stats"}
+SITE_TITLE = {"zh": "Hoopedia · NBA 球员图鉴：打法原型、超能力与数据",
+              "en": "Hoopedia · NBA Player Encyclopedia: archetypes, superpowers and stats"}
 SITE_DESC = {
-    "zh": "HoopDex 用逐回合和追踪数据，把每名 NBA 球员的打法拆成原型混合，附 2K 式能力值、超能力和生涯数据。",
-    "en": "HoopDex breaks every NBA player's game into archetypes using play-by-play and tracking data, "
+    "zh": "Hoopedia 用逐回合和追踪数据，把每名 NBA 球员的打法拆成原型混合，附 2K 式能力值、超能力和生涯数据。",
+    "en": "Hoopedia breaks every NBA player's game into archetypes using play-by-play and tracking data, "
           "with 2K-style ratings, superpowers and career stats.",
 }
 
@@ -158,7 +158,7 @@ def home(lang: str, season: str, players: list[dict]) -> Page:
                 ("赛季最佳防守球员", "Best defensive players", "def")]
     lists = "".join(f"<h2>{name_zh if zh else name_en} ({html.escape(season)})</h2>"
                     f"{_player_list(best(key), season, lang, 6)}" for name_zh, name_en, key in sections)
-    body = (f"<header><h1>HoopDex</h1>{_nav(lang)}</header><main><p>{html.escape(SITE_DESC[lang])}</p>"
+    body = (f"<header><h1>Hoopedia</h1>{_nav(lang)}</header><main><p>{html.escape(SITE_DESC[lang])}</p>"
             f"{lists}</main>")
     return Page(200, SITE_TITLE[lang], SITE_DESC[lang], "/", body=body,
                 jsonld={"@type": "WebSite", "name": SITE_NAME, "inLanguage": HTML_LANG[lang],

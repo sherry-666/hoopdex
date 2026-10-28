@@ -38,7 +38,7 @@ export default function App() {
   return (
     <>
       <header className="masthead">
-        <NavLink to="/" className="logo">HOOPDEX!</NavLink>
+        <NavLink to="/" className="logo">HOOPEDIA!</NavLink>
         <nav className="nav" aria-label={t("主导航")}>
           <NavLink to="/" end>{t("首页")}</NavLink>
           <NavLink to="/roles">{t("定位实验室")}</NavLink>
@@ -68,7 +68,7 @@ export default function App() {
           <Route path="*" element={<ComingSoon title={t("走错片场了")} line={t("这一页不存在。回首页看看其他球员吧。")} />} />
         </Routes>
       </main>
-      <footer className="site-footer">{t("HoopDex 是独立的球迷数据项目，与 NBA 及各球队没有关联。数据来自 stats.nba.com。")}</footer>
+      <footer className="site-footer">{t("Hoopedia 是独立的球迷数据项目，与 NBA 及各球队没有关联。数据来自 stats.nba.com。")}</footer>
     </>
   );
 }

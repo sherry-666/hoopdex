@@ -1,4 +1,4 @@
-# HoopDex
+# Hoopedia
 
 NBA player analytics and prediction platform. Design doc: https://claude.ai/artifact/XxBkiYmw93SMzduJ2LCQwo
 
@@ -109,7 +109,7 @@ The app renders in the browser, so the API fills `index.html` per route (`ballst
 description, canonical URL, hreflang, Open Graph / Twitter tags, JSON-LD and a plain-HTML summary inside
 `#root` that React replaces on mount. Unknown routes, players and seasons return 404. Chinese is the
 default; `?lang=en` is the English version of any page. `/robots.txt` and `/sitemap.xml` (every player, both
-languages) are generated. Set `BALLSTATS_SITE_URL` (e.g. `https://hoopdex.app`) so canonical URLs use the
+languages) are generated. Set `BALLSTATS_SITE_URL` (e.g. `https://hoopedia.app`) so canonical URLs use the
 public domain. Only the built app on :8000 does this; the Vite dev server doesn't.
 
 ## Deploy (Railway)

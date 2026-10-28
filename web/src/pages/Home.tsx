@@ -39,7 +39,7 @@ export default function Home() {
           KNOW THE GAME
         </h1>
         <p style={{ maxWidth: "60ch", margin: "12px 0 18px" }}>
-          {t("HoopDex 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。")}
+          {t("Hoopedia 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。")}
         </p>
         <form onSubmit={(e) => { e.preventDefault(); navigate(q ? `/players?q=${encodeURIComponent(q)}` : "/players"); }} className="row">
           <input className="search" type="search" placeholder={t("找一位球员：Kawhi Leonard")} aria-label={t("搜索球员")} value={q} onChange={(e) => setQ(e.target.value)} />

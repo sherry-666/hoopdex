@@ -13,8 +13,8 @@ const UI_EN: Record<string, string> = {
   "把球员拖到另一队，看强度和适配度怎么变。比赛预测上线后接着做。": "Drag a player to another team and see how strength and fit change. Comes after the game predictor.",
   "先去定位实验室": "Visit the Role Lab",
   // home
-  "HoopDex 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。":
-    "HoopDex breaks every player's game into a few pure archetypes using play-by-play, tracking and play-type data, then turns their most extreme traits into superpowers. Every number traces back to its source.",
+  "Hoopedia 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。":
+    "Hoopedia breaks every player's game into a few pure archetypes using play-by-play, tracking and play-type data, then turns their most extreme traits into superpowers. Every number traces back to its source.",
   "找一位球员：Kawhi Leonard": "Find a player: Kawhi Leonard", "搜索球员": "Search players", "搜索": "Search",
   "7 种进攻原型、4 种防守原型，看每名球员是哪几种的混合。": "7 offensive and 4 defensive archetypes. See which mix makes up each player.",
   "每名球员一张卡：超能力、战力数值、风格构成。": "One card per player: superpowers, power stats and style mix.",
@@ -111,8 +111,8 @@ const UI_EN: Record<string, string> = {
     "This is version 1, box score only. It favours rebounding, efficient bigs; it will move to the impact model (RAPM), which accounts for teammates and opponents. Each season is ranked within itself, so eras compare directly.",
   "综合评分": "OVR",
   // site
-  "HoopDex 是独立的球迷数据项目，与 NBA 及各球队没有关联。数据来自 stats.nba.com。":
-    "HoopDex is an independent fan project, not affiliated with the NBA or its teams. Data from stats.nba.com.",
+  "Hoopedia 是独立的球迷数据项目，与 NBA 及各球队没有关联。数据来自 stats.nba.com。":
+    "Hoopedia is an independent fan project, not affiliated with the NBA or its teams. Data from stats.nba.com.",
   "{name} 的打法原型与超能力 · NBA {season}": "{name}: archetypes and superpowers · NBA {season}",
   "生涯视图：每名球员各赛季的打法按上场分钟加权平均，至少有一季满 500 分钟才算核心样本。":
     "Career view: each player's seasons averaged by minutes played; a player counts as a core sample with at least one 500-minute season.",
@@ -355,13 +355,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-const SITE_TITLE = { zh: "HoopDex · NBA 球员图鉴：打法原型、超能力与数据", en: "HoopDex · NBA Player Dex: archetypes, superpowers and stats" };
+const SITE_TITLE = { zh: "Hoopedia · NBA 球员图鉴：打法原型、超能力与数据", en: "Hoopedia · NBA Player Encyclopedia: archetypes, superpowers and stats" };
 
-/** Sets the browser tab / search title: "<page> · HoopDex", or the site title on its own. */
+/** Sets the browser tab / search title: "<page> · Hoopedia", or the site title on its own. */
 export function usePageTitle(title?: string) {
   const { lang } = useLang();
   useEffect(() => {
-    document.title = title ? `${title} · HoopDex` : SITE_TITLE[lang];
+    document.title = title ? `${title} · Hoopedia` : SITE_TITLE[lang];
   }, [title, lang]);
 }
 
