@@ -133,17 +133,19 @@ def stats(season: str) -> list[dict]:
 
 
 @app.get("/api/career-top")
-def career_top(limit: int = 6) -> list[dict]:
-    """Highest career ratings (feat.player_career_rating), shaped like a player-list row for the home page cards."""
+def career_top(by: str = "career", limit: int = 6) -> list[dict]:
+    """Highest career or peak-season ratings (feat.player_career_rating), shaped like a player-list row for the home page cards."""
+    if by not in ("career", "peak"):
+        raise HTTPException(400, "by must be career or peak")
     return q(
         """
         SELECT c.player_id, s.name, s.team, o.style_label AS off_style, o.top_archetype_id AS off_top,
-               c.career AS ovr, c.off_career AS off, c.def_career AS def
+               c.{by} AS ovr, c.off_{by} AS off, c.def_{by} AS def
         FROM feat.player_career_rating c
         JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
         LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
-        ORDER BY c.career DESC LIMIT %s
-        """, (min(limit, 50),))
+        ORDER BY c.{by} DESC LIMIT %s
+        """.format(by=by), (min(limit, 50),))
 
 
 @app.get("/api/players/{season}")

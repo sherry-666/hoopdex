@@ -13,7 +13,8 @@ const ISSUES = [
 export default function Home() {
   const season = useDefaultSeason();
   const players = usePlayers(season);
-  const careerTop = useCareerTop();
+  const careerTop = useCareerTop("career");
+  const peakTop = useCareerTop("peak");
   const navigate = useNavigate();
   const { t } = useLang();
   usePageTitle();
@@ -23,16 +24,16 @@ export default function Home() {
     const all = players.data ?? [];
     const floor = Math.min(500, 0.4 * Math.max(0, ...all.map((p) => p.minutes)));
     const regular = all.filter((p) => p.minutes >= floor);
-    const top = (key: "pts_36" | "ovr" | "off" | "def") =>
+    const top = (key: "ovr" | "off" | "def") =>
       regular.filter((p) => p[key] != null).sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0)).slice(0, 6);
     return [
       { title: "生涯最强球员", note: "（生涯总评）", list: careerTop.data ?? [], career: true },
-      { title: "得分火力最猛的球员", note: "（{season} · 每 36 分钟得分）", list: top("pts_36") },
+      { title: "巅峰最强球员", note: "（巅峰赛季总评）", list: peakTop.data ?? [], career: true },
       { title: "赛季最佳球员", note: "（{season} · 总评）", list: top("ovr") },
       { title: "赛季最佳进攻球员", note: "（{season} · 进攻评分）", list: top("off") },
       { title: "赛季最佳防守球员", note: "（{season} · 防守评分）", list: top("def") },
     ];
-  }, [players.data, careerTop.data]);
+  }, [players.data, careerTop.data, peakTop.data]);
 
   return (
     <>
