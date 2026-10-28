@@ -46,7 +46,7 @@ function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["inju
       )}
       {at && (
         <div className="panel" style={{ position: "fixed", left: at.x, top: at.y, width: 280, zIndex: 50, margin: 0, padding: "10px 12px", background: "var(--panel)",
-          borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", textAlign: "left", fontWeight: 400, pointerEvents: "none" }}>
+          borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", textAlign: "left", fontWeight: 400, whiteSpace: "normal", pointerEvents: "none" }}>
           <div className="row" style={{ gap: 8 }}>
             <span className="tag" style={{ background: out ? "var(--pop-red)" : "var(--pop-yellow)", color: out ? "#fff" : "var(--on-yellow)", fontWeight: 700 }}>
               {out ? t("伤停") : t("出战成疑")}

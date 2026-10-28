@@ -66,12 +66,12 @@ export const PROFILE_FEATURES: Record<"offense" | "defense", string[]> = {
 const BODY_EN: Record<string, string> = {
   Foot: "Foot", Ankle: "Ankle", Knee: "Knee", Hamstring: "Hamstring", Calf: "Calf", Back: "Back", Hip: "Hip", Groin: "Groin",
   Shoulder: "Shoulder", Wrist: "Wrist", Hand: "Hand", Finger: "Finger", Thumb: "Thumb", Elbow: "Elbow", Thigh: "Thigh",
-  Quadricep: "Quad", Achilles: "Achilles", Head: "Head", Neck: "Neck", Toe: "Toe", Illness: "Illness", Rest: "Rest",
+  Quadricep: "Quad", Achilles: "Achilles", Head: "Head", Neck: "Neck", Toe: "Toe", Leg: "Leg", Arm: "Arm", Rib: "Rib", Ribs: "Ribs", Chest: "Chest", Abdomen: "Abdomen", Eye: "Eye", Face: "Face", Nose: "Nose", Illness: "Illness", Rest: "Rest",
 };
 const BODY_ZH: Record<string, string> = {
   Foot: "脚", Ankle: "脚踝", Knee: "膝盖", Hamstring: "腿筋", Calf: "小腿", Back: "背部", Hip: "髋部", Groin: "腹股沟",
   Shoulder: "肩膀", Wrist: "手腕", Hand: "手", Finger: "手指", Thumb: "拇指", Elbow: "手肘", Thigh: "大腿",
-  Quadricep: "股四头肌", Achilles: "跟腱", Head: "头部", Neck: "颈部", Toe: "脚趾", Illness: "生病", Rest: "轮休",
+  Quadricep: "股四头肌", Achilles: "跟腱", Head: "头部", Neck: "颈部", Toe: "脚趾", Leg: "腿部", Arm: "手臂", Rib: "肋骨", Ribs: "肋骨", Chest: "胸部", Abdomen: "腹部", Eye: "眼睛", Face: "面部", Nose: "鼻子", Illness: "生病", Rest: "轮休",
 };
 const SIDE_ZH: Record<string, string> = { Left: "左", Right: "右" };
 
