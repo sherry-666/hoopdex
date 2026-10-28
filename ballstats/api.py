@@ -144,7 +144,7 @@ def career_top(by: str = "career", limit: int = 6) -> list[dict]:
         FROM feat.player_career_rating c
         JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
         LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
-        ORDER BY c.{by} DESC LIMIT %s
+        ORDER BY c.{by} DESC, c.career DESC LIMIT %s
         """.format(by=by), (min(limit, 50),))
 
 
