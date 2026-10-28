@@ -81,3 +81,11 @@ export function injuryWhere(injury: { body_part: string | null; side: string | n
   const side = injury.side && lang === "zh" ? SIDE_ZH[injury.side] ?? "" : injury.side ?? "";
   return part ? (lang === "zh" ? `${side}${part}` : `${side} ${part}`.trim()) : null;
 }
+
+/** Out with a return date more than a month away (same cut-off as teams.LONG_OUT_DAYS). */
+export function outLong(injury: { status: string; return_date: string | null }): boolean {
+  if (injury.status !== "Out" || !injury.return_date) return false;
+  const [y, m, d] = injury.return_date.split("-").map(Number);
+  const now = new Date();
+  return (new Date(y, m - 1, d).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86400000 > 30;
+}

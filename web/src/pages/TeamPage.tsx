@@ -6,7 +6,7 @@ import { TeamHonors } from "../components/honors";
 import TeamAnalysis from "../components/TeamAnalysis";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
-import { injuryWhere } from "../labels";
+import { injuryWhere, outLong } from "../labels";
 import { teamName } from "../teams";
 
 const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
@@ -17,7 +17,7 @@ function shortDate(iso: string, lang: "zh" | "en") {
   return new Date(y, m - 1, d).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", weekday: "short" });
 }
 
-/** Red cross next to an injured player; hover or focus for status, body part and expected return. */
+/** Red cross (red ambulance when out for over a month) next to an injured player; hover or focus for status, body part and expected return. */
 function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["injury"]>; avail: number }) {
   const { t, lang } = useLang();
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
@@ -32,9 +32,18 @@ function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["inju
       onMouseEnter={(e) => show(e.currentTarget)} onMouseLeave={() => setAt(null)}
       onFocus={(e) => show(e.currentTarget)} onBlur={() => setAt(null)}
       style={{ display: "inline-block", marginLeft: 6, verticalAlign: "-2px", cursor: "help" }}>
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
-      </svg>
+      {outLong(injury) ? (
+        <svg width="22" height="16" viewBox="0 0 22 16" aria-hidden="true">
+          <path d="M1 3h12v9H1zM13 5.5h4.5L21 9v3h-8z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M6 4.8h2v1.7h1.7v2H8v1.7H6V8.5H4.3v-2H6z" fill="#fff" />
+          <circle cx="5.5" cy="12.5" r="2" fill="var(--ink)" stroke="var(--panel)" strokeWidth="1" />
+          <circle cx="16.5" cy="12.5" r="2" fill="var(--ink)" stroke="var(--panel)" strokeWidth="1" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z" fill="var(--pop-red)" stroke="var(--ink)" strokeWidth="1.2" strokeLinejoin="round" />
+        </svg>
+      )}
       {at && (
         <div className="panel" style={{ position: "fixed", left: at.x, top: at.y, width: 280, zIndex: 50, margin: 0, padding: "10px 12px", background: "var(--panel)",
           borderColor: out ? "var(--pop-red)" : "var(--pop-yellow)", textAlign: "left", fontWeight: 400, pointerEvents: "none" }}>
