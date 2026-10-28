@@ -5,6 +5,7 @@ import { Burst, TeamLink, Failed, Loading, MixBar, Portrait, PowerBubble, Season
 import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere, label } from "../labels";
 import { teamName } from "../teams";
+import { PlayerHonors } from "../components/honors";
 import { OffDef, OvrBadge, RatingPanel } from "../components/rating";
 
 const BURSTS: { key: string; title: string; fmt: (v: number) => string; tone: "red" | "yellow" | "blue" }[] = [
@@ -82,6 +83,8 @@ export default function PlayerPage() {
           </div>
         </section>
       </div>
+
+      <PlayerHonors id={id} />
 
       <RatingPanel rating={p.rating} career={p.career_rating} lines={career.data?.regular ?? []} season={season} />
 

@@ -41,6 +41,10 @@ const UI_EN: Record<string, string> = {
   "赛季刚开始，评分是本赛季与上赛季的合成值；上场不满 60 分钟的球员不参与。": "Early in the season: ratings blend this season with last, and players under 60 minutes are left out.",
   "{season} 赛季满 500 分钟的球员，按评分排序。": "Players with 500+ minutes in {season}, sorted by rating.",
   "每天自动更新，来源 ESPN，{date} 更新。": "Updated daily from ESPN, last on {date}.",
+  // honors
+  "荣誉": "Honors", "球队荣誉": "Team honors", "总冠军": "Championships", "联盟冠军": "Conference titles", "退役球衣": "Retired numbers",
+  "名人堂球员": "Hall of Famers", "{k} 阵 ×{n}": "Team {k} ×{n}",
+  "来源 stats.nba.com；赛季以 {ex} 这样的简写显示。": "Source: stats.nba.com; seasons shown as {ex}.", "来源 stats.nba.com。": "Source: stats.nba.com.",
   // roster
   "{season} 赛季的全部球员。搜名字或球队，按进攻大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive family.",
   "Stephen Curry、DEN……": "Stephen Curry, DEN…", "搜索球员或球队": "Search players or teams", "排序": "Sort",

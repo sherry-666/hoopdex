@@ -1,7 +1,7 @@
 """Parse raw responses into the core layer.
 
-So far: player identity, season-by-season box-score totals and career totals,
-from PlayerCareerStats (one raw row per player).
+Player identity, season-by-season box-score totals and career totals from PlayerCareerStats
+(one raw row per player), and honors from PlayerAwards and TeamDetails.
 """
 
 import logging
@@ -68,3 +68,30 @@ def parse_careers(conn: psycopg.Connection) -> dict[str, int]:
             " VALUES (%s, %s, %s, %s, now()) ON CONFLICT (player_id) DO UPDATE SET name = EXCLUDED.name,"
             " first_season = EXCLUDED.first_season, last_season = EXCLUDED.last_season, updated_at = now()", players)
     return {"players": len(players), "season_rows": len(seasons), "career_rows": len(careers)}
+
+
+TEAM_HONOR_SETS = {"champion": "TeamAwardsChampionships", "conference": "TeamAwardsConf", "division": "TeamAwardsDiv"}
+
+
+def parse_honors(conn: psycopg.Connection) -> dict[str, int]:
+    awards, honors = [], []
+    for pid, body in conn.execute("SELECT (params->>'player_id')::bigint, body FROM raw.raw_response"
+                                  " WHERE endpoint = 'PlayerAwards' AND status = 'ok'"):
+        for r in result_rows(body):
+            team = r["CONFERENCE"] if r["CONFERENCE"] and str(r["CONFERENCE"]).isdigit() else None
+            awards.append((pid, r["DESCRIPTION"], r["SEASON"], _num(r["ALL_NBA_TEAM_NUMBER"]), team))
+    for (body,) in conn.execute("SELECT body FROM raw.raw_response WHERE endpoint = 'TeamDetails' AND status = 'ok'"):
+        team = result_rows(body, "TeamBackground")[0]["ABBREVIATION"]
+        for kind, set_name in TEAM_HONOR_SETS.items():
+            for r in result_rows(body, set_name):
+                honors.append((team, kind, r["YEARAWARDED"], _num(r["OPPOSITETEAM"]), None, None, None, None))
+        for kind, set_name in (("retired", "TeamRetired"), ("hof", "TeamHof")):
+            for r in result_rows(body, set_name):
+                honors.append((team, kind, r["YEAR"], None, r["PLAYERID"], r["PLAYER"], _num(r["JERSEY"]), _num(r["SEASONSWITHTEAM"])))
+    with conn.transaction(), conn.cursor() as cur:
+        cur.execute("TRUNCATE core.player_award, core.team_honor")
+        cur.executemany("INSERT INTO core.player_award (player_id, award, season, team_number, team_id)"
+                        " VALUES (%s, %s, %s, %s, %s)", awards)
+        cur.executemany("INSERT INTO core.team_honor (team, kind, year, opponent, player_id, player, jersey, seasons)"
+                        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", honors)
+    return {"player_awards": len(awards), "team_honors": len(honors)}

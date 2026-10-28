@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TeamGame, TeamRosterRow, useDefaultSeason, useTeamPage, useTeamSeasons } from "../api";
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
+import { TeamHonors } from "../components/honors";
 import TeamAnalysis from "../components/TeamAnalysis";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -155,6 +156,8 @@ export default function TeamPage() {
         <Link to={`/teams?season=${season}`} className="note">{t("← 全部球队体系")}</Link>
         <Link to={`/rankings?season=${season}`} className="note">{t("排名")}</Link>
       </div>
+
+      <TeamHonors team={team} />
 
       <TeamAnalysis team={team} season={season} />
 

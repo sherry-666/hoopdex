@@ -364,6 +364,16 @@ def matchups() -> dict:
     return {"cells": cells, "meta": meta[0], "styles": styles}
 
 
+@app.get("/api/team/{team}/honors")
+def team_honors(team: str) -> dict:
+    """Championships (with the Finals opponent), conference and division titles, retired numbers and Hall of Famers."""
+    out: dict = {k: [] for k in ("champion", "conference", "division", "retired", "hof")}
+    for r in q("SELECT kind, year, opponent, player_id, player, jersey, seasons FROM core.team_honor WHERE team = %s"
+               " ORDER BY year DESC, player", (team.upper(),)):
+        out[r.pop("kind")].append(r)
+    return out
+
+
 @app.get("/api/team/{team}/seasons")
 def team_season_list(team: str) -> list[str]:
     """Seasons this team has a profile for, newest first."""
@@ -445,6 +455,14 @@ def player_seasons(player_id: int) -> list[str]:
     """Seasons this player has style and role data for, newest first."""
     return [r["season"] for r in q("SELECT season FROM feat.player_stats WHERE player_id = %s AND season <> 'career'"
                                    " ORDER BY season DESC", (player_id,))]
+
+
+@app.get("/api/player/{player_id}/honors")
+def player_honors(player_id: int) -> list[dict]:
+    """His awards, one entry per award (and All-NBA / All-Defensive / All-Rookie team number) with every season."""
+    rows = q("SELECT award, team_number AS team, count(*) AS n, array_agg(season ORDER BY season) AS seasons"
+             " FROM core.player_award WHERE player_id = %s GROUP BY award, team_number ORDER BY award, team_number", (player_id,))
+    return [{**r, "seasons": [s for s in r["seasons"] if s]} for r in rows]
 
 
 @app.get("/api/player/{player_id}/career")

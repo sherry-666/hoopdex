@@ -185,3 +185,11 @@ export interface RoleSynergyView {
 }
 export const useRoleSynergy = (side: Side) =>
   useQuery({ queryKey: ["role-synergy", side], queryFn: () => get<RoleSynergyView>(`/api/roles/synergy/${side}`) });
+
+export interface PlayerHonor { award: string; team: string | null; n: number; seasons: string[] }
+export interface TeamHonorRow { year: number | null; opponent: string | null; player_id: number | null; player: string | null; jersey: string | null; seasons: string | null }
+export interface TeamHonors { champion: TeamHonorRow[]; conference: TeamHonorRow[]; division: TeamHonorRow[]; retired: TeamHonorRow[]; hof: TeamHonorRow[] }
+export const usePlayerHonors = (id: number) =>
+  useQuery({ queryKey: ["honors", id], queryFn: () => get<PlayerHonor[]>(`/api/player/${id}/honors`) });
+export const useTeamHonors = (team: string) =>
+  useQuery({ queryKey: ["team-honors", team], queryFn: () => get<TeamHonors>(`/api/team/${team}/honors`) });

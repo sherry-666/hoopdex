@@ -185,3 +185,12 @@ def player_jobs(season: str, season_type: str, roster: list[tuple[int, int]]) ->
     return [Job(ep, {**common, "team_id": team_id, "player_id": player_id})
             for team_id, player_id in roster
             for ep in ["PlayerDashPtPass", "PlayerDashPtReb"]]
+
+
+HONORS_MAX_AGE_H = 24.0 * 7   # awards trickle in during the season; weekly is plenty
+
+
+def honor_jobs(player_ids: list[int], team_ids: list[int]) -> list[Job]:
+    """Each team's championships, retired numbers and Hall of Famers, and each player's awards."""
+    return ([Job("TeamDetails", {"team_id": t}, HONORS_MAX_AGE_H) for t in team_ids]
+            + [Job("PlayerAwards", {"player_id": p}, HONORS_MAX_AGE_H) for p in player_ids])

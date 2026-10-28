@@ -3,12 +3,14 @@ import datetime as dt
 import logging
 import sys
 
+from nba_api.stats.static import teams as nba_teams
+
 from ballstats import catalog, db
 from ballstats.collector import Collector, RunStopped, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
-OPTIONAL_GROUPS = ("careers", "history", "teams", "lineups")   # run only when asked for
+OPTIONAL_GROUPS = ("careers", "history", "teams", "lineups", "honors")   # run only when asked for
 HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
 MATCHUP_MIN_MINUTES = 100   # players with fewer minutes are not asked for their matchups
 TEAMS_FROM = 2015     # first season with Synergy play types
@@ -94,6 +96,11 @@ def collect_season(args, conn, collector) -> int:
         ids = {r["PERSON_ID"] for r in result_rows(allp or {})}
         ids |= {r[0] for r in conn.execute("SELECT DISTINCT player_id FROM feat.player_stats")}
         run_jobs(collector, catalog.career_jobs(sorted(ids)), "careers", args.refresh)
+
+    if "honors" in groups:
+        ids = {r[0] for r in conn.execute("SELECT player_id FROM core.player")}
+        team_ids = sorted(t["id"] for t in nba_teams.get_teams())
+        run_jobs(collector, catalog.honor_jobs(sorted(ids), team_ids), "honors", args.refresh)
 
     log.info("done: %s", collector.stats)
     return 0 if collector.stats["failed"] == 0 else 2
@@ -184,6 +191,7 @@ def cmd_parse(args) -> int:
     conn = db.connect()
     db.init_schema(conn)
     print("careers:", core.parse_careers(conn))
+    print("honors:", core.parse_honors(conn))
     return 0
 
 
