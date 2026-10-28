@@ -203,6 +203,7 @@ export interface ScheduledGame {
   game_id: string; game_date: string; tipoff: string; home_team: string; away_team: string; season_type: number;
   completed: boolean; home_score: number | null; away_score: number | null;
   home_win?: number;   // predicted home win probability, games still to play only
+  home_ovr: number | null; away_ovr: number | null;   // team ratings
 }
 export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3") });
 

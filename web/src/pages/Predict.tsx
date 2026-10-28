@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ScheduledGame, useSchedule } from "../api";
 import { Failed, Loading, TeamLogo } from "../components/comic";
+import { OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
 import { teamName } from "../teams";
 
@@ -17,9 +18,10 @@ function nextDays(n: number): string[] {
   return Array.from({ length: n }, (_, i) => new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10));
 }
 
-/** One side of a game row: [pct] logo name on the left, name logo [pct] on the right, so the names meet in the middle.
+/** One side of a game row: [pct] logo name rating on the left, rating name logo [pct] on the right, so the names and
+ *  ratings meet in the middle.
  *  The tag is the win probability of the favoured team, or the final score once the game is over. */
-function TeamSide({ team, score, win, side, lang }: { team: string; score: number | null; win?: number; side: "left" | "right"; lang: "zh" | "en" }) {
+function TeamSide({ team, score, win, ovr, side, lang }: { team: string; score: number | null; win?: number; ovr: number | null; side: "left" | "right"; lang: "zh" | "en" }) {
   const tag = win != null
     ? <span className="tag num" style={{ background: "var(--pop-yellow)", color: "var(--on-yellow)", fontWeight: 700 }}>{Math.round(win * 100)}%</span>
     : score != null ? <span className="num">{score}</span> : null;
@@ -28,7 +30,9 @@ function TeamSide({ team, score, win, side, lang }: { team: string; score: numbe
     <span className="row" style={{ alignItems: "center", gap: 8, justifyContent: left ? "flex-end" : "flex-start", minWidth: 0 }}>
       {left && tag}
       {left && <TeamLogo team={team} size={32} />}
+      {!left && <OvrBadge ovr={ovr} size={28} />}
       <strong>{teamName(team, lang, true)}</strong>
+      {left && <OvrBadge ovr={ovr} size={28} />}
       {!left && <TeamLogo team={team} size={32} />}
       {!left && tag}
     </span>
@@ -41,11 +45,11 @@ function Game({ g }: { g: ScheduledGame }) {
   return (
     <Link to={`/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
       style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
-      <TeamSide team={g.away_team} side="left" score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
+      <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>
         <b>VS</b><br /><small>{g.completed ? t("已结束") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
       </span>
-      <TeamSide team={g.home_team} side="right" score={g.completed ? g.home_score : null} win={g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
+      <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={g.completed ? g.home_score : null} win={g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
     </Link>
   );
 }

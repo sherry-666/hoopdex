@@ -410,6 +410,10 @@ def schedule(days: int = 3) -> list[dict]:
               " team_score AS home_score, opp_score AS away_score FROM live.game"
               " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
               (today, today + dt.timedelta(days=min(max(days, 1), 7))))
+    ovr = {r["team"]: r["ovr"] for r in q("SELECT team, ovr FROM feat.team_profile"
+                                          " WHERE season = (SELECT max(season) FROM feat.team_profile)")}
+    for g in games:
+        g["home_ovr"], g["away_ovr"] = ovr.get(g["home_team"]), ovr.get(g["away_team"])
     todo = [g for g in games if not g["completed"]]
     try:
         with pool.connection() as conn:
