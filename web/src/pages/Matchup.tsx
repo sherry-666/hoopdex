@@ -105,14 +105,6 @@ function Prediction({ p }: { p: GamePrediction }) {
         {row(t("合计（主队减客队）"), p.margin)}
       </div>
       <p className="note">{t("阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。")}</p>
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>
-        {[p.away, p.home].map((tm) => (
-          <div key={tm}>
-            <b>{teamName(tm, lang, true)} · {t("主力球员")}</b>
-            {p.key_players[tm].map((s) => <div key={s.player_id}>{s.name} {s.ovr}</div>)}
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
