@@ -50,8 +50,8 @@ function Detail({ label, total, lines, cap }: { label: string; total: number; li
   const capped = teams.some((tm) => Math.abs(raw(tm)) > cap);
   return (
     <details style={{ borderBottom: "1px dashed var(--ink)" }}>
-      <summary style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", cursor: "pointer" }}>
-        <span>{label}</span><span className="num">{signed(total)}</span>
+      <summary style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", cursor: "pointer", listStyle: "none" }}>
+        <span><span className="tri" aria-hidden="true">▸</span>{label}</span><span className="num">{signed(total)}</span>
       </summary>
       <div style={{ padding: "4px 0 10px 12px", display: "grid", gap: 10 }}>
         {teams.map((tm) => (
@@ -82,14 +82,15 @@ function Prediction({ p }: { p: GamePrediction }) {
   return (
     <section className="panel">
       <span className="caption" style={{ fontSize: 20 }}>{t("预测")} · {p.date}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 0" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 32, flexWrap: "wrap", padding: "12px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <TeamLogo team={fav} size={48} />
         <div>
           <div className="num" style={{ fontSize: 32 }}>{teamName(fav, lang, true)} {Math.round(win * 100)}%</div>
           <div className="note">{t("预计分差")} {signed(Math.abs(p.margin)).replace("+", "")} · {t("主队 {pct}%", { pct: Math.round(p.home_win * 100) })}</div>
         </div>
       </div>
-      <div style={{ maxWidth: 420 }}>
+      <div style={{ flex: "1 1 360px", maxWidth: 480 }}>
         {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
         {row(t("主场"), 2.15)}
         {row(t("背靠背{who}", { who: [p.away, p.home].filter((tm) => p.back_to_back[tm]).map((tm) => ` · ${teamName(tm, lang, true)}${t("昨天也打了")}`).join("") }), p.rest)}
@@ -105,7 +106,7 @@ function Prediction({ p }: { p: GamePrediction }) {
           }))]))} />
         {row(t("合计（主队减客队）"), p.margin)}
       </div>
-      <p className="note">{t("阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。")}</p>
+      </div>
     </section>
   );
 }

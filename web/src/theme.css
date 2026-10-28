@@ -226,3 +226,8 @@ table.data tr:hover td { background: var(--tone); }
 @keyframes plate-shine { 0%, 55% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
 @keyframes plate-holo { 0% { --edge: #ff5f9e; } 20% { --edge: #ffd166; } 40% { --edge: #6ee7b7; } 60% { --edge: #60a5fa; } 80% { --edge: #c084fc; } 100% { --edge: #ff5f9e; } }
 @media (prefers-reduced-motion: reduce) { .plate, .plate::after { animation: none !important; } }
+
+/* Disclosure triangle on rows that open: turns down when open. */
+details > summary::-webkit-details-marker { display: none; }
+.tri { display: inline-block; width: 1.2em; transition: transform 0.12s; }
+details[open] > summary .tri { transform: rotate(90deg); }
