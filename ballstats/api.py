@@ -403,12 +403,22 @@ def matchups() -> dict:
 
 @app.get("/api/schedule")
 def schedule(days: int = 3) -> list[dict]:
-    """Games from today (US Eastern) through the next days - 1 days, one row per game, earliest tipoff first."""
+    """Games from today (US Eastern) through the next days - 1 days, one row per game, earliest tipoff first.
+    Games still to play carry the model's home win probability (predict.py)."""
     today = dt.datetime.now(live.EASTERN).date()
-    return q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
-             " team_score AS home_score, opp_score AS away_score FROM live.game"
-             " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
-             (today, today + dt.timedelta(days=min(max(days, 1), 7))))
+    games = q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
+              " team_score AS home_score, opp_score AS away_score FROM live.game"
+              " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
+              (today, today + dt.timedelta(days=min(max(days, 1), 7))))
+    todo = [g for g in games if not g["completed"]]
+    try:
+        with pool.connection() as conn:
+            preds = game_model.predict_many(conn, [(g["away_team"], g["home_team"], g["game_date"]) for g in todo])
+        for g, p in zip(todo, preds):
+            g["home_win"] = p["home_win"]
+    except Exception:   # a missing rating must not take the schedule down
+        pass
+    return games
 
 
 @app.get("/api/predict/{away}/{home}")

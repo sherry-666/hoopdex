@@ -6,7 +6,7 @@ export type Lang = "zh" | "en";
 /* UI text. Keys are the Chinese source strings; {name} marks a variable. */
 const UI_EN: Record<string, string> = {
   // shell
-  "今天起三天的比赛。胜率和分差预测即将上线。": "Games from today through the next three days. Win probability and point spread are coming soon.",
+  "今天起三天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。": "Games from today through the next two days, with the predicted winner and win probability. Open one for the side-by-side.",
   "这一天没有比赛。": "No games on this day.", "已结束": "Final", "阵容": "Roster", "预测": "Prediction", "预计分差": "Expected margin", "主队 {pct}%": "Home {pct}%",
   "球队评分差（按当天能出战的球员）": "Team rating gap (players able to play that day)",
   "阵容适配（头部球员，≥{n}）": "Lineup fit (top players, ≥{n})", "主力克制（头部球员，≥{n}）": "Star matchup (top players, ≥{n})",

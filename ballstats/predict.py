@@ -108,29 +108,44 @@ def _matchup(mine: pd.DataFrame, theirs: pd.DataFrame, mat: dict) -> float:
 
 
 def predict(conn: psycopg.Connection, away: str, home: str, day: dt.date) -> dict:
-    """One game on a given day; runs with tuple rows on the connection (the API pool hands out dict rows)."""
+    """One game on a given day."""
+    return predict_many(conn, [(away, home, day)])[0]
+
+
+def predict_many(conn: psycopg.Connection, games: list[tuple[str, str, dt.date]]) -> list[dict]:
+    """Several games sharing one load of the season's players; runs with tuple rows on the connection
+    (the API pool hands out dict rows)."""
     saved, conn.row_factory = conn.row_factory, tuple_row
     try:
-        return _predict(conn, away, home, day)
+        ctx = _context(conn)
+        return [_game(ctx, away, home, day) for away, home, day in games]
     finally:
         conn.row_factory = saved
 
 
-def _predict(conn: psycopg.Connection, away: str, home: str, day: dt.date) -> dict:
+def _context(conn: psycopg.Connection) -> dict:
     season = blend.ongoing_season(conn) or conn.execute("SELECT max(season) FROM feat.team_profile").fetchone()[0]
     df, inj = _load(conn, season)
     today = dt.datetime.now(live.EASTERN).date()
     hurt_now = {p: f for p, (st, ret) in inj.items() if (f := teams.availability(st, ret, today)) < 1}
-    hurt_day = {p: f for p, (st, ret) in inj.items() if (f := can_play(st, ret, day)) < 1}
     replacement = df.drop_duplicates("pid")[["ovr", "off", "def"]].quantile(teams.REPLACEMENT_QUANTILE)
-    league_sd = float(np.nanstd([_rotation_ovr(g, hurt_now, replacement) for _, g in df.groupby("team")]))
-    rating = dict(conn.execute("SELECT team, ovr FROM feat.team_profile WHERE season = %s", (season,)).fetchall())
+    return {
+        "season": season, "df": df, "inj": inj, "hurt_now": hurt_now, "replacement": replacement,
+        "league_sd": float(np.nanstd([_rotation_ovr(g, hurt_now, replacement) for _, g in df.groupby("team")])),
+        "rating": dict(conn.execute("SELECT team, ovr FROM feat.team_profile WHERE season = %s", (season,)).fetchall()),
+        "pairs": _pair_effects(conn),
+    }
+
+
+def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
+    df, inj, replacement = ctx["df"], ctx["inj"], ctx["replacement"]
+    hurt_day = {p: f for p, (st, ret) in inj.items() if (f := can_play(st, ret, day)) < 1}
     side = {}
     for team in (away, home):
         g = df[df.team == team]
-        shift = (_rotation_ovr(g, hurt_day, replacement) - _rotation_ovr(g, hurt_now, replacement)) / league_sd * teams.TEAM_SD
-        side[team] = float(rating[team]) + (0.0 if math.isnan(shift) else shift)
-    syn, mat = _pair_effects(conn)
+        shift = (_rotation_ovr(g, hurt_day, replacement) - _rotation_ovr(g, ctx["hurt_now"], replacement)) / ctx["league_sd"] * teams.TEAM_SD
+        side[team] = float(ctx["rating"][team]) + (0.0 if math.isnan(shift) else shift)
+    syn, mat = ctx["pairs"]
     sa, sh = _stars(df, away, inj, day), _stars(df, home, inj, day)
     fit = _fit(sh, syn) - _fit(sa, syn)
     matchup = _matchup(sh, sa, mat) - _matchup(sa, sh, mat)
@@ -139,7 +154,7 @@ def _predict(conn: psycopg.Connection, away: str, home: str, day: dt.date) -> di
     star_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr), "available": bool(r.avail > 0),
                             "day_to_day": 0 < r.avail < 1} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
     return {
-        "season": season, "date": day.isoformat(), "away": away, "home": home,
+        "season": ctx["season"], "date": day.isoformat(), "away": away, "home": home,
         "rating": {away: round(float(side[away]), 1), home: round(float(side[home]), 1)},
         "base_margin": round(float(base), 1), "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),

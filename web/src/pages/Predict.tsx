@@ -17,11 +17,12 @@ function nextDays(n: number): string[] {
   return Array.from({ length: n }, (_, i) => new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10));
 }
 
-function TeamSide({ team, score, lang }: { team: string; score: number | null; lang: "zh" | "en" }) {
+function TeamSide({ team, score, win, lang }: { team: string; score: number | null; win?: number; lang: "zh" | "en" }) {
   return (
     <span className="row" style={{ flex: 1, alignItems: "center", gap: 6 }}>
       <TeamLogo team={team} size={32} />
       <strong>{teamName(team, lang, true)}</strong>
+      {win != null && <span className="tag num" style={{ marginLeft: "auto", background: "var(--pop-yellow)", color: "var(--on-yellow)", fontWeight: 700 }}>{Math.round(win * 100)}%</span>}
       {score != null && <span className="num" style={{ marginLeft: "auto" }}>{score}</span>}
     </span>
   );
@@ -33,9 +34,9 @@ function Game({ g }: { g: ScheduledGame }) {
   return (
     <Link to={`/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
       style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
-      <TeamSide team={g.away_team} score={g.completed ? g.away_score : null} lang={lang} />
+      <TeamSide team={g.away_team} score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center" }}>{g.completed ? t("已结束") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</span>
-      <TeamSide team={g.home_team} score={g.completed ? g.home_score : null} lang={lang} />
+      <TeamSide team={g.home_team} score={g.completed ? g.home_score : null} win={g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
     </Link>
   );
 }
@@ -51,7 +52,7 @@ export default function Predict() {
     <>
       <section className="panel halftone" style={{ background: "var(--pop-red)", color: "#fff", borderColor: "#111" }}>
         <h1 style={{ fontSize: "var(--size-h1)" }}>{t("比赛预测")}</h1>
-        <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛。胜率和分差预测即将上线。")}</p>
+        <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。")}</p>
       </section>
       <div className="seg seg-lg" role="group" aria-label={t("日期")}>
         {days.map((d) => (
