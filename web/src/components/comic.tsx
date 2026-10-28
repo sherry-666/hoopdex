@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Power, SeasonInfo, seriesColor } from "../api";
 import { POWERS_EN, useLang } from "../i18n";
@@ -31,15 +31,91 @@ export function TeamLogo({ team, size = 28 }: { team: string; size?: number }) {
   );
 }
 
+/** Players whose portrait also has a short silent clip at /portraits/<id>.mp4. */
+const ANIMATED = new Set<number>([201939]);
+
+function motionAllowed() {
+  if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  return !(navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
+}
+
+/** The still portrait with its clip laid over it. The clip plays once, then the still shows again: when the pointer
+ * enters (hover devices), and when the portrait first comes mostly into view (play="view", or touch devices, which
+ * have no hover). When the pointer leaves, it stops at once and the still shows. It is fetched only the first time
+ * it is needed. */
+function MotionPortrait({ id, alt, size, play, onError }: {
+  id: number; alt: string; size: number; play?: "hover" | "view"; onError: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const pending = useRef(false);
+  const seen = useRef(false);
+  const [armed, setArmed] = useState(false);
+  const [ticket, setTicket] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const canHover = window.matchMedia("(hover: hover)").matches;
+  const onView = play === "view" || !canHover;
+
+  // Ask for one play; the src is attached on the first ask, so the effect below runs the clip.
+  const start = () => {
+    const v = video.current;
+    if (v && !v.paused && !v.ended) return;
+    pending.current = true;
+    setArmed(true);
+    setTicket((n) => n + 1);
+  };
+
+  const stop = () => {
+    pending.current = false;
+    video.current?.pause();
+    setPlaying(false);
+  };
+
+  useEffect(() => {
+    const v = video.current;
+    if (!v || !armed || !pending.current) return;
+    pending.current = false;
+    v.currentTime = 0;
+    v.play().catch(() => setPlaying(false));
+  }, [armed, ticket]);
+
+  useEffect(() => {
+    if (!onView || !box.current) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.intersectionRatio >= 0.6 && !seen.current) { seen.current = true; start(); }
+      else if (e.intersectionRatio < 0.2) seen.current = false;
+    }, { threshold: [0, 0.2, 0.6] });
+    io.observe(box.current);
+    return () => io.disconnect();
+  }, [onView]);
+
+  return (
+    <div ref={box} onPointerEnter={(e) => { if (e.pointerType === "mouse") start(); }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") stop(); }}
+      style={{ position: "relative", border: "var(--line) solid var(--ink)", lineHeight: 0 }}>
+      <img src={`/portraits/${id}.webp`} alt={alt} width={size} height={size * 1.2} onError={onError}
+        style={{ display: "block", width: "100%", height: "auto", aspectRatio: "5 / 6", objectFit: "cover" }} />
+      <video ref={video} src={armed ? `/portraits/${id}.mp4` : undefined} muted playsInline preload="none" aria-hidden="true"
+        tabIndex={-1} disablePictureInPicture onPlaying={() => setPlaying(true)} onEnded={() => setPlaying(false)}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none",
+          opacity: playing ? 1 : 0 }} />
+    </div>
+  );
+}
+
 /** A player's comic portrait: /portraits/<id>.webp when it exists, otherwise an
  * inked silhouette on halftone in the colour of his main archetype. */
-export function Portrait({ id, name, archetype, size = 220 }: { id: number; name: string; archetype?: number | null; size?: number }) {
+export function Portrait({ id, name, archetype, size = 220, play }: {
+  id: number; name: string; archetype?: number | null; size?: number; play?: "hover" | "view";
+}) {
   const { t } = useLang();
   const [missing, setMissing] = useState(false);
   const color = archetype == null ? "var(--pop-yellow)" : seriesColor(archetype);
   if (!missing) {
+    const alt = t("{name} 的漫画形象", { name });
+    if (ANIMATED.has(id) && motionAllowed()) return <MotionPortrait id={id} alt={alt} size={size} play={play} onError={() => setMissing(true)} />;
     return (
-      <img src={`/portraits/${id}.webp`} alt={t("{name} 的漫画形象", { name })} width={size} height={size * 1.2}
+      <img src={`/portraits/${id}.webp`} alt={alt} width={size} height={size * 1.2}
         style={{ display: "block", width: "100%", height: "auto", aspectRatio: "5 / 6", objectFit: "cover", border: "var(--line) solid var(--ink)" }}
         onError={() => setMissing(true)} />
     );

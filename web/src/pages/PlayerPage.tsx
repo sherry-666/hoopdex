@@ -48,7 +48,7 @@ export default function PlayerPage() {
       </div>
       <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", alignItems: "start" }}>
         <section className="panel" style={{ padding: 10 }}>
-          <Portrait id={p.player_id} name={p.name} archetype={off?.mix[0]?.id} />
+          <Portrait id={p.player_id} name={p.name} archetype={off?.mix[0]?.id} play="view" />
         </section>
         <section className="panel" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 14 }}>
           <span className="caption">{t("{season} 赛季 · {family}", { season, family: off ? name(off.family) : t("未分类") })}</span>
