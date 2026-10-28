@@ -402,7 +402,7 @@ def matchups() -> dict:
 
 
 @app.get("/api/schedule")
-def schedule(days: int = 4) -> list[dict]:
+def schedule(days: int = 3) -> list[dict]:
     """Games from today (US Eastern) through the next days - 1 days, one row per game, earliest tipoff first."""
     today = dt.datetime.now(live.EASTERN).date()
     return q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"

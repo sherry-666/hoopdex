@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ScheduledGame, useSchedule } from "../api";
 import { Failed, Loading, TeamLogo } from "../components/comic";
@@ -8,6 +9,12 @@ import { teamName } from "../teams";
 function dayLabel(iso: string, lang: "zh" | "en") {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "long" });
+}
+
+/** Today's US Eastern date and the next two, as "YYYY-MM-DD" (the API groups games by Eastern date). */
+function nextDays(n: number): string[] {
+  const [y, m, d] = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).split("-").map(Number);
+  return Array.from({ length: n }, (_, i) => new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10));
 }
 
 function TeamSide({ team, score, lang }: { team: string; score: number | null; lang: "zh" | "en" }) {
@@ -36,22 +43,30 @@ export default function Predict() {
   const { t, lang } = useLang();
   usePageTitle(t("比赛预测"));
   const sched = useSchedule();
-  const days = new Map<string, ScheduledGame[]>();
-  for (const g of sched.data ?? []) days.set(g.game_date, [...(days.get(g.game_date) ?? []), g]);
+  const days = nextDays(3);
+  const [pick, setPick] = useState(days[0]);
+  const games = (sched.data ?? []).filter((g) => g.game_date === pick);
   return (
     <>
       <section className="panel halftone" style={{ background: "var(--pop-red)", color: "#fff", borderColor: "#111" }}>
         <h1 style={{ fontSize: "var(--size-h1)" }}>{t("比赛预测")}</h1>
         <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛。胜率和分差预测即将上线。")}</p>
       </section>
-      {sched.isLoading ? <Loading what={t("赛程")} /> : sched.error ? <Failed error={sched.error} /> : days.size === 0 ? (
-        <p>{t("这几天没有比赛。")}</p>
-      ) : [...days].map(([day, games]) => (
-        <section key={day} style={{ display: "grid", gap: 10 }}>
-          <h2>{dayLabel(day, lang)} <small>{t("{n} 场", { n: games.length })}</small></h2>
+      <div className="seg seg-lg" role="group" aria-label={t("日期")}>
+        {days.map((d) => (
+          <button key={d} type="button" aria-pressed={pick === d} onClick={() => setPick(d)}>
+            {dayLabel(d, lang)}{d === days[0] ? ` · ${t("今天")}` : ""}
+          </button>
+        ))}
+      </div>
+      {sched.isLoading ? <Loading what={t("赛程")} /> : sched.error ? <Failed error={sched.error} /> : games.length === 0 ? (
+        <p>{t("这一天没有比赛。")}</p>
+      ) : (
+        <section style={{ display: "grid", gap: 10 }}>
+          <h2><small>{t("{n} 场", { n: games.length })}</small></h2>
           {games.map((g) => <Game key={g.game_id} g={g} />)}
         </section>
-      ))}
+      )}
     </>
   );
 }
