@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useDefaultSeason, usePlayers } from "../api";
+import { useCareerTop, useDefaultSeason, usePlayers } from "../api";
 import { Failed, Loading, PlayerCard } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 
@@ -13,6 +13,7 @@ const ISSUES = [
 export default function Home() {
   const season = useDefaultSeason();
   const players = usePlayers(season);
+  const careerTop = useCareerTop();
   const navigate = useNavigate();
   const { t } = useLang();
   usePageTitle();
@@ -25,12 +26,13 @@ export default function Home() {
     const top = (key: "pts_36" | "ovr" | "off" | "def") =>
       regular.filter((p) => p[key] != null).sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0)).slice(0, 6);
     return [
+      { title: "生涯最强球员", note: "（生涯总评）", list: careerTop.data ?? [], career: true },
       { title: "得分火力最猛的球员", note: "（{season} · 每 36 分钟得分）", list: top("pts_36") },
       { title: "赛季最佳球员", note: "（{season} · 总评）", list: top("ovr") },
       { title: "赛季最佳进攻球员", note: "（{season} · 进攻评分）", list: top("off") },
       { title: "赛季最佳防守球员", note: "（{season} · 防守评分）", list: top("def") },
     ];
-  }, [players.data]);
+  }, [players.data, careerTop.data]);
 
   return (
     <>
@@ -65,7 +67,7 @@ export default function Home() {
             {t(sec.title)} <span className="note">{t(sec.note, { season: season ?? "" })}</span>
           </h2>
           <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={season} ovr={p.ovr} off={p.off} def={p.def} />)}
+            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr} off={p.off} def={p.def} />)}
           </div>
         </section>
       ))}

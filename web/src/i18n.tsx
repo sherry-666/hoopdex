@@ -20,7 +20,7 @@ const UI_EN: Record<string, string> = {
   "每名球员一张卡：超能力、战力数值、风格构成。": "One card per player: superpowers, power stats and style mix.",
   "按上场球员算两队实力，给出胜率和分差。即将登场。": "Team strength from the players on the floor, with win probability and margin. Coming soon.",
   "得分火力最猛的球员": "Top scorers", "（{season} · 每 36 分钟得分）": "({season} · points per 36)",
-  "赛季最佳球员": "Best players of the season", "（{season} · 总评）": "({season} · overall rating)",
+  "生涯最强球员": "Best players of all time", "（生涯总评）": "(career rating)", "赛季最佳球员": "Best players of the season", "（{season} · 总评）": "({season} · overall rating)",
   "赛季最佳进攻球员": "Best offensive players", "（{season} · 进攻评分）": "({season} · offense rating)",
   "赛季最佳防守球员": "Best defensive players", "（{season} · 防守评分）": "({season} · defense rating)",
   // injuries and recent games

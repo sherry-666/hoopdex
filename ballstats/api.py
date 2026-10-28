@@ -132,6 +132,20 @@ def stats(season: str) -> list[dict]:
     return q("SELECT player_id, minutes, stats FROM feat.player_stats WHERE season = %s", (season,))
 
 
+@app.get("/api/career-top")
+def career_top(limit: int = 6) -> list[dict]:
+    """Highest career ratings (feat.player_career_rating), shaped like a player-list row for the home page cards."""
+    return q(
+        """
+        SELECT c.player_id, s.name, s.team, o.style_label AS off_style, o.top_archetype_id AS off_top,
+               c.career AS ovr, c.off_career AS off, c.def_career AS def
+        FROM feat.player_career_rating c
+        JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
+        LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
+        ORDER BY c.career DESC LIMIT %s
+        """, (min(limit, 50),))
+
+
 @app.get("/api/players/{season}")
 def player_list(season: str) -> list[dict]:
     return q(

@@ -127,6 +127,8 @@ export const useRoleView = (season: string | undefined, side: Side) =>
   useQuery({ queryKey: ["roles", season, side], queryFn: () => get<RoleView>(`/api/roles/${season}/${side}`), enabled: !!season });
 export const usePlayers = (season: string | undefined) =>
   useQuery({ queryKey: ["players", season], queryFn: () => get<PlayerRow[]>(`/api/players/${season}`), enabled: !!season });
+export const useCareerTop = () =>
+  useQuery({ queryKey: ["career-top"], queryFn: () => get<PlayerRow[]>("/api/career-top") });
 export const usePlayer = (season: string | undefined, id: number) =>
   useQuery({ queryKey: ["player", season, id], queryFn: () => get<PlayerDetail>(`/api/players/${season}/${id}`), enabled: !!season });
 
