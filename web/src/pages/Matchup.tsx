@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { GamePrediction, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
+import { FitItem, GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -40,8 +40,38 @@ function Line({ label, a, b, higherIsBetter = true, digits = 1 }: { label: strin
 
 const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
 
-function Prediction({ p }: { p: GamePrediction }) {
+const SHOWN = 4;
+
+/** A row of the prediction table that opens to the pairs behind it, the biggest few per team. */
+function Detail({ label, total, lines, cap }: { label: string; total: number; lines: Record<string, { points: number; text: string }[]>; cap: number }) {
   const { t, lang } = useLang();
+  const teams = Object.keys(lines);
+  const raw = (tm: string) => lines[tm].reduce((a, l) => a + l.points, 0);
+  const capped = teams.some((tm) => Math.abs(raw(tm)) > cap);
+  return (
+    <details style={{ borderBottom: "1px dashed var(--ink)" }}>
+      <summary style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", cursor: "pointer" }}>
+        <span>{label}</span><span className="num">{signed(total)}</span>
+      </summary>
+      <div style={{ padding: "4px 0 10px 12px", display: "grid", gap: 10 }}>
+        {teams.map((tm) => (
+          <div key={tm}>
+            <b>{teamName(tm, lang, true)}</b> <span className="note">{t("合计 {v} 分", { v: signed(raw(tm)) })}</span>
+            {lines[tm].slice(0, SHOWN).map((l, i) => (
+              <div key={i} className="note" style={{ margin: "2px 0" }}>{l.text}</div>
+            ))}
+            {lines[tm].length > SHOWN && <div className="note">{t("另有 {n} 对影响较小", { n: lines[tm].length - SHOWN })}</div>}
+          </div>
+        ))}
+        {capped && <div className="note">{t("单队合计超过上限 ±{cap} 分，按上限计。", { cap })}</div>}
+      </div>
+    </details>
+  );
+}
+
+function Prediction({ p }: { p: GamePrediction }) {
+  const { t, lang, name } = useLang();
+  const withType = (x: { name: string; type: string | null }) => (x.type ? `${x.name} (${name(x.type)})` : x.name);
   const homeFav = p.margin >= 0;
   const fav = homeFav ? p.home : p.away, win = homeFav ? p.home_win : 1 - p.home_win;
   const row = (label: string, v: number) => (
@@ -62,8 +92,16 @@ function Prediction({ p }: { p: GamePrediction }) {
       <div style={{ maxWidth: 420 }}>
         {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
         {row(t("主场"), 2.15)}
-        {row(t("阵容适配（两队各前 5 名可出战球员）"), p.fit)}
-        {row(t("主力克制（两队各前 5 名可出战球员）"), p.matchup)}
+        <Detail label={t("阵容适配（两队各前 5 名可出战球员）")} total={p.fit} cap={p.component_cap}
+          lines={Object.fromEntries(Object.entries(p.fit_items).map(([tm, items]) => [tm, items.map((i: FitItem) => ({
+            points: i.points,
+            text: `${withType(i.a)} + ${withType(i.b)}：${i.side === "offense" ? t("进攻搭配") : t("防守搭配")} ${signed(i.effect)}/100 ${t("回合")} → ${signed(i.points)} ${t("分")}`,
+          }))]))} />
+        <Detail label={t("主力克制（两队各前 5 名可出战球员）")} total={p.matchup} cap={p.component_cap}
+          lines={Object.fromEntries(Object.entries(p.matchup_items).map(([tm, items]) => [tm, items.map((i: MatchupItem) => ({
+            points: i.points,
+            text: `${withType(i.off)} ${t("进攻")} ${teamName(tm === p.home ? p.away : p.home, lang, true)} ${withType(i.def)}：${signed(i.effect)}/100 ${t("回合")} → ${signed(i.points)} ${t("分")}`,
+          }))]))} />
         {row(t("合计（主队减客队）"), p.margin)}
       </div>
       <p className="note">{t("阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。")}</p>

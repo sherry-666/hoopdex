@@ -209,8 +209,14 @@ export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () 
 export interface GamePrediction {
   season: string; date: string; away: string; home: string; rating: Record<string, number>;
   base_margin: number; fit: number; matchup: number; margin: number; home_win: number;
+  fit_items: Record<string, FitItem[]>; matchup_items: Record<string, MatchupItem[]>; component_cap: number;
   key_players: Record<string, { player_id: number; name: string; ovr: number }[]>;   // the five that count in fit and matchup
   best_player: Record<string, number | null>;   // highest-rated player who can play in full that day
 }
 export const usePrediction = (away: string, home: string, date: string | null) =>
   useQuery({ queryKey: ["predict", away, home, date], queryFn: () => get<GamePrediction>(`/api/predict/${away}/${home}${date ? `?date=${date}` : ""}`) });
+
+/** Two key players of one team and what their kinds do together, in points per 100 possessions and points per game. */
+export interface FitItem { team: string; side: Side; effect: number; points: number; a: { name: string; type: string | null }; b: { name: string; type: string | null } }
+/** One team's key player on offence against the other's on defence. */
+export interface MatchupItem { team: string; effect: number; points: number; off: { name: string; type: string | null }; def: { name: string; type: string | null } }

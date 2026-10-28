@@ -93,24 +93,40 @@ def _key_players(df: pd.DataFrame, team: str, inj: dict, day: dt.date) -> pd.Dat
     return _able(df, team, inj, day).sort_values("ovr", ascending=False).head(NUM_KEY)
 
 
-def _fit(stars: pd.DataFrame, syn: dict) -> float:
-    s = stars
-    total = 0.0
+def _fit_items(team: str, stars: pd.DataFrame, syn: dict, names: dict) -> list[dict]:
+    """Every pair of the team's key players on one side, with what the pair's kinds do together in points per game
+    (before the cap)."""
+    items = []
     for side, col in (("offense", "off_type"), ("defense", "def_type")):
-        types = [int(x) for x in s[col].dropna()]
-        for i in range(len(types)):
-            for j in range(i + 1, len(types)):
-                total += syn.get((side, min(types[i], types[j]), max(types[i], types[j])), 0.0)
-    return _cap(total * FIT_OVERLAP * STAR_SHARE)   # per 100 possessions ~ points per game
+        rows = [r for _, r in stars.dropna(subset=[col]).iterrows()]
+        for i in range(len(rows)):
+            for j in range(i + 1, len(rows)):
+                ta, tb = int(rows[i][col]), int(rows[j][col])
+                eff = syn.get((side, min(ta, tb), max(ta, tb)), 0.0)
+                items.append({"team": team, "side": side, "effect": round(float(eff), 2),
+                              "points": round(float(eff * FIT_OVERLAP * STAR_SHARE), 2),
+                              "a": {"name": rows[i]["name"], "type": names.get((side, ta))},
+                              "b": {"name": rows[j]["name"], "type": names.get((side, tb))}})
+    return sorted(items, key=lambda x: -abs(x["points"]))
 
 
-def _matchup(mine: pd.DataFrame, theirs: pd.DataFrame, mat: dict) -> float:
-    """What my stars' offence gains or loses against their stars' defence, in points per game."""
-    a, d = mine.dropna(subset=["off_type"]), theirs.dropna(subset=["def_type"])
-    if a.empty or d.empty:
-        return 0.0
-    per_star = [np.mean([mat.get((int(o), int(x)), 0.0) for x in d.def_type]) for o in a.off_type]
-    return _cap(sum(per_star) / 100 * MATCHUP_POSS * STAR_SHARE)
+def _matchup_items(mine: str, attackers: pd.DataFrame, defenders: pd.DataFrame, mat: dict, names: dict) -> list[dict]:
+    """My key players' offence against each of their key players' defence, in points per game for my team (before the
+    cap). Each attacker's effect is the average over the defenders, so the points add up to the team's matchup."""
+    a, d = attackers.dropna(subset=["off_type"]), defenders.dropna(subset=["def_type"])
+    items = []
+    for _, x in a.iterrows():
+        for _, y in d.iterrows():
+            eff = mat.get((int(x.off_type), int(y.def_type)), 0.0)
+            items.append({"team": mine, "effect": round(float(eff), 2),
+                          "points": round(float(eff / 100 * MATCHUP_POSS * STAR_SHARE / len(d)), 2),
+                          "off": {"name": x["name"], "type": names.get(("offense", int(x.off_type)))},
+                          "def": {"name": y["name"], "type": names.get(("defense", int(y.def_type)))}})
+    return sorted(items, key=lambda i: -abs(i["points"]))
+
+
+def _total(items: list[dict]) -> float:
+    return _cap(sum(i["points"] for i in items))
 
 
 def predict(conn: psycopg.Connection, away: str, home: str, day: dt.date) -> dict:
@@ -140,6 +156,9 @@ def _context(conn: psycopg.Connection) -> dict:
         "league_sd": float(np.nanstd([_rotation_ovr(g, hurt_now, replacement) for _, g in df.groupby("team")])),
         "rating": dict(conn.execute("SELECT team, ovr FROM feat.team_profile WHERE season = %s", (season,)).fetchall()),
         "pairs": _pair_effects(conn),
+        "type_names": {(side, tid): name for side, tid, name in conn.execute(
+            "SELECT side, type_id, name FROM feat.role_type WHERE level = 'archetype'"
+            " AND season = (SELECT max(season) FROM feat.role_type WHERE level = 'archetype')")},
     }
 
 
@@ -153,8 +172,11 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
         side[team] = float(ctx["rating"][team]) + (0.0 if math.isnan(shift) else shift)
     syn, mat = ctx["pairs"]
     sa, sh = _key_players(df, away, inj, day), _key_players(df, home, inj, day)
-    fit = _fit(sh, syn) - _fit(sa, syn)
-    matchup = _matchup(sh, sa, mat) - _matchup(sa, sh, mat)
+    names = ctx["type_names"]
+    fit_items = {away: _fit_items(away, sa, syn, names), home: _fit_items(home, sh, syn, names)}
+    match_items = {away: _matchup_items(away, sa, sh, mat, names), home: _matchup_items(home, sh, sa, mat, names)}
+    fit = _total(fit_items[home]) - _total(fit_items[away])
+    matchup = _total(match_items[home]) - _total(match_items[away])
     base = K * (side[home] - side[away]) + HOME_EDGE
     margin = base + fit + matchup
     key_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr)} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
@@ -164,5 +186,6 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
         "rating": {away: round(float(side[away]), 1), home: round(float(side[home]), 1)},
         "base_margin": round(float(base), 1), "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),
+        "fit_items": fit_items, "matchup_items": match_items, "component_cap": COMPONENT_CAP,
         "key_players": {away: key_rows(sa), home: key_rows(sh)}, "best_player": {away: best(away), home: best(home)},
     }
