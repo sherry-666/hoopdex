@@ -19,11 +19,11 @@ function nextDays(n: number): string[] {
 
 function TeamSide({ team, score, lang }: { team: string; score: number | null; lang: "zh" | "en" }) {
   return (
-    <Link to={`/teams/${team}`} className="row" style={{ flex: 1, alignItems: "center", gap: 6, textDecoration: "none", color: "inherit" }}>
+    <span className="row" style={{ flex: 1, alignItems: "center", gap: 6 }}>
       <TeamLogo team={team} size={32} />
-      <strong>{teamName(team, lang)}</strong>
+      <strong>{teamName(team, lang, true)}</strong>
       {score != null && <span className="num" style={{ marginLeft: "auto" }}>{score}</span>}
-    </Link>
+    </span>
   );
 }
 
@@ -31,11 +31,12 @@ function Game({ g }: { g: ScheduledGame }) {
   const { t, lang } = useLang();
   const time = new Date(g.tipoff).toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="panel" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "10px 14px" }}>
+    <Link to={`/predict/${g.away_team}/${g.home_team}`} className="panel"
+      style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       <TeamSide team={g.away_team} score={g.completed ? g.away_score : null} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center" }}>{g.completed ? t("已结束") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</span>
       <TeamSide team={g.home_team} score={g.completed ? g.home_score : null} lang={lang} />
-    </div>
+    </Link>
   );
 }
 

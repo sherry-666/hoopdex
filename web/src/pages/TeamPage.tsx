@@ -18,7 +18,7 @@ function shortDate(iso: string, lang: "zh" | "en") {
 }
 
 /** Red cross (red ambulance when out for over a month) next to an injured player; hover or focus for status, body part and expected return. */
-function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["injury"]>; avail: number }) {
+export function InjuryMark({ injury, avail }: { injury: NonNullable<TeamRosterRow["injury"]>; avail: number }) {
   const { t, lang } = useLang();
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const where = injuryWhere(injury, lang);
