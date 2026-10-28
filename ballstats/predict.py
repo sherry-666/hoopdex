@@ -84,7 +84,7 @@ def _cap(v: float) -> float:
 def _stars(df: pd.DataFrame, team: str, inj: dict, day: dt.date) -> pd.DataFrame:
     t = df[(df.team == team) & (df.ovr >= STAR_OVR)].copy()
     t["avail"] = [can_play(*inj.get(p, (None, None)), day) for p in t.pid]
-    return t
+    return t[(t.avail == 0) | (t.avail == 1)]   # day-to-day players are neither listed nor counted
 
 
 def _fit(stars: pd.DataFrame, syn: dict) -> float:

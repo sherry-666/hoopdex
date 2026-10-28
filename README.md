@@ -153,6 +153,14 @@ daily, after the last games end in the US):
 3. Service → Variables: `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 4. The first run, with an empty `live.player_game`, looks back 45 days to fill the season so far.
 
+### Hourly schedule update (third cron)
+
+`python -m ballstats schedule-update` is the light part of `live-update`: schedule and scores, the injury report and the
+standings (about 7 s, no box scores, no team ratings). Service `schedule-cron`, same repo, `0 * * * *`, start command
+`python -m ballstats schedule-update` (`railway.schedule.json` has the same settings; Railway no longer reads
+config-as-code for a service made from the CLI, so they are set on the service itself), `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+It keeps the game predictions on `/predict` current: tonight's scores and injury changes show up within the hour.
+
 ### Nightly nba stats update (second cron)
 
 `python -m ballstats daily-update` is the Railway-side version of the local routine: it collects the current
