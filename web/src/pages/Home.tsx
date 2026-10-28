@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useCareerTop, useDefaultSeason, useHallOfFame, usePlayers } from "../api";
+import { HallRow, useCareerTop, useDefaultSeason, useHallOfFame, usePlayers } from "../api";
 import { Failed, Loading, PlayerCard } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 
@@ -9,6 +9,17 @@ const ISSUES = [
   { to: "/players", no: "#2", title: "球员名册", line: "每名球员一张卡：超能力、战力数值、风格构成。", tone: "var(--pop-blue)", ink: "var(--on-blue)" },
   { to: "/predict", no: "#3", title: "比赛预测", line: "按上场球员算两队实力，给出胜率和分差。即将登场。", tone: "var(--pop-red)", ink: "var(--on-red)" },
 ];
+
+function Honors({ p }: { p: HallRow }) {
+  const { t } = useLang();
+  return (
+    <div className="row" style={{ gap: 6, fontSize: 13 }}>
+      <span className="tag">{t("冠军")} {p.titles}</span>
+      <span className="tag">MVP {p.mvps}</span>
+      <span className="tag">{t("全明星")} {p.all_stars}</span>
+    </div>
+  );
+}
 
 export default function Home() {
   const season = useDefaultSeason();
@@ -68,7 +79,8 @@ export default function Home() {
             {t(sec.title)} <span className="note">{t(sec.note, { season: season ?? "" })}</span>
           </h2>
           <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr} off={p.off} def={p.def} />)}
+            {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr} off={p.off} def={p.def}
+              extra={"titles" in p ? <Honors p={p as HallRow} /> : undefined} />)}
           </div>
         </section>
       ))}

@@ -106,9 +106,9 @@ export function PowerBubble({ power, label }: { power: Power; label: string }) {
   );
 }
 
-export function PlayerCard({ id, name, team, style, archetype, season, ovr, off, def }: {
+export function PlayerCard({ id, name, team, style, archetype, season, ovr, off, def, extra }: {
   id: number; name: string; team: string; style?: string | null; archetype?: number | null; season?: string;
-  ovr?: number | null; off?: number | null; def?: number | null;
+  ovr?: number | null; off?: number | null; def?: number | null; extra?: ReactNode;
 }) {
   const lang = useLang();
   return (
@@ -123,6 +123,7 @@ export function PlayerCard({ id, name, team, style, archetype, season, ovr, off,
         {style && <span className="note" style={{ color: "var(--ink-soft)" }}>{lang.name(style)}</span>}
       </div>
       <OffDef off={off} def={def} size={13} />
+      {extra}
     </Link>
   );
 }
