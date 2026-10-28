@@ -62,20 +62,16 @@ function Prediction({ p }: { p: GamePrediction }) {
       <div style={{ maxWidth: 420 }}>
         {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
         {row(t("主场"), 2.15)}
-        {row(t("阵容适配（头部球员，≥{n}）", { n: p.star_ovr }), p.fit)}
-        {row(t("主力克制（头部球员，≥{n}）", { n: p.star_ovr }), p.matchup)}
+        {row(t("阵容适配（两队各前 5 名可出战球员）"), p.fit)}
+        {row(t("主力克制（两队各前 5 名可出战球员）"), p.matchup)}
         {row(t("合计（主队减客队）"), p.margin)}
       </div>
       <p className="note">{t("阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。")}</p>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>
         {[p.away, p.home].map((tm) => (
           <div key={tm}>
-            <b>{teamName(tm, lang, true)} · {t("头部球员")}</b>
-            {p.stars[tm].map((s) => (
-              <div key={s.player_id} style={{ opacity: s.available ? 1 : 0.5 }}>
-                {s.name} {s.ovr}{!s.available && ` · ${t("当天无法出战")}`}{s.day_to_day && ` · ${t("出战成疑")}`}
-              </div>
-            ))}
+            <b>{teamName(tm, lang, true)} · {t("主力球员")}</b>
+            {p.key_players[tm].map((s) => <div key={s.player_id}>{s.name} {s.ovr}</div>)}
           </div>
         ))}
       </div>
@@ -83,12 +79,12 @@ function Prediction({ p }: { p: GamePrediction }) {
   );
 }
 
-/** The team's highest-rated player who can play on the game day: fully available per the prediction's star list,
- *  or, below the star line, simply not on the injury report. */
+/** The team's highest-rated player who can play in full on the game day (from the prediction); without it, the
+ *  highest-rated one not on the injury report. */
 const bestPlayer = (d: TeamPageData, team: string, pred: GamePrediction | undefined) => {
-  const ok = new Set(pred?.stars[team]?.filter((s) => s.available).map((s) => s.player_id));
   const rated = d.roster.filter((r) => !r.departed && r.ovr != null).sort((x, y) => (y.ovr ?? 0) - (x.ovr ?? 0));
-  return rated.find((r) => ok.has(r.player_id)) ?? rated.find((r) => !r.injury);
+  const id = pred?.best_player[team];
+  return (id != null ? rated.find((r) => r.player_id === id) : undefined) ?? rated.find((r) => !r.injury);
 };
 
 function Star({ r, season, team }: { r: TeamRosterRow; season: string; team: string }) {

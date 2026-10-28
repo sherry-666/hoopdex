@@ -208,8 +208,9 @@ export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () 
 
 export interface GamePrediction {
   season: string; date: string; away: string; home: string; rating: Record<string, number>;
-  base_margin: number; fit: number; matchup: number; margin: number; home_win: number; star_ovr: number;
-  stars: Record<string, { player_id: number; name: string; ovr: number; available: boolean; day_to_day: boolean }[]>;
+  base_margin: number; fit: number; matchup: number; margin: number; home_win: number;
+  key_players: Record<string, { player_id: number; name: string; ovr: number }[]>;   // the five that count in fit and matchup
+  best_player: Record<string, number | null>;   // highest-rated player who can play in full that day
 }
 export const usePrediction = (away: string, home: string, date: string | null) =>
   useQuery({ queryKey: ["predict", away, home, date], queryFn: () => get<GamePrediction>(`/api/predict/${away}/${home}${date ? `?date=${date}` : ""}`) });

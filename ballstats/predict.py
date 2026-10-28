@@ -7,9 +7,9 @@ margin (home minus away, points) =
                actually play on the game day: a player listed Out is left out unless his return date is on or before
                that day; day-to-day players count at teams.DAY_TO_DAY_FACTOR. The correction is the change in the
                rotation's minutes-weighted rating (teams._roster_with_injuries), in team-rating points.
-  fit          the team's stars (rating >= STAR_OVR and able to play) pairwise: do two such kinds of player share the
+  fit          the team's NUM_KEY best-rated players among those fully able to play that day, pairwise: do two such kinds of player share the
                floor better or worse than their own levels predict (feat.role_synergy, offence and defence).
-  matchup      the stars of each side against the other side's stars: offence archetype x defence archetype
+  matchup      each side's key players against the other side's key players: offence archetype x defence archetype
                (feat.role_matchup, pooled seasons).
 
 K, HOME_EDGE and SIGMA come from regressing 13212 regular-season games of 2015-16..2025-26 on the end-of-season
@@ -28,7 +28,8 @@ from psycopg.rows import tuple_row
 
 from ballstats import blend, live, teams
 
-STAR_OVR = 79                   # a "head" player: rating at or above this
+NUM_KEY = 5                     # the key players: the five best rated among those able to play that day
+                                # (by rating, not minutes: early in a season minutes are a few games' worth)
 K = 0.79                        # points of margin per team-rating point
 HOME_EDGE = 2.15
 SIGMA = 13.1                    # sd of a game's margin around the prediction
@@ -81,14 +82,19 @@ def _cap(v: float) -> float:
     return max(-COMPONENT_CAP, min(COMPONENT_CAP, v))
 
 
-def _stars(df: pd.DataFrame, team: str, inj: dict, day: dt.date) -> pd.DataFrame:
-    t = df[(df.team == team) & (df.ovr >= STAR_OVR)].copy()
+def _able(df: pd.DataFrame, team: str, inj: dict, day: dt.date) -> pd.DataFrame:
+    """The team's rated players who can play in full on the day (out or day-to-day players are left out)."""
+    t = df[(df.team == team) & df.ovr.notna()].copy()
     t["avail"] = [can_play(*inj.get(p, (None, None)), day) for p in t.pid]
-    return t[(t.avail == 0) | (t.avail == 1)]   # day-to-day players are neither listed nor counted
+    return t[t.avail == 1]
+
+
+def _key_players(df: pd.DataFrame, team: str, inj: dict, day: dt.date) -> pd.DataFrame:
+    return _able(df, team, inj, day).sort_values("ovr", ascending=False).head(NUM_KEY)
 
 
 def _fit(stars: pd.DataFrame, syn: dict) -> float:
-    s = stars[stars.avail > 0]
+    s = stars
     total = 0.0
     for side, col in (("offense", "off_type"), ("defense", "def_type")):
         types = [int(x) for x in s[col].dropna()]
@@ -100,7 +106,7 @@ def _fit(stars: pd.DataFrame, syn: dict) -> float:
 
 def _matchup(mine: pd.DataFrame, theirs: pd.DataFrame, mat: dict) -> float:
     """What my stars' offence gains or loses against their stars' defence, in points per game."""
-    a, d = mine[mine.avail > 0].dropna(subset=["off_type"]), theirs[theirs.avail > 0].dropna(subset=["def_type"])
+    a, d = mine.dropna(subset=["off_type"]), theirs.dropna(subset=["def_type"])
     if a.empty or d.empty:
         return 0.0
     per_star = [np.mean([mat.get((int(o), int(x)), 0.0) for x in d.def_type]) for o in a.off_type]
@@ -146,17 +152,17 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
         shift = (_rotation_ovr(g, hurt_day, replacement) - _rotation_ovr(g, ctx["hurt_now"], replacement)) / ctx["league_sd"] * teams.TEAM_SD
         side[team] = float(ctx["rating"][team]) + (0.0 if math.isnan(shift) else shift)
     syn, mat = ctx["pairs"]
-    sa, sh = _stars(df, away, inj, day), _stars(df, home, inj, day)
+    sa, sh = _key_players(df, away, inj, day), _key_players(df, home, inj, day)
     fit = _fit(sh, syn) - _fit(sa, syn)
     matchup = _matchup(sh, sa, mat) - _matchup(sa, sh, mat)
     base = K * (side[home] - side[away]) + HOME_EDGE
     margin = base + fit + matchup
-    star_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr), "available": bool(r.avail > 0),
-                            "day_to_day": 0 < r.avail < 1} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
+    key_rows = lambda s: [{"player_id": int(r.pid), "name": r["name"], "ovr": int(r.ovr)} for _, r in s.sort_values("ovr", ascending=False).iterrows()]
+    best = lambda team: int(_able(df, team, inj, day).sort_values("ovr", ascending=False).pid.iloc[0]) if len(_able(df, team, inj, day)) else None
     return {
         "season": ctx["season"], "date": day.isoformat(), "away": away, "home": home,
         "rating": {away: round(float(side[away]), 1), home: round(float(side[home]), 1)},
         "base_margin": round(float(base), 1), "fit": round(float(fit), 2), "matchup": round(float(matchup), 2),
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),
-        "stars": {away: star_rows(sa), home: star_rows(sh)}, "star_ovr": STAR_OVR,
+        "key_players": {away: key_rows(sa), home: key_rows(sh)}, "best_player": {away: best(away), home: best(home)},
     }
