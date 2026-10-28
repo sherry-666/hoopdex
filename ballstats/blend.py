@@ -15,7 +15,8 @@ season's actual numbers. Players without a previous season (rookies) are not ble
 Ratings look back further than one season: the "last season" side is a minutes-weighted average
 of up to the three previous seasons, each decayed by PRIOR_DECAY per season back. A season a
 player missed (injury) or barely played carries almost no weight, so a player coming back from
-a lost year is judged on the seasons before it. Roles and superpowers still use last season only.
+a lost year is judged on the seasons before it. Looking back stops at the first season with
+500+ minutes: a full last season is enough on its own. Roles and superpowers still use last season only.
 """
 
 import pandas as pd

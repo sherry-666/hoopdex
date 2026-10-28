@@ -165,8 +165,11 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         priors = [(p, d) for p, d in blend.prior_seasons(s) if p in hist]
         prior_labels = {}
         if s == newest and t["gp"].max() < blend.ONGOING_MAX_GP and priors:
-            # Each prior season counts by minutes played x decay, so a missed or short season fades out.
-            pw = pd.DataFrame({p: (hist[p]["minutes"] * d).reindex(r.index) for p, d in priors}).fillna(0)
+            # Each prior season counts by minutes played x decay, so a missed or short season fades out;
+            # looking back stops at the first season with 500+ minutes.
+            mins = pd.DataFrame({p: hist[p]["minutes"].reindex(r.index) for p, _ in priors}).fillna(0)
+            enough = (mins >= MIN_MINUTES).astype(int)
+            pw = mins * [d for _, d in priors] * ((enough.cumsum(axis=1) - enough) == 0)   # stop after a full season
             blended = pw.index[pw.sum(axis=1) > 0]
             w = r.loc[blended, "minutes"].map(blend.player_weight)
             r["blend_weight"] = np.nan
