@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { TeamPageData, TeamRosterRow, useDefaultSeason, useTeamPage } from "../api";
-import { Failed, Loading, TeamLogo } from "../components/comic";
+import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
 import { teamName } from "../teams";
@@ -34,6 +34,26 @@ function Line({ label, a, b, higherIsBetter = true, digits = 1 }: { label: strin
       <span className="num" style={{ textAlign: "right", fontWeight: better === -1 ? 800 : 400 }}>{fmt(a)}</span>
       <span className="note" style={{ minWidth: 96, textAlign: "center" }}>{label}</span>
       <span className="num" style={{ fontWeight: better === 1 ? 800 : 400 }}>{fmt(b)}</span>
+    </div>
+  );
+}
+
+const bestPlayer = (d: TeamPageData) =>
+  d.roster.filter((r) => !r.departed && r.ovr != null).sort((x, y) => (y.ovr ?? 0) - (x.ovr ?? 0))[0];
+
+function Star({ r, season, align }: { r: TeamRosterRow | undefined; season: string; align: "left" | "right" }) {
+  const { name } = useLang();
+  if (!r) return <div />;
+  const right = align === "right";
+  return (
+    <div className="row" style={{ gap: 12, alignItems: "center", flexDirection: right ? "row-reverse" : "row", textAlign: align }}>
+      <div style={{ width: 110, flex: "none" }}><Portrait id={r.player_id} name={r.name} size={110} /></div>
+      <div>
+        <h3><Link to={`/players/${r.player_id}?season=${season}`} style={{ color: "inherit" }}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</h3>
+        <div style={{ margin: "6px 0" }}><OvrBadge ovr={r.ovr} size={40} /></div>
+        <OffDef off={r.off} def={r.def} />
+        <p className="note" style={{ margin: "6px 0 0" }}>{[r.off_style, r.def_style].filter(Boolean).map((x) => name(x as string)).join(" · ")}</p>
+      </div>
     </div>
   );
 }
@@ -94,6 +114,30 @@ export default function Matchup() {
         {sa && sh && <Line label={t("场均失分")} a={sa.pts_against} b={sh.pts_against} higherIsBetter={false} />}
         {sa && sh && <Line label={t("胜率")} a={sa.win_pct == null ? null : sa.win_pct * 100} b={sh.win_pct == null ? null : sh.win_pct * 100} digits={0} />}
       </section>
+
+      {(() => {
+        const sa2 = bestPlayer(a.data), sh2 = bestPlayer(h.data);
+        if (!sa2 && !sh2) return null;
+        return (
+          <section className="panel">
+            <span className="caption" style={{ fontSize: 20 }}>{t("最强球员")}</span>
+            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", padding: "12px 0 6px" }}>
+              <Star r={sa2} season={season} align="left" />
+              <Star r={sh2} season={season} align="right" />
+            </div>
+            {sa2 && sh2 && (
+              <>
+                <Line label={t("综合")} a={sa2.ovr} b={sh2.ovr} digits={0} />
+                <Line label={t("进攻")} a={sa2.off} b={sh2.off} digits={0} />
+                <Line label={t("防守")} a={sa2.def} b={sh2.def} digits={0} />
+                <Line label={t("场均得分")} a={sa2.pts} b={sh2.pts} />
+                <Line label={t("场均篮板")} a={sa2.reb} b={sh2.reb} />
+                <Line label={t("场均助攻")} a={sa2.ast} b={sh2.ast} />
+              </>
+            )}
+          </section>
+        );
+      })()}
 
       <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))" }}>
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>

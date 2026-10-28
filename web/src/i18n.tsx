@@ -7,7 +7,7 @@ export type Lang = "zh" | "en";
 const UI_EN: Record<string, string> = {
   // shell
   "今天起三天的比赛。胜率和分差预测即将上线。": "Games from today through the next three days. Win probability and point spread are coming soon.",
-  "这一天没有比赛。": "No games on this day.", "已结束": "Final", "阵容": "Roster", "球队对比": "Team comparison", "进攻效率": "Offensive rating", "防守效率": "Defensive rating", "场均得分": "Points per game", "场均失分": "Points allowed per game", "今天": "Today", "赛程": "the schedule",
+  "这一天没有比赛。": "No games on this day.", "已结束": "Final", "阵容": "Roster", "最强球员": "Best players", "场均篮板": "Rebounds per game", "场均助攻": "Assists per game", "球队对比": "Team comparison", "进攻效率": "Offensive rating", "防守效率": "Defensive rating", "场均得分": "Points per game", "场均失分": "Points allowed per game", "今天": "Today", "赛程": "the schedule",
   "首页": "Home", "定位实验室": "Role Lab", "球员名册": "Player Roster", "比赛预测": "Game Predictor",
   "日间版": "Day edition", "夜间版": "Night edition", "主导航": "Main navigation",
   "走错片场了": "Wrong set", "这一页不存在。回首页看看其他球员吧。": "This page doesn't exist. Head home and look at the other players.",
