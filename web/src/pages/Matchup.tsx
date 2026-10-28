@@ -1,5 +1,5 @@
-import { Link, useParams } from "react-router-dom";
-import { TeamPageData, TeamRosterRow, useDefaultSeason, useTeamPage } from "../api";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { GamePrediction, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -35,6 +35,51 @@ function Line({ label, a, b, higherIsBetter = true, digits = 1 }: { label: strin
       <span className="note" style={{ minWidth: 96, textAlign: "center" }}>{label}</span>
       <span className="num" style={{ fontWeight: better === 1 ? 800 : 400 }}>{fmt(b)}</span>
     </div>
+  );
+}
+
+const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
+
+function Prediction({ p }: { p: GamePrediction }) {
+  const { t, lang } = useLang();
+  const homeFav = p.margin >= 0;
+  const fav = homeFav ? p.home : p.away, win = homeFav ? p.home_win : 1 - p.home_win;
+  const row = (label: string, v: number) => (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px dashed var(--ink)" }}>
+      <span>{label}</span><span className="num">{signed(v)}</span>
+    </div>
+  );
+  return (
+    <section className="panel">
+      <span className="caption" style={{ fontSize: 20 }}>{t("预测")} · {p.date}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 0" }}>
+        <TeamLogo team={fav} size={48} />
+        <div>
+          <div className="num" style={{ fontSize: 32 }}>{teamName(fav, lang, true)} {Math.round(win * 100)}%</div>
+          <div className="note">{t("预计分差")} {signed(Math.abs(p.margin)).replace("+", "")} · {t("主队 {pct}%", { pct: Math.round(p.home_win * 100) })}</div>
+        </div>
+      </div>
+      <div style={{ maxWidth: 420 }}>
+        {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
+        {row(t("主场"), 2.15)}
+        {row(t("阵容适配（头部球员，≥{n}）", { n: p.star_ovr }), p.fit)}
+        {row(t("主力克制（头部球员，≥{n}）", { n: p.star_ovr }), p.matchup)}
+        {row(t("合计（主队减客队）"), p.margin)}
+      </div>
+      <p className="note">{t("阵容适配和主力克制在历史回测里几乎没有预测力，这里只按四分之一计入，各自最多 ±1.5 分。")}</p>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))" }}>
+        {[p.away, p.home].map((tm) => (
+          <div key={tm}>
+            <b>{teamName(tm, lang, true)} · {t("头部球员")}</b>
+            {p.stars[tm].map((s) => (
+              <div key={s.player_id} style={{ opacity: s.available ? 1 : 0.5 }}>
+                {s.name} {s.ovr}{!s.available && ` · ${t("当天无法出战")}`}{s.day_to_day && ` · ${t("出战成疑")}`}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -84,7 +129,9 @@ export default function Matchup() {
   const params = useParams();
   const away = (params.away ?? "").toUpperCase(), home = (params.home ?? "").toUpperCase();
   const season = useDefaultSeason();
+  const [qs] = useSearchParams();
   const a = useTeamPage(away, season), h = useTeamPage(home, season);
+  const pred = usePrediction(away, home, qs.get("date"));
   usePageTitle(`${teamName(away, lang, true)} @ ${teamName(home, lang, true)}`);
   if (!season || a.isLoading || h.isLoading) return <Loading what="球队" />;
   if (a.error || h.error || !a.data || !h.data) return <Failed error={a.error ?? h.error} />;
@@ -97,6 +144,8 @@ export default function Matchup() {
         <span className="caption">@</span>
         <Head data={h.data} team={home} align="right" />
       </section>
+
+      {pred.data && <Prediction p={pred.data} />}
 
       <section className="panel">
         <span className="caption" style={{ fontSize: 20 }}>{t("球队对比")}</span>

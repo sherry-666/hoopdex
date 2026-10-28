@@ -31,7 +31,7 @@ function Game({ g }: { g: ScheduledGame }) {
   const { t, lang } = useLang();
   const time = new Date(g.tipoff).toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
   return (
-    <Link to={`/predict/${g.away_team}/${g.home_team}`} className="panel"
+    <Link to={`/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
       style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       <TeamSide team={g.away_team} score={g.completed ? g.away_score : null} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center" }}>{g.completed ? t("已结束") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</span>

@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import config, db, live, powers, roles, seo
+from ballstats import config, db, live, powers, predict as game_model, roles, seo
 from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
@@ -409,6 +409,21 @@ def schedule(days: int = 3) -> list[dict]:
              " team_score AS home_score, opp_score AS away_score FROM live.game"
              " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
              (today, today + dt.timedelta(days=min(max(days, 1), 7))))
+
+
+@app.get("/api/predict/{away}/{home}")
+def predict_game(away: str, home: str, date: str | None = None) -> dict:
+    """Margin and win probability for one game (predict.py); date = game day, default today (US Eastern)."""
+    try:
+        day = dt.date.fromisoformat(date) if date else dt.datetime.now(live.EASTERN).date()
+    except ValueError:
+        raise HTTPException(400, "date must be YYYY-MM-DD")
+    away, home = away.upper(), home.upper()
+    with pool.connection() as conn:
+        try:
+            return game_model.predict(conn, away, home, day)
+        except KeyError:
+            raise HTTPException(404, f"no rating for {away} or {home}")
 
 
 @app.get("/api/team/{team}/honors")

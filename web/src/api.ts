@@ -204,3 +204,11 @@ export interface ScheduledGame {
   completed: boolean; home_score: number | null; away_score: number | null;
 }
 export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3") });
+
+export interface GamePrediction {
+  season: string; date: string; away: string; home: string; rating: Record<string, number>;
+  base_margin: number; fit: number; matchup: number; margin: number; home_win: number; star_ovr: number;
+  stars: Record<string, { player_id: number; name: string; ovr: number; available: boolean; day_to_day: boolean }[]>;
+}
+export const usePrediction = (away: string, home: string, date: string | null) =>
+  useQuery({ queryKey: ["predict", away, home, date], queryFn: () => get<GamePrediction>(`/api/predict/${away}/${home}${date ? `?date=${date}` : ""}`) });
