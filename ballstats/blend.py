@@ -11,6 +11,11 @@ weighted blend of this season and last season:
 Blended: ratings (OVR / offense / defense), archetype mixes and style labels, superpowers,
 team offensive systems and team ratings. Box-score stats are never blended; they stay the
 season's actual numbers. Players without a previous season (rookies) are not blended.
+
+Ratings look back further than one season: the "last season" side is a minutes-weighted average
+of up to the three previous seasons, each decayed by PRIOR_DECAY per season back. A season a
+player missed (injury) or barely played carries almost no weight, so a player coming back from
+a lost year is judged on the seasons before it. Roles and superpowers still use last season only.
 """
 
 import pandas as pd
@@ -19,12 +24,23 @@ from psycopg.types.json import Jsonb
 
 PLAYER_MIN = 600
 TEAM_GP = 20
+PRIOR_SEASONS = 3       # ratings look back up to this many seasons
+PRIOR_DECAY = 0.6       # each season further back counts this much less: 1, 0.6, 0.36
 ONGOING_MAX_GP = 70     # a season is still in progress while nobody has played this many games
 
 
 def previous(season: str) -> str:
     y = int(season[:4]) - 1
     return f"{y}-{(y + 1) % 100:02d}"
+
+
+def prior_seasons(season: str) -> list[tuple[str, float]]:
+    """The seasons a rating looks back to, newest first, with their decay."""
+    out = []
+    for k in range(PRIOR_SEASONS):
+        season = previous(season)
+        out.append((season, PRIOR_DECAY ** k))
+    return out
 
 
 def player_weight(minutes: float) -> float:

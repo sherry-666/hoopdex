@@ -152,7 +152,7 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         " AND status = 'ok' AND params->>'measure_type_detailed_defense' = 'Advanced'"
         " AND params->>'per_mode_detailed' = 'Totals' ORDER BY 1")]
     tables = {s: t for s in seasons if (t := _season_table(conn, s)) is not None}
-    rows, last_complete, prev = [], None, None
+    rows, last_complete, hist = [], None, {}
     newest = max(tables)
     for s in sorted(tables):
         t = tables[s]
@@ -161,21 +161,28 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
             last_complete = s
         base_season = s if complete or last_complete is None else last_complete
         r = season_ratings(t, tables[base_season])
-        # The season in progress: blend each returning player with last season (blend.py).
-        if s == newest and t["gp"].max() < blend.ONGOING_MAX_GP and prev is not None and prev[0] == blend.previous(s):
-            blended = r.index.intersection(prev[1].index)
+        # The season in progress: blend each returning player with the seasons before it (blend.py).
+        priors = [(p, d) for p, d in blend.prior_seasons(s) if p in hist]
+        prior_labels = {}
+        if s == newest and t["gp"].max() < blend.ONGOING_MAX_GP and priors:
+            # Each prior season counts by minutes played x decay, so a missed or short season fades out.
+            pw = pd.DataFrame({p: (hist[p]["minutes"] * d).reindex(r.index) for p, d in priors}).fillna(0)
+            blended = pw.index[pw.sum(axis=1) > 0]
             w = r.loc[blended, "minutes"].map(blend.player_weight)
             r["blend_weight"] = np.nan
             r.loc[blended, "blend_weight"] = w
             to_scale = lambda z: np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99)
             for scale in SCALES:
+                prior_z = sum(hist[p][f"z_{scale}"].reindex(blended).fillna(0) * pw.loc[blended, p]
+                              for p, _ in priors) / pw.loc[blended].sum(axis=1)
                 r[f"own_{scale}"] = to_scale(r[f"zc_{scale}"])           # this season alone, unshrunk
                 r[f"prior_{scale}"] = np.nan
-                r.loc[blended, f"prior_{scale}"] = prev[1].loc[blended, scale]
-                z = w * r.loc[blended, f"zc_{scale}"] + (1 - w) * prev[1].loc[blended, f"z_{scale}"]
+                r.loc[blended, f"prior_{scale}"] = to_scale(prior_z)
+                z = w * r.loc[blended, f"zc_{scale}"] + (1 - w) * prior_z
                 r.loc[blended, f"z_{scale}"] = z
                 r.loc[blended, scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99).astype(int)
-        prev = (s, r)
+            prior_labels = {pid: ", ".join(p for p, _ in priors if pw.loc[pid, p] > 0) for pid in blended}
+        hist[s] = r
         for pid, x in r.iterrows():
             raw = t.loc[pid]
             detail = {
@@ -190,7 +197,7 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
             if pd.notna(x.get("blend_weight", np.nan)):
                 detail["blend"] = {"weight": x["blend_weight"], **{f"own_{k}": x[f"own_{k}"] for k in SCALES},
                                    **{f"prior_{k}": x[f"prior_{k}"] for k in SCALES}}
-                detail_prior = blend.previous(s)
+                detail_prior = prior_labels[pid]
             else:
                 detail_prior = None
             rows.append((s, int(pid), x["name"], x["team"], int(x["gp"]), float(x["minutes"]), int(x["ovr"]),
