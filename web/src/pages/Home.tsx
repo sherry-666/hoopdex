@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useCareerTop, useDefaultSeason, usePlayers } from "../api";
+import { useCareerTop, useDefaultSeason, useHallOfFame, usePlayers } from "../api";
 import { Failed, Loading, PlayerCard } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 
@@ -14,7 +14,7 @@ export default function Home() {
   const season = useDefaultSeason();
   const players = usePlayers(season);
   const careerTop = useCareerTop("career");
-  const peakTop = useCareerTop("peak");
+  const hof = useHallOfFame();
   const navigate = useNavigate();
   const { t } = useLang();
   usePageTitle();
@@ -28,12 +28,12 @@ export default function Home() {
       regular.filter((p) => p[key] != null).sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0)).slice(0, 6);
     return [
       { title: "生涯最强球员", note: "（生涯总评）", list: careerTop.data ?? [], career: true },
-      { title: "巅峰最强球员", note: "（巅峰赛季总评）", list: peakTop.data ?? [], career: true },
+      { title: "名人堂", note: "（荣誉与能力 · 生涯总评）", list: hof.data ?? [], career: true },
       { title: "赛季最佳球员", note: "（{season} · 总评）", list: top("ovr") },
       { title: "赛季最佳进攻球员", note: "（{season} · 进攻评分）", list: top("off") },
       { title: "赛季最佳防守球员", note: "（{season} · 防守评分）", list: top("def") },
     ];
-  }, [players.data, careerTop.data, peakTop.data]);
+  }, [players.data, careerTop.data, hof.data]);
 
   return (
     <>

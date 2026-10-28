@@ -148,6 +148,24 @@ def career_top(by: str = "career", limit: int = 6) -> list[dict]:
         """.format(by=by), (min(limit, 50),))
 
 
+# Hall of Fame row on the home page: picked by hand from honors (MVPs, Finals MVPs, titles, All-NBA) and career rating.
+HALL_OF_FAME = [2544, 201142, 201939, 203999, 202695, 203507]   # LeBron, Durant, Curry, Jokic, Kawhi, Giannis
+
+
+@app.get("/api/hall-of-fame")
+def hall_of_fame() -> list[dict]:
+    rows = q(
+        """
+        SELECT c.player_id, s.name, s.team, o.style_label AS off_style, o.top_archetype_id AS off_top,
+               c.career AS ovr, c.off_career AS off, c.def_career AS def
+        FROM feat.player_career_rating c
+        JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
+        LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
+        WHERE c.player_id = ANY(%s)
+        """, (HALL_OF_FAME,))
+    return sorted(rows, key=lambda r: HALL_OF_FAME.index(r["player_id"]))
+
+
 @app.get("/api/players/{season}")
 def player_list(season: str) -> list[dict]:
     return q(

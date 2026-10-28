@@ -129,6 +129,8 @@ export const usePlayers = (season: string | undefined) =>
   useQuery({ queryKey: ["players", season], queryFn: () => get<PlayerRow[]>(`/api/players/${season}`), enabled: !!season });
 export const useCareerTop = (by: "career" | "peak") =>
   useQuery({ queryKey: ["career-top", by], queryFn: () => get<PlayerRow[]>(`/api/career-top?by=${by}`) });
+export const useHallOfFame = () =>
+  useQuery({ queryKey: ["hall-of-fame"], queryFn: () => get<PlayerRow[]>("/api/hall-of-fame") });
 export const usePlayer = (season: string | undefined, id: number) =>
   useQuery({ queryKey: ["player", season, id], queryFn: () => get<PlayerDetail>(`/api/players/${season}/${id}`), enabled: !!season });
 
