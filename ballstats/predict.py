@@ -28,7 +28,7 @@ from psycopg.rows import tuple_row
 
 from ballstats import blend, live, teams
 
-STAR_OVR = 78                   # a "head" player: rating at or above this
+STAR_OVR = 79                   # a "head" player: rating at or above this
 K = 0.79                        # points of margin per team-rating point
 HOME_EDGE = 2.15
 SIGMA = 13.1                    # sd of a game's margin around the prediction
