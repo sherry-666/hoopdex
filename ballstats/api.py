@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import config, db, powers, roles, seo
+from ballstats import config, db, live, powers, roles, seo
 from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
@@ -157,7 +157,10 @@ def hall_of_fame() -> list[dict]:
     rows = q(
         """
         SELECT c.player_id, s.name, s.team, o.style_label AS off_style, o.top_archetype_id AS off_top,
-               c.career AS ovr, c.off_career AS off, c.def_career AS def
+               c.career AS ovr, c.off_career AS off, c.def_career AS def,
+               (SELECT count(*) FROM core.player_award a WHERE a.player_id = c.player_id AND a.award = 'NBA Champion') AS titles,
+               (SELECT count(*) FROM core.player_award a WHERE a.player_id = c.player_id AND a.award = 'NBA Most Valuable Player') AS mvps,
+               (SELECT count(*) FROM core.player_award a WHERE a.player_id = c.player_id AND a.award = 'NBA All-Star') AS all_stars
         FROM feat.player_career_rating c
         JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
         LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
@@ -396,6 +399,16 @@ def matchups() -> dict:
               " WHERE model_version = %s ORDER BY off_style, def_tag", (meta[0]["model_version"],))
     styles = q("SELECT style_id, name FROM feat.team_style ORDER BY style_id")
     return {"cells": cells, "meta": meta[0], "styles": styles}
+
+
+@app.get("/api/schedule")
+def schedule(days: int = 4) -> list[dict]:
+    """Games from today (US Eastern) through the next days - 1 days, one row per game, earliest tipoff first."""
+    today = dt.datetime.now(live.EASTERN).date()
+    return q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
+             " team_score AS home_score, opp_score AS away_score FROM live.game"
+             " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
+             (today, today + dt.timedelta(days=min(max(days, 1), 7))))
 
 
 @app.get("/api/team/{team}/honors")

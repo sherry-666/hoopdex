@@ -129,8 +129,9 @@ export const usePlayers = (season: string | undefined) =>
   useQuery({ queryKey: ["players", season], queryFn: () => get<PlayerRow[]>(`/api/players/${season}`), enabled: !!season });
 export const useCareerTop = (by: "career" | "peak") =>
   useQuery({ queryKey: ["career-top", by], queryFn: () => get<PlayerRow[]>(`/api/career-top?by=${by}`) });
+export type HallRow = PlayerRow & { titles: number; mvps: number; all_stars: number };
 export const useHallOfFame = () =>
-  useQuery({ queryKey: ["hall-of-fame"], queryFn: () => get<PlayerRow[]>("/api/hall-of-fame") });
+  useQuery({ queryKey: ["hall-of-fame"], queryFn: () => get<HallRow[]>("/api/hall-of-fame") });
 export const usePlayer = (season: string | undefined, id: number) =>
   useQuery({ queryKey: ["player", season, id], queryFn: () => get<PlayerDetail>(`/api/players/${season}/${id}`), enabled: !!season });
 
@@ -197,3 +198,9 @@ export const usePlayerHonors = (id: number) =>
   useQuery({ queryKey: ["honors", id], queryFn: () => get<PlayerHonor[]>(`/api/player/${id}/honors`) });
 export const useTeamHonors = (team: string) =>
   useQuery({ queryKey: ["team-honors", team], queryFn: () => get<TeamHonors>(`/api/team/${team}/honors`) });
+
+export interface ScheduledGame {
+  game_id: string; game_date: string; tipoff: string; home_team: string; away_team: string; season_type: number;
+  completed: boolean; home_score: number | null; away_score: number | null;
+}
+export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=4") });

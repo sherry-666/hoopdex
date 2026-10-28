@@ -6,6 +6,8 @@ export type Lang = "zh" | "en";
 /* UI text. Keys are the Chinese source strings; {name} marks a variable. */
 const UI_EN: Record<string, string> = {
   // shell
+  "今天起三天的比赛。胜率和分差预测即将上线。": "Games from today through the next three days. Win probability and point spread are coming soon.",
+  "这几天没有比赛。": "No games in these days.", "已结束": "Final", "赛程": "the schedule",
   "首页": "Home", "定位实验室": "Role Lab", "球员名册": "Player Roster", "比赛预测": "Game Predictor",
   "日间版": "Day edition", "夜间版": "Night edition", "主导航": "Main navigation",
   "走错片场了": "Wrong set", "这一页不存在。回首页看看其他球员吧。": "This page doesn't exist. Head home and look at the other players.",
@@ -20,7 +22,7 @@ const UI_EN: Record<string, string> = {
   "每名球员一张卡：超能力、战力数值、风格构成。": "One card per player: superpowers, power stats and style mix.",
   "按上场球员算两队实力，给出胜率和分差。即将登场。": "Team strength from the players on the floor, with win probability and margin. Coming soon.",
   "得分火力最猛的球员": "Top scorers", "（{season} · 每 36 分钟得分）": "({season} · points per 36)",
-  "名人堂": "Hall of Fame", "（荣誉与能力 · 生涯总评）": "(honors and ability · career rating)", "生涯最强球员": "Best players of all time", "（生涯总评）": "(career rating)", "赛季最佳球员": "Best players of the season", "（{season} · 总评）": "({season} · overall rating)",
+  "名人堂": "Hall of Fame", "冠军": "Titles", "全明星": "All-Star", "（荣誉与能力 · 生涯总评）": "(honors and ability · career rating)", "生涯最强球员": "Best players of all time", "（生涯总评）": "(career rating)", "赛季最佳球员": "Best players of the season", "（{season} · 总评）": "({season} · overall rating)",
   "赛季最佳进攻球员": "Best offensive players", "（{season} · 进攻评分）": "({season} · offense rating)",
   "赛季最佳防守球员": "Best defensive players", "（{season} · 防守评分）": "({season} · defense rating)",
   // injuries and recent games

@@ -4,6 +4,7 @@ import { useLang } from "./i18n";
 import Home from "./pages/Home";
 import RolesLab from "./pages/RolesLab";
 import Roster from "./pages/Roster";
+import Predict from "./pages/Predict";
 import Rankings from "./pages/Rankings";
 import Teams from "./pages/Teams";
 import TeamPage from "./pages/TeamPage";
@@ -64,7 +65,7 @@ export default function App() {
           <Route path="/teams" element={<Teams />} />
           <Route path="/teams/:team" element={<TeamPage />} />
           <Route path="/rankings" element={<Rankings />} />
-          <Route path="/predict" element={<ComingSoon title={t("比赛预测")} line={t("选两支球队，看胜率和分差。球员影响力模型完成后上线。")} />} />
+          <Route path="/predict" element={<Predict />} />
           <Route path="*" element={<ComingSoon title={t("走错片场了")} line={t("这一页不存在。回首页看看其他球员吧。")} />} />
         </Routes>
       </main>
