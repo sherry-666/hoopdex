@@ -90,7 +90,7 @@ function Prediction({ p }: { p: GamePrediction }) {
           <div className="note">{t("预计分差")} {signed(Math.abs(p.margin)).replace("+", "")} · {t("主队 {pct}%", { pct: Math.round(p.home_win * 100) })}</div>
         </div>
       </div>
-      <div style={{ flex: "1 1 360px", maxWidth: 480 }}>
+      <div style={{ flex: "1 1 360px", maxWidth: 480, marginLeft: "auto" }}>
         {row(t("球队评分差（按当天能出战的球员）"), p.base_margin - 2.15)}
         {row(t("主场"), 2.15)}
         {row(t("背靠背{who}", { who: [p.away, p.home].filter((tm) => p.back_to_back[tm]).map((tm) => ` · ${teamName(tm, lang, true)}${t("昨天也打了")}`).join("") }), p.rest)}
