@@ -86,19 +86,19 @@ function Prediction({ p }: { p: GamePrediction }) {
 const bestPlayer = (d: TeamPageData) =>
   d.roster.filter((r) => !r.departed && r.ovr != null).sort((x, y) => (y.ovr ?? 0) - (x.ovr ?? 0))[0];
 
-function Star({ r, season, align }: { r: TeamRosterRow | undefined; season: string; align: "left" | "right" }) {
-  const { name } = useLang();
-  if (!r) return <div />;
-  const right = align === "right";
+function Star({ r, season, team }: { r: TeamRosterRow; season: string; team: string }) {
+  const { t, name, lang } = useLang();
   return (
-    <div className="row" style={{ gap: 12, alignItems: "center", flexDirection: right ? "row-reverse" : "row", textAlign: align }}>
-      <div style={{ width: 110, flex: "none" }}><Portrait id={r.player_id} name={r.name} size={110} /></div>
-      <div>
-        <h3><Link to={`/players/${r.player_id}?season=${season}`} style={{ color: "inherit" }}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</h3>
-        <div style={{ margin: "6px 0" }}><OvrBadge ovr={r.ovr} size={40} /></div>
-        <OffDef off={r.off} def={r.def} />
-        <p className="note" style={{ margin: "6px 0 0" }}>{[r.off_style, r.def_style].filter(Boolean).map((x) => name(x as string)).join(" · ")}</p>
+    <div className="panel" style={{ margin: 0, display: "flex", flexDirection: "column", gap: 10, alignItems: "center", textAlign: "center" }}>
+      <div style={{ width: "min(100%, 220px)" }}><Portrait id={r.player_id} name={r.name} /></div>
+      <div className="note">{teamName(team, lang, true)}</div>
+      <h3><Link to={`/players/${r.player_id}?season=${season}`} style={{ color: "inherit" }}>{r.name}</Link>{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</h3>
+      <OvrBadge ovr={r.ovr} size={56} />
+      <OffDef off={r.off} def={r.def} size={20} />
+      <div className="row" style={{ gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+        {[r.off_style, r.def_style].filter(Boolean).map((x) => <span key={x} className="tag">{name(x as string)}</span>)}
       </div>
+      <div><span className="num" style={{ fontSize: 28 }}>{r.pts_36 == null ? "—" : r.pts_36.toFixed(1)}</span> <span className="note">{t("得分 / 36")}</span></div>
     </div>
   );
 }
@@ -168,22 +168,12 @@ export default function Matchup() {
         const sa2 = bestPlayer(a.data), sh2 = bestPlayer(h.data);
         if (!sa2 && !sh2) return null;
         return (
-          <section className="panel">
-            <span className="caption" style={{ fontSize: 20 }}>{t("最强球员")}</span>
-            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", padding: "12px 0 6px" }}>
-              <Star r={sa2} season={season} align="left" />
-              <Star r={sh2} season={season} align="right" />
+          <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span className="caption" style={{ fontSize: 20, alignSelf: "flex-start" }}>{t("最强球员")}</span>
+            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))" }}>
+              {sa2 && <Star r={sa2} season={season} team={away} />}
+              {sh2 && <Star r={sh2} season={season} team={home} />}
             </div>
-            {sa2 && sh2 && (
-              <>
-                <Line label={t("综合")} a={sa2.ovr} b={sh2.ovr} digits={0} />
-                <Line label={t("进攻")} a={sa2.off} b={sh2.off} digits={0} />
-                <Line label={t("防守")} a={sa2.def} b={sh2.def} digits={0} />
-                <Line label={t("场均得分")} a={sa2.pts} b={sh2.pts} />
-                <Line label={t("场均篮板")} a={sa2.reb} b={sh2.reb} />
-                <Line label={t("场均助攻")} a={sa2.ast} b={sh2.ast} />
-              </>
-            )}
           </section>
         );
       })()}

@@ -473,7 +473,7 @@ def team_page(team: str, season: str) -> dict:
         """
         SELECT u.player_id,
                coalesce(s.name, p.name, (SELECT name FROM feat.player_stats WHERE player_id = u.player_id LIMIT 1)) AS name,
-               s.team AS final_team, s.minutes, s.gp, (s.stats ->> 'ts_pct')::float AS ts_pct,
+               s.team AS final_team, s.minutes, s.gp, (s.stats ->> 'ts_pct')::float AS ts_pct, (s.stats ->> 'pts_36')::float AS pts_36,
                o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def
         FROM unnest(%(ids)s::bigint[]) AS u(player_id)
         LEFT JOIN core.player p ON p.player_id = u.player_id
