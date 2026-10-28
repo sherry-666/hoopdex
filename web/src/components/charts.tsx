@@ -82,6 +82,7 @@ function placeLabels(labels: Label[], w: number, h: number, lh = 18) {
   }
 }
 
+const labelWidth = new Map<string, number>();
 function drawLabels(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, labels: Label[], w: number, h: number,
   pick: number | null, onPick: (id: number | null) => void) {
   const t = svg.append("g").selectAll<SVGTextElement, Label>("text").data(labels).join("text")
@@ -90,7 +91,11 @@ function drawLabels(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, 
     .style("paint-order", "stroke").style("stroke", "var(--panel)").style("stroke-width", 5).style("stroke-linejoin", "round")
     .style("opacity", (l) => (pick == null || l.id === pick ? 1 : 0.5)).style("cursor", "pointer")
     .on("click", (_e, l) => onPick(l.id === pick ? null : l.id));
-  t.each(function (l) { l.w = this.getComputedTextLength(); });
+  t.each(function (l) {
+    let w = labelWidth.get(l.name);
+    if (w == null) { w = this.getComputedTextLength(); labelWidth.set(l.name, w); }
+    l.w = w;
+  });
   placeLabels(labels, w, h);
   t.attr("x", (l) => l.lx!).attr("y", (l) => l.ty!);
 }
@@ -99,10 +104,11 @@ function attachHover(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
   xf: (p: RolePlayer) => number, yf: (p: RolePlayer) => number, scale: () => number,
   lines: (p: RolePlayer) => [string, string][], onPick: (id: number | null) => void, dragEnd: { at: number },
   onOpen: (id: number) => void) {
-  const delaunay = d3.Delaunay.from(pts, xf, yf);
+  let delaunay: d3.Delaunay<RolePlayer> | null = null;
   const ring = svg.append("circle").attr("r", 8).style("fill", "none").style("stroke", "var(--ink)").style("stroke-width", 2).style("display", "none");
   const nearest = (e: PointerEvent | MouseEvent) => {
     const [mx, my] = d3.pointer(e);
+    delaunay ??= d3.Delaunay.from(pts, xf, yf);
     const p = pts[delaunay.find(mx, my)];
     return p && Math.hypot(xf(p) - mx, yf(p) - my) <= 24 ? p : null;
   };
@@ -222,6 +228,7 @@ export function ClusterView({ players, axes, archetypes, pick, onPick, onOpen, i
       attachHover(svg, el, pts, (p) => pos.get(p)![0], (p) => pos.get(p)![1], () => el.clientWidth / w, lines, onPick, dragEnd, onOpen);
     };
     render();
+    let raf = 0;
 
     if (dim === 3) {
       let drag: { x: number; y: number; moved: number } | null = null;
@@ -233,11 +240,11 @@ export function ClusterView({ players, axes, archetypes, pick, onPick, onOpen, i
           view.current.yaw += dx * 0.01;
           view.current.pitch = Math.max(-1.4, Math.min(1.4, view.current.pitch + dy * 0.01));
           hideTip(el);
-          render();
+          if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); });
         })
         .on("pointerup pointercancel", () => { if (drag && drag.moved > 3) dragEnd.at = Date.now(); drag = null; el.style.cursor = ""; });
     }
-    return () => { svg.on("pointerdown pointermove pointerup pointercancel mousemove mouseleave click", null); };
+    return () => { cancelAnimationFrame(raf); svg.on("pointerdown pointermove pointerup pointercancel mousemove mouseleave click", null); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, axes, archetypes, pick, set, dim, core, pair, width, theme, lang, includeLow]);
 
