@@ -5,7 +5,7 @@ description: Push the local ballstats Postgres data (feat schema, optionally raw
 
 # Push local DB to Railway Postgres
 
-The web app on Railway (hoopdex.up.railway.app) reads the `feat` schema. Code deploys itself on `git push` to main, but data does not: it has to be copied from the local Postgres (port 5433, `.pgdata`) with `scripts/push_db.sh`.
+The web app on Railway (hoopedia.up.railway.app) reads the `feat` schema. Code deploys itself on `git push` to main, but data does not: it has to be copied from the local Postgres (port 5433, `.pgdata`) with `scripts/push_db.sh`.
 
 ## Rules
 
@@ -29,7 +29,7 @@ The web app on Railway (hoopdex.up.railway.app) reads the `feat` schema. Code de
    Needs network access outside the sandbox. The script drops the schema(s) on the remote, then pipes `pg_dump` from local into `psql`, and finally prints row counts per table.
 4. Verify: compare the printed row counts with local, then check the site, e.g.
    ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' https://hoopdex.up.railway.app/api/players
+   curl -s -o /dev/null -w '%{http_code}\n' https://hoopedia.up.railway.app/api/players
    ```
    expecting 200 on the main endpoints (`/api/players`, `/api/roles/matchups`, `/api/roles/synergy/offense`).
 5. Tell the user to close public access in Railway.
