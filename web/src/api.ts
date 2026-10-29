@@ -70,6 +70,7 @@ export interface SeasonRating {
     off: { scoring: number; playmaking: number; off_rebounding: number; on_court: number;
       ortg: number; league_ortg: number; ast_pct: number; tov_pct: number; oreb_pct: number };
     def: { steals: number; blocks: number; def_rebounding: number; on_court: number;
+      contest?: number; d_fga?: number; d_pm?: number;   // from 2015-16: opponents' FG% against him vs their norm
       drtg: number; league_drtg: number; stl_36: number; blk_36: number; dreb_pct: number } };
 }
 export interface CareerRating {

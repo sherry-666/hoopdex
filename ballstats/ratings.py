@@ -30,13 +30,16 @@ from psycopg.types.json import Jsonb
 from ballstats import blend
 from ballstats.collector import result_rows
 
-MODEL_VERSION = "ovr-box-v2"
+MODEL_VERSION = "ovr-box-v3"
 MIN_MINUTES = 500
 MIN_QUALIFIED = 100         # below this many 500-minute players, borrow a prior season's baseline
 WEIGHTS = {"contribution": 0.40, "scoring": 0.40, "on_court": 0.20}
 OFF_WEIGHTS = {"scoring": 0.45, "playmaking": 0.25, "off_rebounding": 0.10, "on_court": 0.20}
 DEF_WEIGHTS = {"steals": 0.20, "blocks": 0.15, "def_rebounding": 0.15, "on_court": 0.50}
-SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS}
+# From 2015-16 on, tracking data adds how much worse opponents shoot against him than they normally do.
+DEF_WEIGHTS_TRACKED = {"contest": 0.25, "steals": 0.20, "blocks": 0.10, "def_rebounding": 0.10, "on_court": 0.35}
+SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS_TRACKED}
+CONTEST_SHRINK_FGA = 500    # the opponent-FG% edge keeps d_fga / (d_fga + this) of its value
 USAGE_CREDIT = 0.3          # scoring credit per point of usage above league average
 TEAM_SHARE = 0.3            # on-court off/def: vs his own team, plus this share of the team's edge on the league
 TOV_PENALTY = 0.5           # playmaking = assist % - this x turnover ratio
@@ -59,6 +62,9 @@ def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
     base, adv = load("Base"), load("Advanced")
     if base is None or adv is None or base.empty:
         return None
+    dfd = conn.execute(
+        "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueDashPtDefend' AND status = 'ok'"
+        " AND params->>'season' = %s AND params->>'defense_category' = 'Overall'", (season,)).fetchone()
     t = pd.DataFrame({
         "name": base["PLAYER_NAME"], "team": base["TEAM_ABBREVIATION"], "gp": base["GP"], "minutes": base["MIN"],
         "pie": adv["PIE"], "ts": adv["TS_PCT"], "usg": adv["USG_PCT"], "net": adv["NET_RATING"],
@@ -67,6 +73,14 @@ def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
         "stl_36": base["STL"] * 36 / base["MIN"].clip(lower=1), "blk_36": base["BLK"] * 36 / base["MIN"].clip(lower=1),
     })
     t = t.dropna(subset=["pie", "ts", "usg", "net", "ortg", "drtg", "minutes"]).fillna(0.0)
+    # Opponents' shooting against him vs their norm (negative = he holds them down). A defender listed
+    # twice keeps the line with more games. NaN everywhere when the season has no tracking data.
+    t["d_fga"] = t["d_pm"] = np.nan
+    if dfd:
+        d = pd.DataFrame(result_rows(dfd[0])).sort_values("GP", ascending=False).drop_duplicates("CLOSE_DEF_PERSON_ID")
+        d = d.set_index("CLOSE_DEF_PERSON_ID")
+        t["d_fga"] = d["D_FGA"].reindex(t.index).fillna(0.0)
+        t["d_pm"] = d["PCT_PLUSMINUS"].reindex(t.index).fillna(0.0)
     # Team ratings as the minutes-weighted average of its players' on-court ratings (a traded
     # player counts for the team he finished with).
     for k in ("ortg", "drtg"):
@@ -95,6 +109,7 @@ def _components(t: pd.DataFrame, lg: dict[str, float]) -> dict[str, pd.DataFrame
             "on_court": _shrink(t["ortg"] - t["team_ortg"] + TEAM_SHARE * (t["team_ortg"] - lg["ortg"]), m),
         }),
         "def": pd.DataFrame({
+            "contest": -t["d_pm"].fillna(0.0) * t["d_fga"].fillna(0.0) / (t["d_fga"].fillna(0.0) + CONTEST_SHRINK_FGA),
             "steals": t["stl_36"],
             "blocks": t["blk_36"],
             "def_rebounding": t["dreb_pct"],
@@ -111,7 +126,10 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
     ref_c, mine = _components(ref, lg), _components(t, lg)
     reliability = t["minutes"] / (t["minutes"] + RELIABILITY_MIN)
     out = t[["name", "team", "gp", "minutes"]].copy()
+    tracked = bool(t["d_fga"].notna().any() and ref["d_fga"].notna().any())
     for scale, weights in SCALES.items():
+        if scale == "def" and not tracked:
+            weights = DEF_WEIGHTS
         mean, sd = ref_c[scale].mean(), ref_c[scale].std()
         z = (mine[scale] - mean) / sd
         ref_combo = sum(((ref_c[scale][k] - mean[k]) / sd[k]) * w for k, w in weights.items())
@@ -123,6 +141,7 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
         for k in weights:
             out[f"{scale}.{k}"] = z[k]
     out["reliability"] = reliability
+    out["tracked"] = tracked
     for k, v in lg.items():
         out[f"league_{k}"] = v
     return out
@@ -194,8 +213,10 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
                 "net": raw["net"], "league_ts": x["league_ts"],
                 "off": {**{k: x[f"off.{k}"] for k in OFF_WEIGHTS}, "ortg": raw["ortg"], "league_ortg": x["league_ortg"],
                         "ast_pct": raw["ast_pct"], "tov_pct": raw["tov_pct"], "oreb_pct": raw["oreb_pct"]},
-                "def": {**{k: x[f"def.{k}"] for k in DEF_WEIGHTS}, "drtg": raw["drtg"], "league_drtg": x["league_drtg"],
-                        "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"]},
+                "def": {**{k: x[f"def.{k}"] for k in (DEF_WEIGHTS_TRACKED if x["tracked"] else DEF_WEIGHTS)},
+                        "drtg": raw["drtg"], "league_drtg": x["league_drtg"],
+                        "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"],
+                        **({"d_fga": raw["d_fga"], "d_pm": raw["d_pm"]} if x["tracked"] else {})},
             }
             if pd.notna(x.get("blend_weight", np.nan)):
                 detail["blend"] = {"weight": x["blend_weight"], **{f"own_{k}": x[f"own_{k}"] for k in SCALES},

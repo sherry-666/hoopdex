@@ -168,12 +168,17 @@ function Breakdown({ metric, rating }: { metric: RatingKey; rating: SeasonRating
   }
   if (metric === "def") {
     const e = d.def;
+    const tracked = e.contest !== undefined && e.d_fga !== undefined && e.d_pm !== undefined;
     return (
       <>
+        {tracked && (
+          <ComponentRow title={t("对位防守")} weight={0.25} z={e.contest!}
+            detail={t("他防守的 {n} 次出手，对手命中率比平时 {v}", { n: Math.round(e.d_fga!), v: `${e.d_pm! > 0 ? "+" : ""}${(e.d_pm! * 100).toFixed(1)}%` })} />
+        )}
         <ComponentRow title={t("抢断")} weight={0.2} z={e.steals} detail={t("每 36 分钟 {v} 次", { v: e.stl_36.toFixed(1) })} />
-        <ComponentRow title={t("盖帽")} weight={0.15} z={e.blocks} detail={t("每 36 分钟 {v} 次", { v: e.blk_36.toFixed(1) })} />
-        <ComponentRow title={t("防守篮板")} weight={0.15} z={e.def_rebounding} detail={t("防守篮板率 {v}", { v: pct1(e.dreb_pct) })} />
-        <ComponentRow title={t("在场防守")} weight={0.5} z={e.on_court}
+        <ComponentRow title={t("盖帽")} weight={tracked ? 0.1 : 0.15} z={e.blocks} detail={t("每 36 分钟 {v} 次", { v: e.blk_36.toFixed(1) })} />
+        <ComponentRow title={t("防守篮板")} weight={tracked ? 0.1 : 0.15} z={e.def_rebounding} detail={t("防守篮板率 {v}", { v: pct1(e.dreb_pct) })} />
+        <ComponentRow title={t("在场防守")} weight={tracked ? 0.35 : 0.5} z={e.on_court}
           detail={t("他在场时球队每 100 回合失 {on} 分（联盟 {lg}）", { on: e.drtg.toFixed(1), lg: e.league_drtg.toFixed(1) })} />
       </>
     );

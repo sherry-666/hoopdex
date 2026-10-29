@@ -236,7 +236,7 @@ const UI_EN: Record<string, string> = {
   "数字的颜色是 2K 式卡牌等级：铜（70 以下）、银（70+）、金（80+）、紫晶（87+）、钻石（92+）、银河蛋白石（96+）。":
     "Number colours follow 2K-style card tiers: bronze (under 70), silver (70+), gold (80+), amethyst (87+), diamond (92+), galaxy opal (96+).", "防守评分": "Defense rating", "评分类型": "Rating type",
   "攻": "OFF", "守": "DEF", "组织": "Playmaking", "进攻篮板": "Offensive rebounding", "在场进攻": "On-court offense",
-  "防守篮板": "Defensive rebounding", "在场防守": "On-court defense",
+  "对位防守": "Contest defense", "他防守的 {n} 次出手，对手命中率比平时 {v}": "Over the {n} shots he defended, opponents shot {v} vs their norm", "防守篮板": "Defensive rebounding", "在场防守": "On-court defense",
   "助攻率 {ast}，失误率 {tov}": "Assist rate {ast}, turnover ratio {tov}", "进攻篮板率 {v}": "Offensive rebound rate {v}",
   "防守篮板率 {v}": "Defensive rebound rate {v}", "每 36 分钟 {v} 次": "{v} per 36 minutes",
   "他在场时球队每 100 回合得 {on} 分（联盟 {lg}）": "With him on the floor the team scores {on} per 100 possessions (league {lg})",
@@ -244,8 +244,8 @@ const UI_EN: Record<string, string> = {
   "各赛季{k}评分": "{k} rating by season", "{k}巅峰 {p}，生涯 {c}": "{k} peak {p}, career {c}",
   "进攻评分：得分效率与量 45%、组织（助攻率减一半失误率）25%、进攻篮板 10%、在场进攻 20%。":
     "Offense rating: scoring efficiency and volume 45%, playmaking (assist rate minus half the turnover ratio) 25%, offensive rebounding 10%, on-court offense 20%.",
-  "防守评分：抢断 20%、盖帽 15%、防守篮板 15%、在场防守 50%。在场数据和他自己球队比（再加三成球队整体水平），所以防守好的球队不会把每个人都抬高。":
-    "Defense rating: steals 20%, blocks 15%, defensive rebounding 15%, on-court defense 50%. On-court numbers are compared with his own team (plus 30% of the team's overall level), so a great defensive team doesn't lift everyone on it.",
+  "防守评分：抢断 20%、盖帽 15%、防守篮板 15%、在场防守 50%；2015-16 起加入对位防守，权重变为对位防守 25%、抢断 20%、盖帽 10%、防守篮板 10%、在场防守 35%。对位防守是对手被他防守时的命中率比平时低多少（出手少的会向 0 收缩）。在场数据和他自己球队比（再加三成球队整体水平），所以防守好的球队不会把每个人都抬高。":
+    "Defense rating: steals 20%, blocks 15%, defensive rebounding 15%, on-court defense 50%; from 2015-16 it adds contest defense, giving contest defense 25%, steals 20%, blocks 10%, defensive rebounding 10%, on-court defense 35%. Contest defense is how much worse opponents shoot against him than they normally do (small samples are pulled toward 0). On-court numbers are compared with his own team (plus 30% of the team's overall level), so a great defensive team doesn't lift everyone on it.",
   "换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。三项评分各自独立计算，综合评分不是攻守的平均。":
     "Converted to a 2K-style score: 77 + 6.5 × σ, range 40–99. The league median is about 75, the top 10% above about 82, the very best near 99. The three ratings are computed separately; overall is not the average of offense and defense.",
   "这是第一版（只用 box score）。它偏爱篮板多、出手效率高的内线；防守尤其难从 box score 看出来，换防、协防和限制投篮都看不到。之后会换成考虑队友和对手的影响力模型（RAPM）。每个赛季都在当季内排名，所以不同年代可以直接比较。":
