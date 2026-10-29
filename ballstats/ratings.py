@@ -37,7 +37,8 @@ WEIGHTS = {"contribution": 0.40, "scoring": 0.40, "on_court": 0.20}
 OFF_WEIGHTS = {"scoring": 0.45, "playmaking": 0.25, "off_rebounding": 0.10, "on_court": 0.20}
 DEF_WEIGHTS = {"steals": 0.20, "blocks": 0.15, "def_rebounding": 0.15, "on_court": 0.50}
 # From 2015-16 on, tracking data adds how much worse opponents shoot against him than they normally do.
-DEF_WEIGHTS_TRACKED = {"contest": 0.25, "steals": 0.20, "blocks": 0.10, "def_rebounding": 0.10, "on_court": 0.35}
+DEF_WEIGHTS_TRACKED = {"contest": 0.25, "steals": 0.15, "blocks": 0.10, "def_rebounding": 0.10, "on_court": 0.35,
+                      "charges": 0.05}
 SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS_TRACKED}
 CONTEST_SHRINK_FGA = 500    # the opponent-FG% edge keeps d_fga / (d_fga + this) of its value
 USAGE_CREDIT = 0.3          # scoring credit per point of usage above league average
@@ -51,6 +52,13 @@ PEAK_WINDOW = 3
 CAREER_PEAK_WEIGHT = 0.7
 
 
+def load_hustle(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
+    row = conn.execute(
+        "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueHustleStatsPlayer' AND status = 'ok'"
+        " AND params->>'season' = %s", (season,)).fetchone()
+    return pd.DataFrame(result_rows(row[0])).set_index("PLAYER_ID") if row else None
+
+
 def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
     def load(measure: str) -> pd.DataFrame | None:
         row = conn.execute(
@@ -62,6 +70,7 @@ def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
     base, adv = load("Base"), load("Advanced")
     if base is None or adv is None or base.empty:
         return None
+    hustle = load_hustle(conn, season)
     dfd = conn.execute(
         "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueDashPtDefend' AND status = 'ok'"
         " AND params->>'season' = %s AND params->>'defense_category' = 'Overall'", (season,)).fetchone()
@@ -81,6 +90,9 @@ def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
         d = d.set_index("CLOSE_DEF_PERSON_ID")
         t["d_fga"] = d["D_FGA"].reindex(t.index).fillna(0.0)
         t["d_pm"] = d["PCT_PLUSMINUS"].reindex(t.index).fillna(0.0)
+    t["charges_36"] = 0.0
+    if hustle is not None:
+        t["charges_36"] = (hustle["CHARGES_DRAWN"].reindex(t.index) * 36 / t["minutes"].clip(lower=1)).fillna(0.0)
     # Team ratings as the minutes-weighted average of its players' on-court ratings (a traded
     # player counts for the team he finished with).
     for k in ("ortg", "drtg"):
@@ -110,6 +122,7 @@ def _components(t: pd.DataFrame, lg: dict[str, float]) -> dict[str, pd.DataFrame
         }),
         "def": pd.DataFrame({
             "contest": -t["d_pm"].fillna(0.0) * t["d_fga"].fillna(0.0) / (t["d_fga"].fillna(0.0) + CONTEST_SHRINK_FGA),
+            "charges": t["charges_36"],
             "steals": t["stl_36"],
             "blocks": t["blk_36"],
             "def_rebounding": t["dreb_pct"],
@@ -216,7 +229,7 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
                 "def": {**{k: x[f"def.{k}"] for k in (DEF_WEIGHTS_TRACKED if x["tracked"] else DEF_WEIGHTS)},
                         "drtg": raw["drtg"], "league_drtg": x["league_drtg"],
                         "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"],
-                        **({"d_fga": raw["d_fga"], "d_pm": raw["d_pm"]} if x["tracked"] else {})},
+                        **({"d_fga": raw["d_fga"], "d_pm": raw["d_pm"], "charges_36": raw["charges_36"]} if x["tracked"] else {})},
             }
             if pd.notna(x.get("blend_weight", np.nan)):
                 detail["blend"] = {"weight": x["blend_weight"], **{f"own_{k}": x[f"own_{k}"] for k in SCALES},
