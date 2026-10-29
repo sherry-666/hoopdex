@@ -161,6 +161,16 @@ standings (about 7 s, no box scores, no team ratings). Service `schedule-cron`, 
 config-as-code for a service made from the CLI, so they are set on the service itself), `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 It keeps the game predictions on `/predict` current: tonight's scores and injury changes show up within the hour.
 
+### Daily prediction snapshot (fourth cron)
+
+`python -m ballstats snapshot` stores the model's prediction for each unfinished game of today (US Eastern) in
+`live.prediction_snapshot`: margin, win probability, every component, the raw inputs (rotation ratings healthy / on the day /
+effective, recent form, back-to-back, constants) and the injury report for both teams, plus the full `/api/predict` payload.
+Later, join `game_id` to `live.game` for the final score and fit the coefficients (`INJURY_AMP`, `C_ROSTER`, ...).
+Service `snapshot-cron`, `0 17 * * *` (noon US Eastern in winter, 1 pm in summer; `railway.snapshot.json` has the settings,
+which are set on the service itself), start command `python -m ballstats snapshot`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+Re-running on the same day replaces that day's snapshot.
+
 ### Nightly nba stats update (second cron)
 
 `python -m ballstats daily-update` is the Railway-side version of the local routine: it collects the current

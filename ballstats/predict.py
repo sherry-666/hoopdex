@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 import psycopg
 from psycopg.rows import tuple_row
+from psycopg.types.json import Jsonb
 
 from ballstats import blend, live, teams
 
@@ -225,4 +226,45 @@ def _game(ctx: dict, away: str, home: str, day: dt.date) -> dict:
         "margin": round(float(margin), 1), "home_win": round(0.5 * (1 + math.erf(margin / SIGMA / math.sqrt(2))), 3),
         "fit_items": fit_items, "matchup_items": match_items, "component_cap": COMPONENT_CAP,
         "key_players": {away: key_rows(sa), home: key_rows(sh)}, "best_player": {away: best(away), home: best(home)},
+        "inputs": {
+            "rotation_healthy": {t: _num(healthy[t]) for t in (away, home)},
+            "rotation_on_day": {t: _num(played[t]) for t in (away, home)},
+            "rotation_effective": {t: _num(eff[t]) for t in (away, home)},
+            "form": {t: _num(form[t]) for t in (away, home)},
+            "games_played": {t: sum(1 for d, _ in ctx["margins"].get(t, []) if d < day) for t in (away, home)},
+            "constants": {"HOME_EDGE": HOME_EDGE, "C_ROSTER": C_ROSTER, "C_FORM": C_FORM, "FORM_GAMES": FORM_GAMES,
+                          "FORM_SHRINK": FORM_SHRINK, "INJURY_AMP": INJURY_AMP, "BACK_TO_BACK": BACK_TO_BACK,
+                          "SIGMA": SIGMA, "STAR_SHARE": STAR_SHARE, "COMPONENT_CAP": COMPONENT_CAP},
+        },
+        "injuries": [
+            {"team": r.team, "player_id": int(r.pid), "name": r["name"], "status": inj[r.pid][0],
+             "return_date": inj[r.pid][1].isoformat() if inj[r.pid][1] else None,
+             "available": can_play(*inj[r.pid], day), "ovr": _num(r.ovr), "min": _num(r["min"])}
+            for _, r in df[df.team.isin((away, home)) & df.pid.isin(inj)].sort_values(["team", "min"], ascending=[True, False]).iterrows()
+        ],
     }
+
+
+def _num(v) -> float | None:
+    return None if v is None or pd.isna(v) else round(float(v), 3)
+
+
+def snapshot(conn: psycopg.Connection, day: dt.date | None = None) -> int:
+    """Store the prediction for every unfinished game on `day` (default: today, US Eastern), replacing the day's earlier
+    snapshot of the same game. Returns the number of games stored."""
+    day = day or dt.datetime.now(live.EASTERN).date()
+    games = conn.execute("SELECT game_id, team, opp FROM live.game WHERE home AND game_date = %s AND NOT completed"
+                         " ORDER BY tipoff, game_id", (day,)).fetchall()
+    preds = predict_many(conn, [(away, home, day) for _, home, away in games]) if games else []
+    for (gid, _, _), p in zip(games, preds):
+        components = {k: p[k] for k in ("home_edge", "roster", "form", "rest", "matchup", "fit", "injury_hit")}
+        inputs = {**p["inputs"], "back_to_back": p["back_to_back"]}
+        conn.execute(
+            "INSERT INTO live.prediction_snapshot (game_id, snapshot_date, game_date, season, home, away, margin, home_win,"
+            " components, inputs, injuries, prediction) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            " ON CONFLICT (game_id, snapshot_date) DO UPDATE SET taken_at = now(), margin = excluded.margin,"
+            " home_win = excluded.home_win, components = excluded.components, inputs = excluded.inputs,"
+            " injuries = excluded.injuries, prediction = excluded.prediction",
+            (gid, day, day, p["season"], p["home"], p["away"], p["margin"], p["home_win"],
+             Jsonb(components), Jsonb(inputs), Jsonb(p["injuries"]), Jsonb(p)))
+    return len(games)

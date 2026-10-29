@@ -240,6 +240,15 @@ def cmd_schedule_update(args) -> int:
     return 0
 
 
+def cmd_snapshot(args) -> int:
+    from ballstats import predict
+
+    conn = db.connect()
+    db.init_schema(conn)
+    print("snapshot:", predict.snapshot(conn), "games")
+    return 0
+
+
 def cmd_daily_update(args) -> int:
     """The nightly nba stats refresh: collect the season so far, then rebuild what is derived from it.
 
@@ -309,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("schedule-update", help="schedule and scores, injury report and standings from ESPN (the hourly cron job)")
 
+    sub.add_parser("snapshot", help="store today's game predictions with every input, for fitting later (the noon cron job)")
+
     daily_p = sub.add_parser("daily-update", help="nba stats refresh of the current season, then roles / ratings / teams (the nightly job)")
     daily_p.add_argument("--season", default=current_season())
     daily_p.add_argument("--reference", help="role model season (default: the previous season)")
@@ -337,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_ratings(args)
     if args.command == "schedule-update":
         return cmd_schedule_update(args)
+    if args.command == "snapshot":
+        return cmd_snapshot(args)
     if args.command == "live-update":
         return cmd_live_update(args)
     if args.command == "teams":
