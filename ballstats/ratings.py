@@ -6,8 +6,9 @@ exists. Per season:
 
   1. Three components, each a z-score against that season's players with 500+ minutes:
        contribution   PIE, the NBA's share-of-game-events estimate         weight 0.40
-       scoring        usage x (TS% - league TS%) + 0.3 x (usage - league
-                      usage): efficiency on volume, plus credit for volume  weight 0.40
+       scoring        usage x (TS% - league TS%) + 0.3 x (load - league
+                      load), load = usage + 0.5 x assist %: efficiency on
+                      volume, plus credit for the possessions he uses       weight 0.40
        on-court       team net rating with him on the floor, shrunk by
                       minutes toward 0 (it is noisy and team-dependent)      weight 0.20
   2. The weighted sum is re-standardized, then pulled toward replacement level
@@ -41,7 +42,8 @@ DEF_WEIGHTS_TRACKED = {"contest": 0.25, "steals": 0.15, "blocks": 0.10, "def_reb
                       "charges": 0.05}
 SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS_TRACKED}
 CONTEST_SHRINK_FGA = 500    # the opponent-FG% edge keeps d_fga / (d_fga + this) of its value
-USAGE_CREDIT = 0.3          # scoring credit per point of usage above league average
+USAGE_CREDIT = 0.3          # scoring credit per point of offensive load above league average
+AST_LOAD = 0.5              # offensive load = usage + this x assist %: setting up teammates uses possessions too
 TEAM_SHARE = 0.3            # on-court off/def: vs his own team, plus this share of the team's edge on the league
 TOV_PENALTY = 0.5           # playmaking = assist % - this x turnover ratio
 NET_SHRINK_MIN = 1000       # on-court net rating keeps minutes / (minutes + this) of its value
@@ -105,17 +107,23 @@ def _shrink(v: pd.Series, minutes: pd.Series) -> pd.Series:
     return v * minutes / (minutes + NET_SHRINK_MIN)
 
 
+def _scoring(t: pd.DataFrame, lg: dict[str, float]) -> pd.Series:
+    """Efficiency on volume, plus credit for offensive load (usage and the possessions he spends on assists)."""
+    load, lg_load = t["usg"] + AST_LOAD * t["ast_pct"], lg["usg"] + AST_LOAD * lg["ast_pct"]
+    return (t["usg"] * (t["ts"] - lg["ts"]) + USAGE_CREDIT * (load - lg_load)) * 100
+
+
 def _components(t: pd.DataFrame, lg: dict[str, float]) -> dict[str, pd.DataFrame]:
     """Raw component values per scale; lg holds league averages of the baseline season."""
     m = t["minutes"]
     return {
         "ovr": pd.DataFrame({
             "contribution": t["pie"],
-            "scoring": (t["usg"] * (t["ts"] - lg["ts"]) + USAGE_CREDIT * (t["usg"] - lg["usg"])) * 100,
+            "scoring": _scoring(t, lg),
             "on_court": _shrink(t["net"], m),
         }),
         "off": pd.DataFrame({
-            "scoring": (t["usg"] * (t["ts"] - lg["ts"]) + USAGE_CREDIT * (t["usg"] - lg["usg"])) * 100,
+            "scoring": _scoring(t, lg),
             "playmaking": t["ast_pct"] * 100 - TOV_PENALTY * t["tov_pct"],
             "off_rebounding": t["oreb_pct"],
             "on_court": _shrink(t["ortg"] - t["team_ortg"] + TEAM_SHARE * (t["team_ortg"] - lg["ortg"]), m),
@@ -135,7 +143,7 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
     """Rate every player of table t against the qualified players of baseline (t itself,
     or an earlier season while t is still early), on all three scales."""
     ref = baseline[baseline["minutes"] >= MIN_MINUTES]
-    lg = {k: float(np.average(ref[k], weights=ref["minutes"])) for k in ("ts", "usg", "ortg", "drtg")}
+    lg = {k: float(np.average(ref[k], weights=ref["minutes"])) for k in ("ts", "usg", "ortg", "drtg", "ast_pct")}
     ref_c, mine = _components(ref, lg), _components(t, lg)
     reliability = t["minutes"] / (t["minutes"] + RELIABILITY_MIN)
     out = t[["name", "team", "gp", "minutes"]].copy()
