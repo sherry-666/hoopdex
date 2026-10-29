@@ -102,16 +102,16 @@ const UI_EN: Record<string, string> = {
   // ratings
   "能力值": "Rating", "{season} 综合评分": "{season} OVR", "这个赛季还没有评分。": "No rating for this season yet.",
   "巅峰评分": "Peak", "三季平均": "3-season avg", "生涯评分": "Career", "{n} 个赛季，其中 {q} 季满 500 分钟": "{n} seasons, {q} with 500+ minutes",
-  "综合贡献": "Contribution", "PIE {v}：他占场上所有统计事件的份额": "PIE {v}: his share of all box-score events in his games",
+  "进攻评分 {v}（见「进攻」页）": "Offense rating {v} (see the Offense tab)", "防守评分 {v}（见「防守」页）": "Defense rating {v} (see the Defense tab)", "综合贡献": "Contribution", "PIE {v}：他占场上所有统计事件的份额": "PIE {v}: his share of all box-score events in his games",
   "得分效率与量": "Scoring volume and efficiency", "使用率 {usg}，真实命中率 {ts}（联盟 {lg}）": "Usage {usg}, true shooting {ts} (league {lg})",
   "在场表现": "On-court", "他在场时球队每 100 回合净胜 {net} 分": "Team net {net} points per 100 possessions with him on the floor",
   "样本权重 {w}（{min} 分钟）：样本越少，评分越向替补水平靠拢。": "Sample weight {w} ({min} min): the smaller the sample, the closer to replacement level.",
   "本赛季还早，按 {s} 赛季的标准换算。": "It's early in the season, so the scale comes from {s}.",
   "各赛季评分": "Rating by season",
   "评分是怎么算的？": "How is the rating built?",
-  "每个赛季用联盟官方的全员数据，算三项指标：综合贡献（PIE，占场上统计事件的份额）、得分效率与量（使用率 × 真实命中率高出联盟的部分，再加上球权本身的价值）、在场表现（他在场时球队的净效率，按上场时间打折，因为它受队友影响很大）。":
-    "Each season, from the league's full player tables, three measures: contribution (PIE, his share of box-score events), scoring volume and efficiency (usage times true shooting above league average, plus credit for usage itself) and on-court (team net rating with him playing, discounted by minutes because teammates drive much of it).",
-  "每项都和同赛季满 500 分钟的球员比，换成标准差（σ），按 40% / 40% / 20% 加权合成。": "Each is compared with that season's 500+ minute players, turned into standard deviations (σ) and combined 40% / 40% / 20%.",
+  "每个赛季用联盟官方的全员数据，先算进攻评分和防守评分（各自的组成见对应页），再和综合贡献（PIE，占场上统计事件的份额，其中也含犯规和失误）合成综合评分。在场数据会同时进入进攻和防守两边，在综合评分里合计约占 20%。":
+    "Each season, from the league's full player tables, we first build the offense and defense ratings (their parts are on their own tabs), then combine them with contribution (PIE, his share of box-score events, which also carries fouls and turnovers) into the overall rating. On-court results enter through both sides, about 20% of the overall rating in all.",
+  "每项都和同赛季满 500 分钟的球员比，换成标准差（σ），按 50% 进攻 / 30% 防守 / 20% 综合贡献加权合成。": "Each is compared with that season's 500+ minute players, turned into standard deviations (σ) and combined 50% offense / 30% defense / 20% contribution.",
   "按上场时间做收缩：分钟越少，越向替补水平靠拢，避免几场比赛就打出 95 分。": "Shrunk by minutes: the fewer minutes, the closer to replacement level, so a few games can't produce a 95.",
   "换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。": "Scaled 2K-style: 77 + 6.5 × σ, from 40 to 99. The league median is about 75, the top 10% about 82+, the very best near 99.",
   "巅峰评分 = 生涯中连续三个满 500 分钟赛季的最高平均；生涯评分 = 70% 巅峰 + 30% 各赛季按分钟加权的平均。": "Peak = the best average over three 500+ minute seasons in a row; career = 70% peak + 30% the minutes-weighted average over all seasons.",
@@ -246,8 +246,8 @@ const UI_EN: Record<string, string> = {
     "Offense rating: scoring efficiency and volume 45%, playmaking (assist rate minus half the turnover ratio) 25%, offensive rebounding 10%, on-court offense 20%.",
   "防守评分：抢断 20%、盖帽 15%、防守篮板 15%、在场防守 50%；2015-16 起加入对位防守，权重变为对位防守 25%、抢断 15%、盖帽 10%、防守篮板 10%、造进攻犯规 5%、在场防守 35%。对位防守是对手被他防守时的命中率比平时低多少（出手少的会向 0 收缩）。在场数据和他自己球队比（再加三成球队整体水平），所以防守好的球队不会把每个人都抬高。":
     "Defense rating: steals 20%, blocks 15%, defensive rebounding 15%, on-court defense 50%; from 2015-16 it adds contest defense, giving contest defense 25%, steals 15%, blocks 10%, defensive rebounding 10%, charges drawn 5%, on-court defense 35%. Contest defense is how much worse opponents shoot against him than they normally do (small samples are pulled toward 0). On-court numbers are compared with his own team (plus 30% of the team's overall level), so a great defensive team doesn't lift everyone on it.",
-  "换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。三项评分各自独立计算，综合评分不是攻守的平均。":
-    "Converted to a 2K-style score: 77 + 6.5 × σ, range 40–99. The league median is about 75, the top 10% above about 82, the very best near 99. The three ratings are computed separately; overall is not the average of offense and defense.",
+  "换算成 2K 式分数：77 + 6.5 × σ，范围 40–99。联盟中位数约 75，前 10% 约 82 以上，最顶尖接近 99。综合评分 = 50% 进攻 + 30% 防守 + 20% 综合贡献，再重新标准化。":
+    "Converted to a 2K-style score: 77 + 6.5 × σ, range 40–99. The league median is about 75, the top 10% above about 82, the very best near 99. Overall = 50% offense + 30% defense + 20% contribution, standardized again.",
   "这是第一版（只用 box score）。它偏爱篮板多、出手效率高的内线；防守尤其难从 box score 看出来，换防、协防和限制投篮都看不到。之后会换成考虑队友和对手的影响力模型（RAPM）。每个赛季都在当季内排名，所以不同年代可以直接比较。":
     "This is version 1 (box score only). It favours efficient, rebounding bigs, and defense is especially hard to see in a box score: switching, help defense and shot deterrence don't show up. It will be replaced by an impact model (RAPM) that accounts for teammates and opponents. Every season is ranked within itself, so eras can be compared directly.",
   "球队评分": "Team rating", "每 100 回合得分 / 失分": "Points scored / allowed per 100 possessions",

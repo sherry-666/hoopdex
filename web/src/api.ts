@@ -63,7 +63,7 @@ async function get<T>(path: string): Promise<T> {
 
 export interface SeasonRating {
   ovr: number; off: number; def: number; z: number; qualified: boolean; baseline_season: string; minutes: number; gp: number; model_version: string;
-  detail: { contribution: number; scoring: number; on_court: number; reliability: number;
+  detail: { contribution: number; offense: number; defense: number; reliability: number;
     pie: number; ts: number; usg: number; net: number; league_ts: number;
     blend?: { weight: number; own_ovr: number; own_off: number; own_def: number; prior_ovr: number; prior_off: number; prior_def: number };
     blend_prior?: string;

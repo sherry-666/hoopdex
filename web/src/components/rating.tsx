@@ -188,10 +188,9 @@ function Breakdown({ metric, rating }: { metric: RatingKey; rating: SeasonRating
   }
   return (
     <>
-      <ComponentRow title={t("综合贡献")} weight={0.4} z={d.contribution} detail={t("PIE {v}：他占场上所有统计事件的份额", { v: pct1(d.pie) })} />
-      <ComponentRow title={t("得分效率与量")} weight={0.4} z={d.scoring}
-        detail={t("使用率 {usg}，真实命中率 {ts}（联盟 {lg}）", { usg: pct1(d.usg), ts: pct1(d.ts), lg: pct1(d.league_ts) })} />
-      <ComponentRow title={t("在场表现")} weight={0.2} z={d.on_court} detail={t("他在场时球队每 100 回合净胜 {net} 分", { net: signed(d.net) })} />
+      <ComponentRow title={t("进攻评分")} weight={0.5} z={d.offense} detail={t("进攻评分 {v}（见「进攻」页）", { v: rating.off })} />
+      <ComponentRow title={t("防守评分")} weight={0.3} z={d.defense} detail={t("防守评分 {v}（见「防守」页）", { v: rating.def })} />
+      <ComponentRow title={t("综合贡献")} weight={0.2} z={d.contribution} detail={t("PIE {v}：他占场上所有统计事件的份额", { v: pct1(d.pie) })} />
     </>
   );
 }

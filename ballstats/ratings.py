@@ -4,17 +4,20 @@ Version 1 is a box-score estimate, available for every season since 1996-97 from
 league-wide totals. It will be replaced by the impact model (RAPM + prior) once that
 exists. Per season:
 
-  1. Three components, each a z-score against that season's players with 500+ minutes:
-       contribution   PIE, the NBA's share-of-game-events estimate         weight 0.40
-       scoring        usage x (TS% - league TS%) + 0.3 x (load - league
-                      load), load = usage + 0.5 x assist %: efficiency on
-                      volume, plus credit for the possessions he uses       weight 0.40
-       on-court       team net rating with him on the floor, shrunk by
-                      minutes toward 0 (it is noisy and team-dependent)      weight 0.20
-  2. The weighted sum is re-standardized, then pulled toward replacement level
-     (-1.0) by sample size: weight = minutes / (minutes + 250).
-  3. OVR = 77 + 6.5 x z, clipped to 40..99. A median 500-minute player lands near 75,
+  1. Offense and defense ratings, each a weighted sum of z-scores against that season's players
+     with 500+ minutes (components below), standardized again.
+  2. OVR = 0.5 x offense + 0.3 x defense + 0.2 x PIE (the NBA's share-of-game-events estimate,
+     which also carries fouls and turnovers), standardized once more. On-court results enter
+     through both sides, about 20% of OVR in all.
+  3. Each is pulled toward replacement level (-1.0) by sample size:
+     weight = minutes / (minutes + 250).
+  4. Rating = 77 + 6.5 x z, clipped to 40..99. A median 500-minute player lands near 75,
      +2 sd at 90, +3.4 sd at 99: roughly the NBA 2K spread.
+
+  Offense: scoring (usage x (TS% - league TS%) + 0.3 x (load - league load), load = usage +
+  0.5 x assist %), playmaking, offensive rebounding, on-court offense. Defense: steals, blocks,
+  defensive rebounding, on-court defense, and from 2015-16 the opponents' FG% against him vs
+  their norm and charges drawn.
 
 Box-score estimates favour efficient rim-running bigs (rebounds and easy shots);
 the RAPM-based version should correct most of that.
@@ -34,13 +37,13 @@ from ballstats.collector import result_rows
 MODEL_VERSION = "ovr-box-v3"
 MIN_MINUTES = 500
 MIN_QUALIFIED = 100         # below this many 500-minute players, borrow a prior season's baseline
-WEIGHTS = {"contribution": 0.40, "scoring": 0.40, "on_court": 0.20}
+OVR_WEIGHTS = {"offense": 0.50, "defense": 0.30, "contribution": 0.20}   # contribution: PIE, which also covers fouls and turnovers
 OFF_WEIGHTS = {"scoring": 0.45, "playmaking": 0.25, "off_rebounding": 0.10, "on_court": 0.20}
 DEF_WEIGHTS = {"steals": 0.20, "blocks": 0.15, "def_rebounding": 0.15, "on_court": 0.50}
 # From 2015-16 on, tracking data adds how much worse opponents shoot against him than they normally do.
 DEF_WEIGHTS_TRACKED = {"contest": 0.25, "steals": 0.15, "blocks": 0.10, "def_rebounding": 0.10, "on_court": 0.35,
                       "charges": 0.05}
-SCALES = {"ovr": WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS_TRACKED}
+SCALES = {"ovr": OVR_WEIGHTS, "off": OFF_WEIGHTS, "def": DEF_WEIGHTS_TRACKED}
 CONTEST_SHRINK_FGA = 500    # the opponent-FG% edge keeps d_fga / (d_fga + this) of its value
 USAGE_CREDIT = 0.3          # scoring credit per point of offensive load above league average
 AST_LOAD = 0.5              # offensive load = usage + this x assist %: setting up teammates uses possessions too
@@ -117,11 +120,7 @@ def _components(t: pd.DataFrame, lg: dict[str, float]) -> dict[str, pd.DataFrame
     """Raw component values per scale; lg holds league averages of the baseline season."""
     m = t["minutes"]
     return {
-        "ovr": pd.DataFrame({
-            "contribution": t["pie"],
-            "scoring": _scoring(t, lg),
-            "on_court": _shrink(t["net"], m),
-        }),
+        "ovr": pd.DataFrame({"contribution": t["pie"]}),
         "off": pd.DataFrame({
             "scoring": _scoring(t, lg),
             "playmaking": t["ast_pct"] * 100 - TOV_PENALTY * t["tov_pct"],
@@ -148,13 +147,20 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
     reliability = t["minutes"] / (t["minutes"] + RELIABILITY_MIN)
     out = t[["name", "team", "gp", "minutes"]].copy()
     tracked = bool(t["d_fga"].notna().any() and ref["d_fga"].notna().any())
-    for scale, weights in SCALES.items():
-        if scale == "def" and not tracked:
-            weights = DEF_WEIGHTS
+    zc_mine, zc_ref = {}, {}
+    for scale in ("off", "def", "ovr"):
+        weights = DEF_WEIGHTS if scale == "def" and not tracked else SCALES[scale]
         mean, sd = ref_c[scale].mean(), ref_c[scale].std()
         z = (mine[scale] - mean) / sd
-        ref_combo = sum(((ref_c[scale][k] - mean[k]) / sd[k]) * w for k, w in weights.items())
+        if scale == "ovr":
+            # Overall: offense, defense and PIE (the catch-all for fouls, turnovers and the like), each as a z-score.
+            z = z.assign(offense=zc_mine["off"], defense=zc_mine["def"])
+            ref_z = ((ref_c[scale] - mean) / sd).assign(offense=zc_ref["off"], defense=zc_ref["def"])
+            ref_combo = sum(ref_z[k] * w for k, w in weights.items())
+        else:
+            ref_combo = sum(((ref_c[scale][k] - mean[k]) / sd[k]) * w for k, w in weights.items())
         zc = (sum(z[k] * w for k, w in weights.items()) - ref_combo.mean()) / ref_combo.std()
+        zc_mine[scale], zc_ref[scale] = zc, (ref_combo - ref_combo.mean()) / ref_combo.std()
         z_adj = reliability * zc + (1 - reliability) * REPLACEMENT_Z
         out[scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z_adj), 40, 99).astype(int)
         out[f"z_{scale}"] = z_adj
@@ -229,7 +235,7 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         for pid, x in r.iterrows():
             raw = t.loc[pid]
             detail = {
-                "contribution": x["ovr.contribution"], "scoring": x["ovr.scoring"], "on_court": x["ovr.on_court"],
+                "contribution": x["ovr.contribution"], "offense": x["ovr.offense"], "defense": x["ovr.defense"],
                 "reliability": x["reliability"], "pie": raw["pie"], "ts": raw["ts"], "usg": raw["usg"],
                 "net": raw["net"], "league_ts": x["league_ts"],
                 "off": {**{k: x[f"off.{k}"] for k in OFF_WEIGHTS}, "ortg": raw["ortg"], "league_ortg": x["league_ortg"],
