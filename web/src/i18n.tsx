@@ -10,6 +10,7 @@ const UI_EN: Record<string, string> = {
   "这一天没有比赛。": "No games on this day.", "已结束": "Final", "今天": "Today", "阵容": "Roster", "预测": "Prediction", "预计分差": "Expected margin", "主队 {pct}%": "Home {pct}%",
   "主力克制（两队各前 5 名可出战球员）": "Key-player matchup (each team's top 5 available players)",
   "合计（主队减客队）": "Total (home minus away)", "主力球员": "Key players", "阵容评分差（按当天能出战的球员）": "Roster rating gap (players able to play that day)",
+  "背靠背{who}": "Back-to-back{who}", "昨天也打了": " played yesterday",
   "其中伤病影响": "of which injuries", "近期状态（最近 20 场平均分差）": "Recent form (average margin, last 20 games)",
   "单队合计超过上限 ±{cap} 分，按上限计。": "A team's total is over the ±{cap} point limit and counts at the limit.",
   "进攻搭配": "offence pairing", "防守搭配": "defence pairing", "回合": "poss.", "分": "pts",
@@ -53,7 +54,7 @@ const UI_EN: Record<string, string> = {
   "名人堂球员": "Hall of Famers", "{k} 阵 ×{n}": "Team {k} ×{n}",
   "来源 stats.nba.com；赛季以 {ex} 这样的简写显示。": "Source: stats.nba.com; seasons shown as {ex}.", "来源 stats.nba.com。": "Source: stats.nba.com.",
   // roster
-  "{season} 赛季的全部球员。搜名字或球队，按进攻大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive family.",
+  "{season} 赛季的全部球员。搜名字或球队，按进攻、防守大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive or defensive family.",
   "Stephen Curry、DEN……": "Stephen Curry, DEN…", "搜索球员或球队": "Search players or teams", "排序": "Sort",
   "上场分钟": "Minutes", "得分 / 36": "Points / 36", "真实命中率": "True shooting", "使用率": "Usage",
   "包括不满 500 分钟的球员": "Include players under 500 minutes", "全部": "All", "{n} 名球员": "{n} players",
