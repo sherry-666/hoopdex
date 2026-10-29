@@ -54,7 +54,7 @@ const UI_EN: Record<string, string> = {
   "名人堂球员": "Hall of Famers", "{k} 阵 ×{n}": "Team {k} ×{n}",
   "来源 stats.nba.com；赛季以 {ex} 这样的简写显示。": "Source: stats.nba.com; seasons shown as {ex}.", "来源 stats.nba.com。": "Source: stats.nba.com.",
   // roster
-  "{season} 赛季的全部球员。搜名字或球队，按进攻、防守大类筛选。": "Every player of the {season} season. Search by name or team, filter by offensive or defensive family.",
+  "{season} 赛季的全部球员。搜名字或球队，按进攻、防守风格筛选。": "Every player of the {season} season. Search by name or team, filter by offensive or defensive style.",
   "Stephen Curry、DEN……": "Stephen Curry, DEN…", "搜索球员或球队": "Search players or teams", "排序": "Sort",
   "上场分钟": "Minutes", "得分 / 36": "Points / 36", "真实命中率": "True shooting", "使用率": "Usage",
   "包括不满 500 分钟的球员": "Include players under 500 minutes", "全部": "All", "{n} 名球员": "{n} players",

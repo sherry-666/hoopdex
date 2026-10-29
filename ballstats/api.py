@@ -179,11 +179,14 @@ def player_list(season: str) -> list[dict]:
                (s.stats ->> 'usg_pct')::float AS usg_pct,
                o.family_name AS off_family, o.style_label AS off_style, o.top_archetype_id AS off_top,
                d.family_name AS def_family, d.style_label AS def_style, d.top_archetype_id AS def_top,
+               oa.name AS off_top_name, da.name AS def_top_name,
                rt.ovr, rt.off, rt.def
         FROM feat.player_stats s
         LEFT JOIN feat.player_rating rt ON rt.season = s.season AND rt.player_id = s.player_id
         LEFT JOIN feat.player_role o ON o.season = s.season AND o.player_id = s.player_id AND o.side = 'offense'
         LEFT JOIN feat.player_role d ON d.season = s.season AND d.player_id = s.player_id AND d.side = 'defense'
+        LEFT JOIN feat.role_type oa ON oa.season = s.season AND oa.side = 'offense' AND oa.level = 'archetype' AND oa.type_id = o.top_archetype_id
+        LEFT JOIN feat.role_type da ON da.season = s.season AND da.side = 'defense' AND da.level = 'archetype' AND da.type_id = d.top_archetype_id
         WHERE s.season = %(season)s
         ORDER BY s.minutes DESC
         """, {"season": season, "min": roles.MIN_MINUTES})

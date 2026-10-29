@@ -24,6 +24,7 @@ export interface PlayerRow {
   pts_36: number | null; ts_pct: number | null; usg_pct: number | null;
   off_family: string | null; off_style: string | null; off_top: number | null;
   def_family: string | null; def_style: string | null; def_top: number | null;
+  off_top_name: string | null; def_top_name: string | null;
   ovr: number | null; off: number | null; def: number | null;
 }
 export interface Power {

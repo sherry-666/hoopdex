@@ -38,12 +38,12 @@ export default function Roster() {
   const teams = useMemo(() => [...new Set((players.data ?? []).map((p) => p.team).filter(Boolean))]
     .sort((a, b) => teamName(a, lang, true).localeCompare(teamName(b, lang, true), lang === "zh" ? "zh-Hans-CN-u-co-pinyin" : "en")),
   [players.data, lang]);
-  const families = useMemo(() => [...new Set((players.data ?? []).map((p) => p.off_family).filter(Boolean))] as string[], [players.data]);
-  const defFamilies = useMemo(() => [...new Set((players.data ?? []).map((p) => p.def_family).filter(Boolean))] as string[], [players.data]);
+  const families = useMemo(() => [...new Set((players.data ?? []).map((p) => p.off_top_name).filter(Boolean))] as string[], [players.data]);
+  const defFamilies = useMemo(() => [...new Set((players.data ?? []).map((p) => p.def_top_name).filter(Boolean))] as string[], [players.data]);
   const rows = useMemo(() => {
     const ql = query.trim().toLowerCase();
     return (players.data ?? [])
-      .filter((p) => (showLow || earlySeason || p.in_fit) && (!family || p.off_family === family) && (!defFamily || p.def_family === defFamily) && (!team || p.team === team)
+      .filter((p) => (showLow || earlySeason || p.in_fit) && (!family || p.off_top_name === family) && (!defFamily || p.def_top_name === defFamily) && (!team || p.team === team)
         && (!ql || p.name.toLowerCase().includes(ql) || (p.team ?? "").toLowerCase().includes(ql)
           || teamName(p.team, "zh").includes(ql) || teamName(p.team, "en", true).toLowerCase().includes(ql)))
       .sort((a, b) => ((b[sort] ?? -1) as number) - ((a[sort] ?? -1) as number));
@@ -56,7 +56,7 @@ export default function Roster() {
     <>
       <section className="panel halftone" style={{ background: "var(--pop-blue)", color: "var(--on-blue)", borderColor: "#111" }}>
         <h1 style={{ fontSize: "var(--size-h1)" }}>{t("球员名册")}</h1>
-        <p style={{ margin: "6px 0 0" }}>{t("{season} 赛季的全部球员。搜名字或球队，按进攻、防守大类筛选。", { season: season ?? "" })}</p>
+        <p style={{ margin: "6px 0 0" }}>{t("{season} 赛季的全部球员。搜名字或球队，按进攻、防守风格筛选。", { season: season ?? "" })}</p>
       </section>
       <div className="row">
         <SeasonSelect value={season} seasons={seasons.data} onChange={(s) => setParam("season", s)} />
@@ -71,13 +71,13 @@ export default function Roster() {
           </select>
         </label>
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("进攻")}
-          <select className="select" value={family ?? ""} onChange={(e) => setFamily(e.target.value || null)}>
+          <select className="select" style={{ width: 130 }} value={family ?? ""} onChange={(e) => setFamily(e.target.value || null)}>
             <option value="">{t("全部")}</option>
             {families.map((f) => <option key={f} value={f}>{name(f)}</option>)}
           </select>
         </label>
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("防守")}
-          <select className="select" value={defFamily ?? ""} onChange={(e) => setDefFamily(e.target.value || null)}>
+          <select className="select" style={{ width: 130 }} value={defFamily ?? ""} onChange={(e) => setDefFamily(e.target.value || null)}>
             <option value="">{t("全部")}</option>
             {defFamilies.map((f) => <option key={f} value={f}>{name(f)}</option>)}
           </select>
