@@ -21,8 +21,8 @@ const UI_EN: Record<string, string> = {
   "把球员拖到另一队，看强度和适配度怎么变。比赛预测上线后接着做。": "Drag a player to another team and see how strength and fit change. Comes after the game predictor.",
   "先去定位实验室": "Visit the Role Lab",
   // home
-  "Hoopedia 用逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。":
-    "Hoopedia breaks every player's game into a few pure archetypes using play-by-play, tracking and play-type data, then turns their most extreme traits into superpowers. Every number traces back to its source.",
+  "Hoopedia 用 2015-16 赛季以来的逐回合数据、追踪数据和战术类型，把每个人的打法拆成几种纯粹原型，再把最突出的那几项变成超能力。所有数字都能追到来源。":
+    "Hoopedia breaks every player's game into a few pure archetypes using play-by-play, tracking and play-type data since 2015-16, then turns their most extreme traits into superpowers. Every number traces back to its source.",
   "找一位球员：Kawhi Leonard": "Find a player: Kawhi Leonard", "搜索球员": "Search players", "搜索": "Search",
   "7 种进攻原型、4 种防守原型，看每名球员是哪几种的混合。": "7 offensive and 4 defensive archetypes. See which mix makes up each player.",
   "每名球员一张卡：超能力、战力数值、风格构成。": "One card per player: superpowers, power stats and style mix.",
