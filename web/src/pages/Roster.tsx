@@ -70,6 +70,18 @@ export default function Roster() {
             {teams.map((tm) => <option key={tm} value={tm}>{teamName(tm, lang, true)}</option>)}
           </select>
         </label>
+        <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("进攻")}
+          <select className="select" value={family ?? ""} onChange={(e) => setFamily(e.target.value || null)}>
+            <option value="">{t("全部")}</option>
+            {families.map((f) => <option key={f} value={f}>{name(f)}</option>)}
+          </select>
+        </label>
+        <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("防守")}
+          <select className="select" value={defFamily ?? ""} onChange={(e) => setDefFamily(e.target.value || null)}>
+            <option value="">{t("全部")}</option>
+            {defFamilies.map((f) => <option key={f} value={f}>{name(f)}</option>)}
+          </select>
+        </label>
         <label className="row" style={{ gap: 6, fontSize: "var(--size-caption)" }}>{t("排序")}
           <select className="select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
@@ -82,21 +94,7 @@ export default function Roster() {
         )}
       </div>
       {earlySeason && <p className="bubble" style={{ margin: "0 0 12px" }}>{t("本赛季刚开始，还没有球员满 500 分钟：下面列出全部球员，定位和超能力都是低置信度的参考。")}</p>}
-      <div className="row">
-        <span className="note">{t("进攻")}</span>
-        <button type="button" className="chip" aria-pressed={family === null} onClick={() => setFamily(null)}>{t("全部")}</button>
-        {families.map((f) => (
-          <button key={f} type="button" className="chip" aria-pressed={family === f} onClick={() => setFamily(family === f ? null : f)}>{name(f)}</button>
-        ))}
-        <span className="note">{t("{n} 名球员", { n: rows.length })}</span>
-      </div>
-      <div className="row">
-        <span className="note">{t("防守")}</span>
-        <button type="button" className="chip" aria-pressed={defFamily === null} onClick={() => setDefFamily(null)}>{t("全部")}</button>
-        {defFamilies.map((f) => (
-          <button key={f} type="button" className="chip" aria-pressed={defFamily === f} onClick={() => setDefFamily(defFamily === f ? null : f)}>{name(f)}</button>
-        ))}
-      </div>
+      <div className="row"><span className="note">{t("{n} 名球员", { n: rows.length })}</span></div>
 
       {(players.isLoading || !season) && <Loading what="名册" />}
       {players.error && <Failed error={players.error} />}
