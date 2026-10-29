@@ -32,7 +32,7 @@ export function TeamLogo({ team, size = 28 }: { team: string; size?: number }) {
 }
 
 /** Players whose portrait also has a short silent clip at /portraits/<id>.mp4. */
-const ANIMATED = new Set<number>([201939]);
+const ANIMATED = new Set<number>([201939, 2544]);
 
 function motionAllowed() {
   if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
