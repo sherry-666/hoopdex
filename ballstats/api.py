@@ -428,6 +428,37 @@ def schedule(days: int = 3) -> list[dict]:
     return games
 
 
+@app.get("/api/record")
+def record() -> dict:
+    """How the daily snapshots (live.prediction_snapshot, taken at noon ET) fared against the final scores."""
+    games = q("SELECT DISTINCT ON (s.game_id) s.game_id, s.game_date, s.away, s.home, s.margin, s.home_win,"
+              " g.team_score AS home_score, g.opp_score AS away_score FROM live.prediction_snapshot s"
+              " JOIN live.game g ON g.game_id = s.game_id AND g.home AND g.completed AND g.team_score IS NOT NULL"
+              " ORDER BY s.game_id, s.snapshot_date DESC")
+    for g in games:
+        g["home_win"] = float(g["home_win"])
+        g["pick"] = g["home"] if g["home_win"] >= 0.5 else g["away"]
+        g["pick_win"] = max(g["home_win"], 1 - g["home_win"])
+        g["winner"] = g["home"] if g["home_score"] > g["away_score"] else g["away"]
+        g["correct"] = g["pick"] == g["winner"]
+    games.sort(key=lambda g: (g["game_date"], g["game_id"]), reverse=True)
+
+    def stats(rows: list[dict]) -> dict:
+        n = len(rows)
+        return {"games": n, "correct": sum(g["correct"] for g in rows),
+                "brier": round(sum((g["home_win"] - (g["winner"] == g["home"])) ** 2 for g in rows) / n, 4) if n else None}
+
+    recent = dt.datetime.now(live.EASTERN).date() - dt.timedelta(days=7)
+    bins = []
+    for lo, hi in ((0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 1.01)):
+        part = [g for g in games if lo <= g["pick_win"] < hi]
+        bins.append({"lo": lo, "hi": min(hi, 1.0), "games": len(part),
+                     "predicted": round(sum(g["pick_win"] for g in part) / len(part), 3) if part else None,
+                     "actual": round(sum(g["correct"] for g in part) / len(part), 3) if part else None})
+    return {"all": stats(games), "last7": stats([g for g in games if g["game_date"] > recent]),
+            "calibration": bins, "games": games}
+
+
 @app.get("/api/predict/{away}/{home}")
 def predict_game(away: str, home: str, date: str | None = None) -> dict:
     """Margin and win probability for one game (predict.py); date = game day, default today (US Eastern)."""

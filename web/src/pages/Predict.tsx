@@ -65,7 +65,7 @@ export default function Predict() {
     <>
       <section className="panel halftone" style={{ background: "var(--pop-red)", color: "#fff", borderColor: "#111" }}>
         <h1 style={{ fontSize: "var(--size-h1)" }}>{t("比赛预测")}</h1>
-        <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。")}</p>
+        <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。")} <Link to="/predict/record" style={{ color: "inherit", fontWeight: 700 }}>{t("预测战绩")} →</Link></p>
       </section>
       <div className="seg seg-lg" role="group" aria-label={t("日期")}>
         {days.map((d) => (

@@ -101,13 +101,16 @@ def build():
         days[(r.season, r.team)].add(r.date)
     # Recent form: mean margin of a team's last N games earlier in the same season (needs MIN_FORM games, else 0).
     played = sched.dropna(subset=["tm"]).astype({"tm": float}).sort_values(["season", "team", "date"])
-    form = {}
+    form, gp_ = {}, {}
     for (s_, t_), g_ in played.groupby(["season", "team"]):
         ds, ms = list(g_.date), g_.tm.to_numpy()
         for i, d_ in enumerate(ds):
+            gp_[(s_, t_, d_)] = i
             form[(s_, t_, d_)] = {n: (float(ms[max(0, i - n):i].mean()) if i >= MIN_FORM else 0.0) for n in FORM_N}
             # shrunk toward 0 by SHRINK pseudo-games: little weight on a few games early in the season
             form[(s_, t_, d_)].update({-n: float(ms[max(0, i - n):i].sum() / (min(i, n) + SHRINK)) for n in FORM_N})
+            form[(s_, t_, d_)].update({f"s20_{k}": float(ms[max(0, i - 20):i].sum() / (min(i, 20) + k)) if i >= MIN_FORM else 0.0
+                                       for k in (5, 10, 15, 20, 30)})
     # Schedule load before each game: days of rest, games in the last 4 days, consecutive road games before it.
     load_ = {}
     for (s_, t_), g_ in sched.sort_values(["season", "team", "date"]).groupby(["season", "team"]):
@@ -134,7 +137,7 @@ def build():
             one = pd.Timedelta(days=1)
             tired = lambda t: (pd.Timestamp(g.date) - one).date() in days[(s, t)]
             rows.append({
-                "season": y, "m": float(g.m),
+                "season": y, "m": float(g.m), "gp": min(gp_[(s, g.h, g.date)], gp_[(s, g.a, g.date)]),
                 "d_roster": feat[g.h]["roster"] - feat[g.a]["roster"],
                 "d_last": prev_ovr.get((season_str(y - 1), g.h), np.nan) - prev_ovr.get((season_str(y - 1), g.a), np.nan),
                 "d_end": prev_ovr.get((s, g.h), np.nan) - prev_ovr.get((s, g.a), np.nan),   # oracle: this season's final rating
@@ -144,6 +147,7 @@ def build():
                 "d_rest3": float(load_[(s, g.h, g.date)]["rest"] >= 3) - float(load_[(s, g.a, g.date)]["rest"] >= 3),
                 "d_exp": feat[g.h]["exp"] - feat[g.a]["exp"],
                 **{f"form{n}": form[(s, g.h, g.date)][n] - form[(s, g.a, g.date)][n] for n in FORM_N},
+                **{f"s20_{k}": form[(s, g.h, g.date)][f"s20_{k}"] - form[(s, g.a, g.date)][f"s20_{k}"] for k in (5, 10, 15, 20, 30)},
                 **{f"sform{n}": form[(s, g.h, g.date)][-n] - form[(s, g.a, g.date)][-n] for n in FORM_N},
                 "fit": fit[g.h] - fit[g.a],
                 "match": matchup(key[g.h], key[g.a], mat) - matchup(key[g.a], key[g.h], mat),
@@ -213,6 +217,22 @@ if __name__ == "__main__":
     for name, cols in models:
         r = evaluate(df, cols)
         print(f"{name:38s} {r['acc']:6.3f} {r['brier']:7.4f} {r['logloss']:8.4f} {r['rmse']:6.2f}")
+    df["early"] = (df.gp < 10).astype(float)
+    df["early_roster"] = df.d_roster * df.early
+    df["d_roster_k"] = df.d_roster * 10 / (df.gp + 10)
+    print("\nearly-season shape:")
+    for name, cols in [("base (shrink 10)", ["d_roster", "b2b", "s20_10"])] + \
+            [(f"form shrink {k}", ["d_roster", "b2b", f"s20_{k}"]) for k in (5, 15, 20, 30)] + \
+            [("+ roster extra in first 10 games", ["d_roster", "early_roster", "b2b", "s20_10"]),
+             ("+ roster extra, shrink 20", ["d_roster", "early_roster", "b2b", "s20_20"]),
+             ("+ roster extra 10/(gp+10), shrink 20", ["d_roster", "d_roster_k", "b2b", "s20_20"])]:
+        r = evaluate(df, cols)
+        e = evaluate(df[df.gp < 20], cols) if False else None
+        print(f"  {name:40s} acc {r['acc']:.4f} brier {r['brier']:.4f} logloss {r['logloss']:.4f}")
+    print("\nweights by games played so far (fewer of the two teams):")
+    for lo, hi in ((0, 10), (10, 20), (20, 40), (40, 60), (60, 90)):
+        part = df[(df.gp >= lo) & (df.gp < hi)]
+        print(f"  {lo:2d}-{hi:2d} games, n={len(part):5d}:", coefs(part, ["d_roster", "b2b", "sform20"]))
     print("\ncoefficients (all terms, margin points; t-stat):")
     for k, v in coefs(df, ["d_roster", "b2b", "sform20", "d_rest", "d_rest3", "d_last4", "d_road", "d_tz"]).items():
         print(f"  {k:9s} {v[0]:7.3f}  t={v[1]}")

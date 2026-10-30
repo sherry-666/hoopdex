@@ -209,6 +209,17 @@ export interface ScheduledGame {
 }
 export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3") });
 
+export interface RecordGame {
+  game_id: string; game_date: string; away: string; home: string; home_win: number; margin: number;
+  home_score: number; away_score: number; pick: string; pick_win: number; winner: string; correct: boolean;
+}
+export interface PredictionRecord {
+  all: { games: number; correct: number; brier: number | null }; last7: { games: number; correct: number; brier: number | null };
+  calibration: { lo: number; hi: number; games: number; predicted: number | null; actual: number | null }[];
+  games: RecordGame[];
+}
+export const useRecord = () => useQuery({ queryKey: ["record"], queryFn: () => get<PredictionRecord>("/api/record") });
+
 export interface GamePrediction {
   season: string; date: string; away: string; home: string;
   home_edge: number; roster: number; form: number; injury_hit: Record<string, number>; rest: number; back_to_back: Record<string, boolean>; fit: number; matchup: number; margin: number; home_win: number;
