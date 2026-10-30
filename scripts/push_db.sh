@@ -2,6 +2,7 @@
 # Copy the local database into a remote Postgres, replacing those schemas there.
 #   REMOTE_DATABASE_URL='postgresql://...' scripts/push_db.sh          # feat only: what the web app reads
 #   REMOTE_DATABASE_URL='postgresql://...' scripts/push_db.sh raw feat # also the raw API responses (~90 MB)
+#   REMOTE_DATABASE_URL='postgresql://...' scripts/push_db.sh core     # honors and career totals the web app reads (hall of fame)
 # On Railway, use the Postgres service's DATABASE_PUBLIC_URL (reachable from outside).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -12,7 +13,7 @@ SCHEMAS=("${@:-feat}")
 
 drops=""; flags=()
 for s in "${SCHEMAS[@]}"; do
-  case "$s" in raw|feat) ;; *) echo "unknown schema: $s (use raw and/or feat)" >&2; exit 1 ;; esac
+  case "$s" in raw|feat|core) ;; *) echo "unknown schema: $s (use raw, feat and/or core)" >&2; exit 1 ;; esac
   drops+="DROP SCHEMA IF EXISTS $s CASCADE; "
   flags+=(-n "$s")
 done

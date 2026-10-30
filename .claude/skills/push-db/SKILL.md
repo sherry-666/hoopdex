@@ -25,6 +25,7 @@ The web app on Railway (hoopedia.up.railway.app) reads the `feat` schema. Code d
    ```bash
    REMOTE_DATABASE_URL='<DATABASE_PUBLIC_URL>' scripts/push_db.sh          # feat
    REMOTE_DATABASE_URL='<DATABASE_PUBLIC_URL>' scripts/push_db.sh raw feat # feat + raw
+   REMOTE_DATABASE_URL='<DATABASE_PUBLIC_URL>' scripts/push_db.sh core     # honors / career totals (core.player_award etc.), after `ballstats parse`
    ```
    Needs network access outside the sandbox. The script drops the schema(s) on the remote, then pipes `pg_dump` from local into `psql`, and finally prints row counts per table.
 4. Verify: compare the printed row counts with local, then check the site, e.g.

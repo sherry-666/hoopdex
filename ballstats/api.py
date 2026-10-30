@@ -149,7 +149,7 @@ def career_top(by: str = "career", limit: int = 6) -> list[dict]:
 
 
 # Hall of Fame row on the home page: picked by hand from honors (MVPs, Finals MVPs, titles, All-NBA) and career rating.
-HALL_OF_FAME = [2544, 201142, 201939, 203999, 202695, 203507]   # LeBron, Durant, Curry, Jokic, Kawhi, Giannis
+HALL_OF_FAME = [977, 2544, 201142, 201939, 203999, 202695]   # Kobe, LeBron, Durant, Curry, Jokic, Kawhi
 
 
 @app.get("/api/hall-of-fame")
@@ -162,8 +162,12 @@ def hall_of_fame() -> list[dict]:
                (SELECT count(*) FROM core.player_award a WHERE a.player_id = c.player_id AND a.award = 'NBA Most Valuable Player') AS mvps,
                (SELECT count(*) FROM core.player_award a WHERE a.player_id = c.player_id AND a.award = 'NBA All-Star') AS all_stars
         FROM feat.player_career_rating c
-        JOIN feat.player_stats s ON s.player_id = c.player_id AND s.season = 'career'
-        LEFT JOIN feat.player_role o ON o.season = 'career' AND o.player_id = c.player_id AND o.side = 'offense'
+        -- Career views only exist for players still active; a retired one (Kobe) falls back to his latest season.
+        JOIN LATERAL (SELECT name, team FROM feat.player_stats WHERE player_id = c.player_id
+                      ORDER BY (season = 'career') DESC, season DESC LIMIT 1) s ON true
+        LEFT JOIN LATERAL (SELECT style_label, top_archetype_id FROM feat.player_role
+                           WHERE player_id = c.player_id AND side = 'offense'
+                           ORDER BY (season = 'career') DESC, season DESC LIMIT 1) o ON true
         WHERE c.player_id = ANY(%s)
         """, (HALL_OF_FAME,))
     return sorted(rows, key=lambda r: HALL_OF_FAME.index(r["player_id"]))
