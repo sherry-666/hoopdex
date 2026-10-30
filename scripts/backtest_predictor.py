@@ -26,6 +26,12 @@ MIN_FORM = 3
 SHRINK = 10
 
 
+# Time zone (hours behind Eastern) of each team's city, for travel
+TZ = {**dict.fromkeys("ATL BKN BOS CHA CLE DET IND MIA NYK ORL PHI TOR WAS".split(), 0),
+      **dict.fromkeys("CHI DAL HOU MEM MIL MIN NOP OKC SAS".split(), 1),
+      **dict.fromkeys("DEN PHX UTA".split(), 2), **dict.fromkeys("GSW LAC LAL POR SAC SEA".split(), 3)}
+
+
 def season_str(y: int) -> str:
     return f"{y}-{str(y + 1)[2:]}"
 
@@ -35,8 +41,8 @@ def load(conn):
         "SELECT season, game_id, game_date, team AS h, opp AS a, team_score - opp_score AS m FROM live.game"
         " WHERE home AND completed AND season_type = 2 AND team_score IS NOT NULL").fetchall(),
         columns=["season", "gid", "date", "h", "a", "m"])
-    sched = pd.DataFrame(conn.execute("SELECT season, team, game_date, team_score - opp_score FROM live.game WHERE season_type = 2").fetchall(),
-                         columns=["season", "team", "date", "tm"])
+    sched = pd.DataFrame(conn.execute("SELECT season, team, game_date, team_score - opp_score, home, opp FROM live.game WHERE season_type = 2").fetchall(),
+                         columns=["season", "team", "date", "tm", "home", "opp"])
     rating = pd.DataFrame(conn.execute("SELECT season, player_id, ovr FROM feat.player_rating").fetchall(),
                           columns=["season", "pid", "ovr"]).astype({"ovr": float})
     stats = pd.DataFrame(conn.execute("SELECT season, player_id, team, minutes FROM feat.player_stats WHERE season <> 'career'").fetchall(),
@@ -102,6 +108,21 @@ def build():
             form[(s_, t_, d_)] = {n: (float(ms[max(0, i - n):i].mean()) if i >= MIN_FORM else 0.0) for n in FORM_N}
             # shrunk toward 0 by SHRINK pseudo-games: little weight on a few games early in the season
             form[(s_, t_, d_)].update({-n: float(ms[max(0, i - n):i].sum() / (min(i, n) + SHRINK)) for n in FORM_N})
+    # Schedule load before each game: days of rest, games in the last 4 days, consecutive road games before it.
+    load_ = {}
+    for (s_, t_), g_ in sched.sort_values(["season", "team", "date"]).groupby(["season", "team"]):
+        ds, hs, opps = list(pd.to_datetime(g_.date)), list(g_.home), list(g_.opp)
+        for i, d_ in enumerate(ds):
+            rest = (d_ - ds[i - 1]).days if i else 5
+            last4 = sum((d_ - x).days <= 3 for x in ds[max(0, i - 3):i])
+            road = 0
+            for h in reversed(hs[:i]):
+                if h:
+                    break
+                road += 1
+            tz = lambda j: TZ.get(t_, 0) if hs[j] else TZ.get(opps[j], 0)   # zone the game is played in
+            load_[(s_, t_, d_.date())] = {"rest": min(rest, 5), "last4": last4, "road": road,
+                                          "tz": abs(tz(i) - tz(i - 1)) if i else 0}
     prev_ovr = team_ovr.set_index(["season", "team"]).ovr
     rows = []
     for y in range(FIRST, LAST + 1):
@@ -118,6 +139,9 @@ def build():
                 "d_last": prev_ovr.get((season_str(y - 1), g.h), np.nan) - prev_ovr.get((season_str(y - 1), g.a), np.nan),
                 "d_end": prev_ovr.get((s, g.h), np.nan) - prev_ovr.get((s, g.a), np.nan),   # oracle: this season's final rating
                 "b2b": float(tired(g.a)) - float(tired(g.h)),
+                **{f"d_{k}": load_[(s, g.h, g.date)][k] - load_[(s, g.a, g.date)][k] for k in ("rest", "last4", "road", "tz")},
+                "d_rest1": float(load_[(s, g.h, g.date)]["rest"] == 1) - float(load_[(s, g.a, g.date)]["rest"] == 1),
+                "d_rest3": float(load_[(s, g.h, g.date)]["rest"] >= 3) - float(load_[(s, g.a, g.date)]["rest"] >= 3),
                 "d_exp": feat[g.h]["exp"] - feat[g.a]["exp"],
                 **{f"form{n}": form[(s, g.h, g.date)][n] - form[(s, g.a, g.date)][n] for n in FORM_N},
                 **{f"sform{n}": form[(s, g.h, g.date)][-n] - form[(s, g.a, g.date)][-n] for n in FORM_N},
@@ -176,6 +200,13 @@ if __name__ == "__main__":
         ("  + shrunk form 82", ["d_roster", "b2b", "sform82"]),
         ("  + shrunk 20 + 82", ["d_roster", "b2b", "sform20", "sform82"]),
         ("  + form 10 + match", ["d_roster", "b2b", "form10", "match"]),
+        ("  + form 20 (base for schedule)", ["d_roster", "b2b", "sform20"]),
+        ("  + rest days gap", ["d_roster", "b2b", "sform20", "d_rest"]),
+        ("  + rest 1d / 3d+ indicators", ["d_roster", "sform20", "d_rest1", "d_rest3"]),
+        ("  + games in last 4 days", ["d_roster", "b2b", "sform20", "d_last4"]),
+        ("  + road trip length (away side)", ["d_roster", "b2b", "sform20", "d_road"]),
+        ("  + time zones crossed", ["d_roster", "b2b", "sform20", "d_tz"]),
+        ("  + all schedule terms", ["d_roster", "b2b", "sform20", "d_rest", "d_last4", "d_road", "d_tz"]),
         ("[oracle] this season's final rating", ["d_end"]),
     ]
     print(f"{'model':38s} {'acc':>6s} {'brier':>7s} {'logloss':>8s} {'rmse':>6s}")
@@ -183,5 +214,5 @@ if __name__ == "__main__":
         r = evaluate(df, cols)
         print(f"{name:38s} {r['acc']:6.3f} {r['brier']:7.4f} {r['logloss']:8.4f} {r['rmse']:6.2f}")
     print("\ncoefficients (all terms, margin points; t-stat):")
-    for k, v in coefs(df, ["d_roster", "b2b", "form5", "form10", "form20", "match", "fit"]).items():
+    for k, v in coefs(df, ["d_roster", "b2b", "sform20", "d_rest", "d_rest3", "d_last4", "d_road", "d_tz"]).items():
         print(f"  {k:9s} {v[0]:7.3f}  t={v[1]}")
