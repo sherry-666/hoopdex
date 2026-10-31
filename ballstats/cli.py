@@ -318,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("schedule-update", help="schedule and scores, injury report and standings from ESPN (the hourly cron job)")
 
-    sub.add_parser("snapshot", help="store today's game predictions with every input, for fitting later (the noon cron job)")
+    sub.add_parser("snapshot", help="store the predictions of today's and the next 3 days' games with every input (the noon cron job)")
 
     daily_p = sub.add_parser("daily-update", help="nba stats refresh of the current season, then roles / ratings / teams (the nightly job)")
     daily_p.add_argument("--season", default=current_season())

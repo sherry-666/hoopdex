@@ -471,6 +471,13 @@ def predict_game(away: str, home: str, date: str | None = None) -> dict:
     except ValueError:
         raise HTTPException(400, "date must be YYYY-MM-DD")
     away, home = away.upper(), home.upper()
+    # A game with a stored snapshot (live.prediction_snapshot) is read back, not recomputed: a finished game keeps the
+    # prediction it was made with, an upcoming one the latest daily snapshot.
+    saved = q("SELECT s.prediction, s.taken_at FROM live.prediction_snapshot s"
+              " WHERE s.home = %s AND s.away = %s AND s.game_date = %s"
+              " ORDER BY s.snapshot_date DESC LIMIT 1", (home, away, day))
+    if saved:
+        return {**saved[0]["prediction"], "snapshot_at": saved[0]["taken_at"].isoformat()}
     with pool.connection() as conn:
         try:
             return game_model.predict(conn, away, home, day)

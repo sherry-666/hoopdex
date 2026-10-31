@@ -249,14 +249,19 @@ def _num(v) -> float | None:
     return None if v is None or pd.isna(v) else round(float(v), 3)
 
 
-def snapshot(conn: psycopg.Connection, day: dt.date | None = None) -> int:
-    """Store the prediction for every unfinished game on `day` (default: today, US Eastern), replacing the day's earlier
-    snapshot of the same game. Returns the number of games stored."""
+AHEAD_DAYS = 3   # the snapshot also covers the games of the next few days
+
+
+def snapshot(conn: psycopg.Connection, day: dt.date | None = None, ahead: int = AHEAD_DAYS) -> int:
+    """Store the prediction for every unfinished game from `day` (default: today, US Eastern) through `ahead` days later,
+    each as the model sees it today, replacing an earlier snapshot of the same game taken the same day. Returns the
+    number of games stored."""
     day = day or dt.datetime.now(live.EASTERN).date()
-    games = conn.execute("SELECT game_id, team, opp FROM live.game WHERE home AND game_date = %s AND NOT completed"
-                         " ORDER BY tipoff, game_id", (day,)).fetchall()
-    preds = predict_many(conn, [(away, home, day) for _, home, away in games]) if games else []
-    for (gid, _, _), p in zip(games, preds):
+    games = conn.execute("SELECT game_id, team, opp, game_date FROM live.game WHERE home AND NOT completed"
+                         " AND game_date BETWEEN %s AND %s ORDER BY game_date, tipoff, game_id",
+                         (day, day + dt.timedelta(days=ahead))).fetchall()
+    preds = predict_many(conn, [(away, home, gd) for _, home, away, gd in games]) if games else []
+    for (gid, _, _, gd), p in zip(games, preds):
         components = {k: p[k] for k in ("home_edge", "roster", "form", "rest", "matchup", "fit", "injury_hit")}
         inputs = {**p["inputs"], "back_to_back": p["back_to_back"]}
         conn.execute(
@@ -265,6 +270,6 @@ def snapshot(conn: psycopg.Connection, day: dt.date | None = None) -> int:
             " ON CONFLICT (game_id, snapshot_date) DO UPDATE SET taken_at = now(), margin = excluded.margin,"
             " home_win = excluded.home_win, components = excluded.components, inputs = excluded.inputs,"
             " injuries = excluded.injuries, prediction = excluded.prediction",
-            (gid, day, day, p["season"], p["home"], p["away"], p["margin"], p["home_win"],
+            (gid, day, gd, p["season"], p["home"], p["away"], p["margin"], p["home_win"],
              Jsonb(components), Jsonb(inputs), Jsonb(p["injuries"]), Jsonb(p)))
     return len(games)
