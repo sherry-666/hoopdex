@@ -6,6 +6,7 @@ Three groups:
   players - per-player tracking dashboards; refetched when stale
 """
 
+import datetime as dt
 from dataclasses import dataclass
 
 from nba_api.stats.static import teams
@@ -114,6 +115,19 @@ def game_jobs(game_ids: list[str]) -> list[Job]:
     # A finished game's box score does not change, so it is cached for good.
     return [Job(ep, {"game_id": gid}, max_age_h=None)
             for gid in game_ids for ep in GAME_ENDPOINTS]
+
+
+FORM_DAYS = 30   # window of the recent-form rating (ratings.py)
+
+
+def recent_jobs(season: str, today: dt.date) -> list[Job]:
+    """Box and advanced totals over the last FORM_DAYS days: the recent-form rating's input.
+    The window start is part of the request, so every day asks afresh."""
+    since = (today - dt.timedelta(days=FORM_DAYS)).strftime("%m/%d/%Y")
+    return [Job("LeagueDashPlayerStats", {"season": season, "season_type_all_star": "Regular Season",
+                                          "per_mode_detailed": "Totals", "measure_type_detailed_defense": m,
+                                          "date_from_nullable": since}, TOTALS_MAX_AGE_H)
+            for m in ("Base", "Advanced")]
 
 
 def history_jobs(seasons: list[str], current: str) -> list[Job]:

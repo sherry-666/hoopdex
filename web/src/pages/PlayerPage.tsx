@@ -6,7 +6,7 @@ import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere, label } from "../labels";
 import { teamName } from "../teams";
 import { PlayerHonors } from "../components/honors";
-import { OffDef, OvrBadge, RatingPanel } from "../components/rating";
+import { FormTag, OffDef, OvrBadge, RatingPanel } from "../components/rating";
 
 const BURSTS: { key: string; title: string; fmt: (v: number) => string; tone: "red" | "yellow" | "blue" }[] = [
   { key: "pts_36", title: "得分 / 36", fmt: (v) => v.toFixed(1), tone: "red" },
@@ -55,6 +55,7 @@ export default function PlayerPage() {
           <div className="row" style={{ marginTop: 10, gap: 16, flexWrap: "nowrap", alignItems: "center" }}>
             <h1 className="hero-name">{p.name}</h1>
             <OvrBadge ovr={p.rating?.ovr} size={64} />
+            <FormTag adj={p.rating?.detail.form?.adj_ovr} full />
             <OffDef off={p.rating?.off} def={p.rating?.def} size={18} />
           </div>
           <div className="row">

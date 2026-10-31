@@ -19,6 +19,48 @@ export function OvrBadge({ ovr, size = 40 }: { ovr: number | null | undefined; s
   );
 }
 
+const FORM_MIN_SHOWN = 1.0;   // below this many points the recent-form adjustment is not worth a mark
+const FORM_MIN_LIST = 2.0;
+
+/** Recent-form mark beside a rating: an arrow in lists, arrow + points + label (`full`) on the player page. */
+export function FormTag({ adj, full = false, metric }: { adj: number | null | undefined; full?: boolean; metric?: string }) {
+  const { t } = useLang();
+  if (adj == null || Math.abs(adj) < (full ? FORM_MIN_SHOWN : FORM_MIN_LIST)) return null;
+  const hot = adj > 0;
+  const pts = `${hot ? "+" : "\u2212"}${Math.abs(adj).toFixed(1)}`;
+  const label = hot ? t("近期火热") : t("近期低迷");
+  return (
+    <span title={`${label} ${pts}${metric ? ` (${metric})` : ""}`} aria-label={`${label} ${pts}`}
+      style={{ marginLeft: 6, fontWeight: 800, fontSize: full ? 14 : 12, whiteSpace: "nowrap",
+        color: hot ? "var(--pop-red)" : "var(--pop-blue)" }}>
+      {hot ? "\u25B2" : "\u25BC"}{full && ` ${pts} ${label}`}
+    </span>
+  );
+}
+
+/** Season rating, last-30-days rating and the adjusted rating as three points. */
+function FormTrack({ base, recent, shown, adj }: { base: number; recent: number; shown: number; adj: number }) {
+  const { t } = useLang();
+  const hot = adj >= 0;
+  const cell = (label: string, v: number, strong = false) => (
+    <div style={{ textAlign: "center" }}>
+      <div className="note">{label}</div>
+      <div style={{ fontFamily: "var(--font-num)", fontSize: strong ? 26 : 20, lineHeight: 1.1 }}>{v}</div>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+      {cell(t("赛季"), base)}
+      <span className="note">{"\u2192"}</span>
+      {cell(t("近 30 天"), recent)}
+      <span className="note">{"\u2192"}</span>
+      <div style={{ color: hot ? "var(--pop-red)" : "var(--pop-blue)" }}>
+        {cell(t("调整后"), shown, true)}
+      </div>
+    </div>
+  );
+}
+
 /** Offense and defense next to each other: "攻 87 守 81". */
 export function OffDef({ off, def, size = 15 }: { off: number | null | undefined; def: number | null | undefined; size?: number }) {
   const { lang } = useLang();
@@ -243,6 +285,17 @@ export function RatingPanel({ rating, career, lines, season }: {
           {rating && d && (
             <>
               <Breakdown metric={metric} rating={rating} />
+              {d.form && (
+                <div style={{ display: "grid", gap: 6 }}>
+                  <span className="note"><b>{t("近期波动调整")}</b> <FormTag adj={d.form[`adj_${metric}`]} full /></span>
+                  <FormTrack base={d.form[`base_${metric}`]} recent={d.form[`recent_${metric}`]}
+                    shown={rating[metric]} adj={d.form[`adj_${metric}`]} />
+                  <p className="note" style={{ margin: 0 }}>
+                    {t("近 30 天 {gp} 场 {min} 分钟；样本越多调整越大，最多约 ±5 分，差距不大时不调整。",
+                      { gp: d.form.gp, min: Math.round(d.form.minutes) })}
+                  </p>
+                </div>
+              )}
               {d.blend && (
                 <p className="note" style={{ margin: 0 }}>
                   {t("过渡值 = {w} × 本赛季 {own} + {pw} × {prior} 赛季 {p}", {

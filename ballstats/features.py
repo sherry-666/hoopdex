@@ -17,7 +17,7 @@ SYNERGY_PSEUDO_POSS = 50.0
 
 def _load(conn: psycopg.Connection, endpoint: str, season: str, set_name=None, **params) -> pd.DataFrame:
     sql = ("SELECT body FROM raw.raw_response WHERE endpoint = %s AND status = 'ok'"
-           " AND coalesce(params->>'season', params->>'season_nullable') = %s")
+           " AND coalesce(params->>'season', params->>'season_nullable') = %s AND NOT params ? 'date_from_nullable'")
     args = [endpoint, season]
     for key, value in params.items():
         sql += f" AND params->>'{key}' = %s"

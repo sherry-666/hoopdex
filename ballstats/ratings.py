@@ -22,6 +22,13 @@ exists. Per season:
 Box-score estimates favour efficient rim-running bigs (rebounds and easy shots);
 the RAPM-based version should correct most of that.
 
+Recent-form adjustment (newest season only): the same box-score model is run on the last 30 days,
+against the season's baseline, giving a recent z per scale. If it differs from the season rating's z
+by more than FORM_DEADBAND sd, the rating moves by FORM_WEIGHT x evidence x the excess beyond the
+deadband, up for a hot streak and down for a slump, at most FORM_CAP sd (about 5 points).
+Evidence = recent minutes / (recent minutes + FORM_MIN), so it takes many minutes to move far; under
+FORM_FLOOR_MIN minutes nothing moves. Peak and career ratings use the unadjusted values.
+
 Peak = best average over three qualifying (500+ minute) seasons in a row.
 Career = 0.7 x peak + 0.3 x the minutes-weighted average over qualifying seasons.
 """
@@ -34,7 +41,7 @@ from psycopg.types.json import Jsonb
 from ballstats import blend
 from ballstats.collector import result_rows
 
-MODEL_VERSION = "ovr-box-v3"
+MODEL_VERSION = "ovr-box-v4"
 MIN_MINUTES = 500
 MIN_QUALIFIED = 100         # below this many 500-minute players, borrow a prior season's baseline
 OVR_WEIGHTS = {"offense": 0.50, "defense": 0.30, "contribution": 0.20}   # contribution: PIE, which also covers fouls and turnovers
@@ -53,6 +60,11 @@ NET_SHRINK_MIN = 1000       # on-court net rating keeps minutes / (minutes + thi
 RELIABILITY_MIN = 250       # rating keeps minutes / (minutes + this) of its distance from replacement
 REPLACEMENT_Z = -1.0
 SCALE_MID, SCALE_SD = 77.0, 6.5
+FORM_DEADBAND = 0.5         # recent vs season gap (sd) that counts as noise
+FORM_WEIGHT = 0.8           # share of the gap beyond the deadband that moves the rating, at full evidence
+FORM_MIN = 200              # evidence = recent minutes / (recent minutes + this)
+FORM_FLOOR_MIN = 100        # fewer recent minutes than this: no adjustment
+FORM_CAP = 0.8              # largest move, in sd (x SCALE_SD points)
 PEAK_WINDOW = 3
 CAREER_PEAK_WEIGHT = 0.7
 
@@ -64,19 +76,30 @@ def load_hustle(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
     return pd.DataFrame(result_rows(row[0])).set_index("PLAYER_ID") if row else None
 
 
-def _season_table(conn: psycopg.Connection, season: str) -> pd.DataFrame | None:
+def recent_window_start(conn: psycopg.Connection, season: str) -> str | None:
+    """Start date of the newest stored recent-form window of the season, if any."""
+    row = conn.execute(
+        "SELECT params->>'date_from_nullable' FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats'"
+        " AND status = 'ok' AND params->>'season' = %s AND params ? 'date_from_nullable'"
+        " ORDER BY fetched_at DESC LIMIT 1", (season,)).fetchone()
+    return row[0] if row else None
+
+
+def _season_table(conn: psycopg.Connection, season: str, since: str | None = None) -> pd.DataFrame | None:
+    """One season's player table; with `since`, the window from that date on (no tracking data then)."""
     def load(measure: str) -> pd.DataFrame | None:
         row = conn.execute(
             "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats' AND status = 'ok'"
             " AND params->>'season' = %s AND params->>'measure_type_detailed_defense' = %s"
-            " AND params->>'per_mode_detailed' = 'Totals'", (season, measure)).fetchone()
+            " AND params->>'per_mode_detailed' = 'Totals' AND coalesce(params->>'date_from_nullable', '') = %s",
+            (season, measure, since or "")).fetchone()
         return pd.DataFrame(result_rows(row[0])).set_index("PLAYER_ID") if row else None
 
     base, adv = load("Base"), load("Advanced")
     if base is None or adv is None or base.empty:
         return None
-    hustle = load_hustle(conn, season)
-    dfd = conn.execute(
+    hustle = None if since else load_hustle(conn, season)
+    dfd = None if since else conn.execute(
         "SELECT body FROM raw.raw_response WHERE endpoint = 'LeagueDashPtDefend' AND status = 'ok'"
         " AND params->>'season' = %s AND params->>'defense_category' = 'Overall'", (season,)).fetchone()
     t = pd.DataFrame({
@@ -174,6 +197,21 @@ def season_ratings(t: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def form_adjustment(r: pd.DataFrame, recent: pd.DataFrame) -> pd.DataFrame:
+    """Per player in both tables: the recent-form move of each scale, in sd, plus the recent minutes and evidence.
+    r holds the season's ratings, recent the same model run on the last 30 days."""
+    idx = r.index.intersection(recent.index)
+    minutes = recent.loc[idx, "minutes"]
+    evidence = (minutes / (minutes + FORM_MIN)).where(minutes >= FORM_FLOOR_MIN, 0.0)
+    out = pd.DataFrame({"recent_minutes": minutes, "recent_gp": recent.loc[idx, "gp"], "evidence": evidence})
+    for scale in SCALES:
+        gap = recent.loc[idx, f"zc_{scale}"] - r.loc[idx, f"z_{scale}"]
+        excess = np.sign(gap) * (gap.abs() - FORM_DEADBAND).clip(lower=0)
+        out[scale] = (FORM_WEIGHT * evidence * excess).clip(-FORM_CAP, FORM_CAP)
+        out[f"recent_{scale}"] = np.clip(np.round(SCALE_MID + SCALE_SD * recent.loc[idx, f"zc_{scale}"]), 40, 99).astype(int)
+    return out
+
+
 def _rounded(d: dict) -> dict:
     return {k: _rounded(v) if isinstance(v, dict) else round(float(v), 4) for k, v in d.items()}
 
@@ -196,6 +234,7 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
     seasons = [r[0] for r in conn.execute(
         "SELECT DISTINCT params->>'season' FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats'"
         " AND status = 'ok' AND params->>'measure_type_detailed_defense' = 'Advanced'"
+        " AND NOT params ? 'date_from_nullable'"
         " AND params->>'per_mode_detailed' = 'Totals' ORDER BY 1")]
     tables = {s: t for s in seasons if (t := _season_table(conn, s)) is not None}
     rows, last_complete, hist = [], None, {}
@@ -232,6 +271,15 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
                 r.loc[blended, scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99).astype(int)
             prior_labels = {pid: ", ".join(p for p, _ in priors if pw.loc[pid, p] > 0) for pid in blended}
         hist[s] = r
+        form = since = None
+        if s == newest and (since := recent_window_start(conn, s)) and (rec := _season_table(conn, s, since)) is not None:
+            form = form_adjustment(r, season_ratings(rec, tables[base_season]))
+            r = r.copy()    # hist keeps the unadjusted ratings
+            for scale in SCALES:
+                r[f"base_{scale}"] = r[scale]
+                z = r[f"z_{scale}"].add(form[scale], fill_value=0.0)
+                r[f"z_{scale}"] = z
+                r[scale] = np.clip(np.round(SCALE_MID + SCALE_SD * z), 40, 99).astype(int)
         for pid, x in r.iterrows():
             raw = t.loc[pid]
             detail = {
@@ -245,6 +293,13 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
                         "stl_36": raw["stl_36"], "blk_36": raw["blk_36"], "dreb_pct": raw["dreb_pct"],
                         **({"d_fga": raw["d_fga"], "d_pm": raw["d_pm"], "charges_36": raw["charges_36"]} if x["tracked"] else {})},
             }
+            if form is not None and pid in form.index and form.loc[pid, "evidence"] > 0:
+                f = form.loc[pid]
+                detail["form"] = {"minutes": f["recent_minutes"], "gp": f["recent_gp"],
+                                  "evidence": f["evidence"],
+                                  **{f"recent_{k}": int(f[f"recent_{k}"]) for k in SCALES},
+                                  **{f"adj_{k}": f[k] * SCALE_SD for k in SCALES},
+                                  **{f"base_{k}": int(x[f"base_{k}"]) for k in SCALES}}
             if pd.notna(x.get("blend_weight", np.nan)):
                 detail["blend"] = {"weight": x["blend_weight"], **{f"own_{k}": x[f"own_{k}"] for k in SCALES},
                                    **{f"prior_{k}": x[f"prior_{k}"] for k in SCALES}}
@@ -254,16 +309,19 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
             rows.append((s, int(pid), x["name"], x["team"], int(x["gp"]), float(x["minutes"]), int(x["ovr"]),
                          round(float(x["z_ovr"]), 3), int(x["off"]), int(x["def"]),
                          bool(x["minutes"] >= MIN_MINUTES), base_season,
-                         Jsonb({**_rounded(detail), **({"blend_prior": detail_prior} if detail_prior else {})}), MODEL_VERSION))
+                         Jsonb({**_rounded(detail), **({"blend_prior": detail_prior} if detail_prior else {}),
+                               **({"form_from": since} if "form" in detail else {})}), MODEL_VERSION,
+                         int(x.get("base_ovr", x["ovr"])), int(x.get("base_off", x["off"])), int(x.get("base_def", x["def"]))))
 
     df = pd.DataFrame(rows, columns=["season", "player_id", "name", "team", "gp", "minutes", "ovr", "z", "off", "def",
-                                     "qualified", "baseline_season", "detail", "model_version"])
+                                     "qualified", "baseline_season", "detail", "model_version",
+                                     "ovr_base", "off_base", "def_base"])
     careers = []
     for pid, g in df.sort_values("season").groupby("player_id"):
         q = g[g["qualified"]]
         pool = q if len(q) else g
-        peak, frm, to, avg, career = _career(pool, "ovr")
-        off, de = _career(pool, "off"), _career(pool, "def")
+        peak, frm, to, avg, career = _career(pool, "ovr_base")     # careers ignore the recent-form adjustment
+        off, de = _career(pool, "off_base"), _career(pool, "def_base")
         careers.append((int(pid), peak, frm, to, avg, career, off[4], off[0], de[4], de[0],
                         len(g), len(q), MODEL_VERSION))
 
@@ -271,7 +329,8 @@ def compute(conn: psycopg.Connection) -> dict[str, int]:
         cur.execute("TRUNCATE feat.player_rating, feat.player_career_rating")
         cur.executemany(
             "INSERT INTO feat.player_rating (season, player_id, name, team, gp, minutes, ovr, z, off, def, qualified,"
-            " baseline_season, detail, model_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", rows)
+            " baseline_season, detail, model_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            [r[:14] for r in rows])
         cur.executemany(
             "INSERT INTO feat.player_career_rating (player_id, peak, peak_from, peak_to, avg_ovr, career,"
             " off_career, off_peak, def_career, def_peak, seasons, qualified_seasons, model_version)"
@@ -289,6 +348,7 @@ def store_box(conn: psycopg.Connection) -> int:
     for season, body in conn.execute(
             "SELECT params->>'season', body FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats'"
             " AND status = 'ok' AND params->>'measure_type_detailed_defense' = 'Base'"
+            " AND NOT params ? 'date_from_nullable'"
             " AND params->>'per_mode_detailed' = 'Totals' AND params->>'season_type_all_star' = 'Regular Season'").fetchall():
         for r in result_rows(body):
             rows.append((season, r["PLAYER_ID"], r["PLAYER_NAME"], r["TEAM_ABBREVIATION"],

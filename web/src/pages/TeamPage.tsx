@@ -4,7 +4,7 @@ import { TeamGame, TeamRosterRow, useDefaultSeason, useTeamPage, useTeamSeasons 
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
 import { TeamHonors } from "../components/honors";
 import TeamAnalysis from "../components/TeamAnalysis";
-import { OffDef, OvrBadge } from "../components/rating";
+import { FormTag, OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere, outLong } from "../labels";
 import { teamName } from "../teams";
@@ -200,7 +200,7 @@ export default function TeamPage() {
               {roster.map((r) => (
                 <tr key={r.player_id}>
                   <td><Link to={`/players/${r.player_id}?season=${season}`}>{r.name}</Link>{r.departed && <span className="tag" style={{ marginLeft: 6 }}>{t("已离队")}</span>}{r.injury && <InjuryMark injury={r.injury} avail={r.avail} />}</td>
-                  <td className="num-col"><OvrBadge ovr={r.ovr} size={30} /></td>
+                  <td className="num-col"><OvrBadge ovr={r.ovr} size={30} /><FormTag adj={r.form_adj} /></td>
                   <td className="num-col">{r.off ?? "—"}</td>
                   <td className="num-col">{r.def ?? "—"}</td>
                   <td className="hide-narrow">{[r.off_style, r.def_style].filter(Boolean).map((s) => name(s as string)).join(" · ")}</td>

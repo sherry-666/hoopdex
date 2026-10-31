@@ -231,6 +231,13 @@ const UI_EN: Record<string, string> = {
   "综合": "Overall", "进攻评分": "Offense rating",
   "赛季初过渡值：定位、超能力和评分按本赛季 {w} + {prior} 赛季 {pw} 合成，本赛季打得越多，占比越高。":
     "Early-season transition values: roles, superpowers and ratings blend this season {w} with {prior} {pw}; this season's share grows as he plays.",
+  "近期波动调整": "Recent form",
+  "近期火热": "Hot streak",
+  "近期低迷": "Slump",
+  "近 30 天": "Last 30 days",
+  "调整后": "Adjusted",
+  "近 30 天 {gp} 场 {min} 分钟；样本越多调整越大，最多约 ±5 分，差距不大时不调整。":
+    "Last 30 days: {gp} games, {min} min. More minutes, bigger adjustment (at most about ±5 points); small gaps are ignored.",
   "过渡值 = {w} × 本赛季 {own} + {pw} × {prior} 赛季 {p}": "Transition value = {w} × this season {own} + {pw} × {prior} {p}",
   "进行中的赛季：本赛季权重 = 分钟 ÷（分钟 + 600），其余来自上赛季。约 5 场首发（170 分钟）时本赛季占 22%，600 分钟占一半，1800 分钟占 75%。新秀没有上赛季，样本少时向替补水平靠拢。":
     "Season in progress: this season's weight = minutes ÷ (minutes + 600), the rest comes from last season. About 5 starts (170 minutes) gives this season 22%, 600 minutes half, 1,800 minutes 75%. Rookies have no last season, so small samples lean toward bench level.",

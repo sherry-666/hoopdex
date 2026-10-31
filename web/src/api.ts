@@ -63,10 +63,13 @@ async function get<T>(path: string): Promise<T> {
 
 export interface SeasonRating {
   ovr: number; off: number; def: number; z: number; qualified: boolean; baseline_season: string; minutes: number; gp: number; model_version: string;
-  detail: { contribution: number; offense: number; defense: number; reliability: number;
+  detail: { form_from?: string; contribution: number; offense: number; defense: number; reliability: number;
     pie: number; ts: number; usg: number; net: number; league_ts: number;
     blend?: { weight: number; own_ovr: number; own_off: number; own_def: number; prior_ovr: number; prior_off: number; prior_def: number };
     blend_prior?: string;
+    form?: { minutes: number; gp: number; evidence: number;
+      recent_ovr: number; recent_off: number; recent_def: number;
+      adj_ovr: number; adj_off: number; adj_def: number; base_ovr: number; base_off: number; base_def: number };
     off: { scoring: number; playmaking: number; off_rebounding: number; on_court: number;
       ortg: number; league_ortg: number; ast_pct: number; tov_pct: number; oreb_pct: number };
     def: { steals: number; blocks: number; def_rebounding: number; on_court: number;
@@ -114,8 +117,9 @@ export interface Standing {
   games_behind: number | null; home: string | null; road: string | null; conf_record: string | null;
   last10: string | null; streak: string | null; pts_for: number | null; pts_against: number | null; clincher: string | null;
 }
-export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null; page: boolean }
-export interface Leader { player_id: number; name: string; team: string | null; gp: number; value: number; page: boolean }
+export interface RankedPlayer { player_id: number; name: string; team: string | null; gp: number; minutes: number; ovr: number; off: number | null; def: number | null; page: boolean;
+  adj_ovr: number | null; adj_off: number | null; adj_def: number | null }   // recent-form adjustment in rating points
+export interface Leader { player_id: number; name: string; team: string | null; gp: number; value: number; page: boolean; adj?: number | null }
 export interface Rankings {
   season: string; updated_at: string; team_games: number; leaders: Record<string, Leader[]>; east: Standing[]; west: Standing[]; players: RankedPlayer[]; players_early: boolean;
 }
@@ -161,6 +165,7 @@ export interface TeamGame {
 export interface TeamRosterRow {
   player_id: number; name: string; gp: number; minutes: number; ts_pct: number | null; pts_36: number | null;
   off_style: string | null; def_style: string | null; ovr: number | null; off: number | null; def: number | null;
+  form_adj?: number | null;
   pts: number | null; reb: number | null; ast: number | null;
   injury: Pick<Injury, "status" | "body_part" | "detail" | "side" | "return_date" | "short_comment"> | null;
   departed: boolean;   // played for the team, then was traded away

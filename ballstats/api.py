@@ -184,7 +184,7 @@ def player_list(season: str) -> list[dict]:
                o.family_name AS off_family, o.style_label AS off_style, o.top_archetype_id AS off_top,
                d.family_name AS def_family, d.style_label AS def_style, d.top_archetype_id AS def_top,
                oa.name AS off_top_name, da.name AS def_top_name,
-               rt.ovr, rt.off, rt.def
+               rt.ovr, rt.off, rt.def, (rt.detail->'form'->>'adj_ovr')::float AS form_adj
         FROM feat.player_stats s
         LEFT JOIN feat.player_rating rt ON rt.season = s.season AND rt.player_id = s.player_id
         LEFT JOIN feat.player_role o ON o.season = s.season AND o.player_id = s.player_id AND o.side = 'offense'
@@ -368,6 +368,8 @@ def rankings(season: str, limit: int = 50) -> dict:
     players = q(
         """
         SELECT player_id, name, team, gp, minutes, ovr, off, def,
+               (detail->'form'->>'adj_ovr')::float AS adj_ovr, (detail->'form'->>'adj_off')::float AS adj_off,
+               (detail->'form'->>'adj_def')::float AS adj_def,
                EXISTS (SELECT 1 FROM feat.player_stats s WHERE s.player_id = r.player_id AND s.season <> 'career') AS page
         FROM feat.player_rating r
         WHERE r.season = %s AND (qualified OR (%s AND minutes >= 60)) ORDER BY ovr DESC, minutes DESC LIMIT %s
@@ -546,7 +548,8 @@ def team_page(team: str, season: str) -> dict:
         SELECT u.player_id,
                coalesce(s.name, p.name, (SELECT name FROM feat.player_stats WHERE player_id = u.player_id LIMIT 1)) AS name,
                s.team AS final_team, s.minutes, s.gp, (s.stats ->> 'ts_pct')::float AS ts_pct, (s.stats ->> 'pts_36')::float AS pts_36,
-               o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def
+               o.style_label AS off_style, d.style_label AS def_style, rt.ovr, rt.off, rt.def,
+               (rt.detail->'form'->>'adj_ovr')::float AS form_adj
         FROM unnest(%(ids)s::bigint[]) AS u(player_id)
         LEFT JOIN core.player p ON p.player_id = u.player_id
         LEFT JOIN feat.player_stats s ON s.season = %(season)s AND s.player_id = u.player_id

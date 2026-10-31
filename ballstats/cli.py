@@ -10,7 +10,7 @@ from ballstats.collector import Collector, RunStopped, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
-OPTIONAL_GROUPS = ("careers", "history", "teams", "lineups", "honors")   # run only when asked for
+OPTIONAL_GROUPS = ("recent", "careers", "history", "teams", "lineups", "honors")   # run only when asked for
 HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
 MATCHUP_MIN_MINUTES = 100   # players with fewer minutes are not asked for their matchups
 TEAMS_FROM = 2015     # first season with Synergy play types
@@ -68,6 +68,14 @@ def collect_season(args, conn, collector) -> int:
         roster = sorted({(r["TEAM_ID"], r["PLAYER_ID"]) for r in result_rows(base or {})})
         run_jobs(collector, catalog.player_jobs(args.season, args.season_type, roster),
                  "players", args.refresh)
+    if "recent" in groups:
+        jobs = catalog.recent_jobs(args.season, dt.date.today())
+        run_jobs(collector, jobs, "recent", args.refresh)
+        # Only the latest window is read; drop the earlier days' requests.
+        conn.execute("DELETE FROM raw.raw_response WHERE endpoint = 'LeagueDashPlayerStats'"
+                     " AND params->>'season' = %s AND params ? 'date_from_nullable'"
+                     " AND params->>'date_from_nullable' <> %s",
+                     (args.season, jobs[0].params["date_from_nullable"]))
     if "matchups" in groups:
         base = collector.fetch("LeagueDashPlayerStats", {
             "season": args.season, "season_type_all_star": args.season_type,
@@ -270,7 +278,7 @@ def cmd_daily_update(args) -> int:
         return 1
 
     collect = argparse.Namespace(season=args.season, season_type="Regular Season", refresh=False,
-                                 groups="season,games,players,history,teams")
+                                 groups="season,games,players,history,teams,recent")
     code = cmd_collect(collect)
     if code == 3:   # not an error for an hourly job: the cache keeps the progress
         log.info("collection not finished; resuming next run. feat left as it was")
