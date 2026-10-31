@@ -31,9 +31,19 @@ export function FormTag({ adj, full = false, metric }: { adj: number | null | un
   const label = hot ? t("近期火热") : t("近期低迷");
   return (
     <span title={`${label} ${pts}${metric ? ` (${metric})` : ""}`} aria-label={`${label} ${pts}`}
-      style={{ marginLeft: 6, fontWeight: 800, fontSize: full ? 14 : 12, whiteSpace: "nowrap",
-        color: hot ? "var(--pop-red)" : "var(--pop-blue)" }}>
+      style={{ fontWeight: 800, fontSize: full ? 14 : 12, whiteSpace: "nowrap", color: hot ? "var(--pop-red)" : "var(--pop-blue)",
+        // In lists the arrow hangs left of the badge (out of the flow) so the badges stay aligned.
+        ...(full ? { marginLeft: 6 } : { position: "absolute", right: "100%", top: "50%", transform: "translateY(-50%)", marginRight: 4 }) }}>
       {hot ? "\u25B2" : "\u25BC"}{full && ` ${pts} ${label}`}
+    </span>
+  );
+}
+
+/** A rating badge for table cells with the recent-form arrow hanging to its left. */
+export function OvrBadgeForm({ ovr, adj, size }: { ovr: number | null | undefined; adj: number | null | undefined; size: number }) {
+  return (
+    <span style={{ position: "relative", display: "inline-flex", verticalAlign: "middle" }}>
+      <FormTag adj={adj} /><OvrBadge ovr={ovr} size={size} />
     </span>
   );
 }

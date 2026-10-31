@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Rankings as RankingsData, Standing, useRankings, useRankingSeasons, useSeasons } from "../api";
 import { Failed, Loading, SeasonSelect, TeamLogo } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
-import { FormTag, OvrBadge } from "../components/rating";
+import { OvrBadgeForm } from "../components/rating";
 import { teamName } from "../teams";
 
 // The play-in tournament started in 2020-21: seeds 7-10 play in, otherwise 1-8 make the playoffs.
@@ -104,7 +104,7 @@ function PlayerRanks({ data, season }: { data: RankingsData; season: string }) {
                   <td className="num-col">{i + 1}</td>
                   <td>{p.page ? <Link to={`/players/${p.player_id}${hasPage ? `?season=${season}` : ""}`}>{p.name}</Link> : p.name}</td>
                   <td>{teamName(p.team, lang, true)}</td>
-                  <td className="num-col">{rating ? <><OvrBadge ovr={p.value} size={30} /><FormTag adj={p.adj} /></> : <b>{fmt(p.value)}</b>}</td>
+                  <td className="num-col">{rating ? <OvrBadgeForm ovr={p.value} adj={p.adj} size={30} /> : <b>{fmt(p.value)}</b>}</td>
                   <td className="num-col hide-narrow">{p.gp}</td>
                 </tr>
               ))}
