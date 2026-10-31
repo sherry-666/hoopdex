@@ -8,6 +8,11 @@ Only what could be known before the game feeds each model, as far as the stored 
     player's first season), and the lineup-fit / matchup tables (fitted on these same seasons: in-sample, so they
     flatter those two terms)
 
+Tried and left out (held-out accuracy / logloss unchanged, see the model list): schedule load (rest days, games in
+4 days, road trip, time zones) and age. Back-to-back x how much older than the league the tired team's rotation is has
+a coefficient of -0.11 (t = -1.0): older teams do not suffer more. The age gap alone adds +0.13 points (t = 2.2),
+logloss -0.0003.
+
 Run: .venv/bin/python scripts/backtest_predictor.py
 """
 
@@ -18,6 +23,7 @@ import pandas as pd
 import psycopg
 
 from ballstats import config, predict, teams
+from ballstats.collector import result_rows
 
 FIRST, LAST = 2016, 2025       # season start years tested
 REPLACEMENT_Q = 0.25
@@ -54,11 +60,16 @@ def load(conn):
         "SELECT season, player_id, side, top_archetype_id FROM feat.player_role")}
     syn = {(s, a, b): e for s, a, b, e in conn.execute("SELECT side, type_a, type_b, effect FROM feat.role_synergy")}
     mat = {(o, d): e for o, d, e in conn.execute("SELECT off_type, def_type, effect FROM feat.role_matchup WHERE season = 'all'")}
-    names = {}
-    return games, sched, rating, stats, first, team_ovr, roles, syn, mat, names
+    age = {}   # (season, player) -> age that season
+    for season, body in conn.execute("SELECT params->>'season', body FROM raw.raw_response"
+                                     " WHERE endpoint = 'LeagueDashPlayerBioStats' AND status = 'ok'").fetchall():
+        for r in result_rows(body):
+            if r.get("AGE") is not None:
+                age[(season, r["PLAYER_ID"])] = float(r["AGE"])
+    return games, sched, rating, stats, first, team_ovr, roles, syn, mat, age
 
 
-def team_features(y, rating, stats, first, roles, syn, mat):
+def team_features(y, rating, stats, first, roles, syn, mat, age):
     """Per team of season y: prior-rating roster strength, experience, and the key-player tables' pair sums."""
     s, prev = season_str(y), season_str(y - 1)
     prior = rating[rating.season == prev].set_index("pid").ovr
@@ -70,7 +81,9 @@ def team_features(y, rating, stats, first, roles, syn, mat):
         ovr = g.pid.map(prior).fillna(repl)
         w = g["min"]
         exp = g.pid.map(lambda p: y - first[p] if p in first else np.nan)
+        ages = g.pid.map(lambda p: age.get((s, p), np.nan))
         out[team] = {"roster": float(np.average(ovr, weights=w)),
+                     "age": float(np.average(ages.fillna(ages.mean()), weights=w)) if ages.notna().any() else np.nan,
                      "exp": float(np.average(exp.fillna(exp.mean()), weights=w)) if exp.notna().any() else np.nan}
         top = g.assign(ovr=ovr).sort_values("ovr", ascending=False).head(predict.NUM_KEY)
         key[team] = [(int(p), roles.get((s, p, "offense")), roles.get((s, p, "defense"))) for p in top.pid]
@@ -95,7 +108,7 @@ def matchup(mine, theirs, mat):
 
 def build():
     with psycopg.connect(config.DSN) as conn:
-        games, sched, rating, stats, first, team_ovr, roles, syn, mat, _ = load(conn)
+        games, sched, rating, stats, first, team_ovr, roles, syn, mat, age = load(conn)
     days = {(r.season, r.team): set() for r in sched.drop_duplicates(["season", "team"]).itertuples()}
     for r in sched.itertuples():
         days[(r.season, r.team)].add(r.date)
@@ -130,7 +143,8 @@ def build():
     rows = []
     for y in range(FIRST, LAST + 1):
         s = season_str(y)
-        feat, key, fit = team_features(y, rating, stats, first, roles, syn, mat)
+        feat, key, fit = team_features(y, rating, stats, first, roles, syn, mat, age)
+        lg_age = float(np.nanmean([f["age"] for f in feat.values()]))   # league average of that season's rotations
         for g in games[games.season == s].itertuples():
             if g.h not in feat or g.a not in feat:
                 continue
@@ -146,6 +160,9 @@ def build():
                 "d_rest1": float(load_[(s, g.h, g.date)]["rest"] == 1) - float(load_[(s, g.a, g.date)]["rest"] == 1),
                 "d_rest3": float(load_[(s, g.h, g.date)]["rest"] >= 3) - float(load_[(s, g.a, g.date)]["rest"] >= 3),
                 "d_exp": feat[g.h]["exp"] - feat[g.a]["exp"],
+                # Age gap, and back-to-back weighted by how much older than the league (in years) the tired team is.
+                "d_age": feat[g.h]["age"] - feat[g.a]["age"],
+                "b2b_age": float(tired(g.a)) * (feat[g.a]["age"] - lg_age) - float(tired(g.h)) * (feat[g.h]["age"] - lg_age),
                 **{f"form{n}": form[(s, g.h, g.date)][n] - form[(s, g.a, g.date)][n] for n in FORM_N},
                 **{f"s20_{k}": form[(s, g.h, g.date)][f"s20_{k}"] - form[(s, g.a, g.date)][f"s20_{k}"] for k in (5, 10, 15, 20, 30)},
                 **{f"sform{n}": form[(s, g.h, g.date)][-n] - form[(s, g.a, g.date)][-n] for n in FORM_N},
@@ -211,6 +228,9 @@ if __name__ == "__main__":
         ("  + road trip length (away side)", ["d_roster", "b2b", "sform20", "d_road"]),
         ("  + time zones crossed", ["d_roster", "b2b", "sform20", "d_tz"]),
         ("  + all schedule terms", ["d_roster", "b2b", "sform20", "d_rest", "d_last4", "d_road", "d_tz"]),
+        ("  + age gap", ["d_roster", "b2b", "sform20", "d_age"]),
+        ("  + back-to-back x age above league", ["d_roster", "b2b", "sform20", "b2b_age"]),
+        ("  + both", ["d_roster", "b2b", "sform20", "d_age", "b2b_age"]),
         ("[oracle] this season's final rating", ["d_end"]),
     ]
     print(f"{'model':38s} {'acc':>6s} {'brier':>7s} {'logloss':>8s} {'rmse':>6s}")
@@ -236,3 +256,7 @@ if __name__ == "__main__":
     print("\ncoefficients (all terms, margin points; t-stat):")
     for k, v in coefs(df, ["d_roster", "b2b", "sform20", "d_rest", "d_rest3", "d_last4", "d_road", "d_tz"]).items():
         print(f"  {k:9s} {v[0]:7.3f}  t={v[1]}")
+    print("\nage terms (margin points; t-stat):")
+    for k, v in coefs(df, ["d_roster", "b2b", "sform20", "d_age", "b2b_age"]).items():
+        print(f"  {k:9s} {v[0]:7.3f}  t={v[1]}")
+    print("age spread of rotations (sd, years):", round(float(df.d_age.std() / math.sqrt(2)), 2))
