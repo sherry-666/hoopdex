@@ -10,9 +10,10 @@ from ballstats.collector import Collector, RunStopped, result_rows
 
 log = logging.getLogger("ballstats")
 GROUPS = ("season", "games", "players")
-OPTIONAL_GROUPS = ("recent", "careers", "history", "teams", "lineups", "honors")   # run only when asked for
+OPTIONAL_GROUPS = ("recent", "coaches", "careers", "history", "teams", "lineups", "honors")   # run only when asked for
 HISTORY_FROM = 1996   # first season with advanced stats on stats.nba.com
 MATCHUP_MIN_MINUTES = 100   # players with fewer minutes are not asked for their matchups
+COACHES_FROM = 2008     # head-coach history for tenure and experience
 TEAMS_FROM = 2015     # first season with Synergy play types
 
 
@@ -76,6 +77,10 @@ def collect_season(args, conn, collector) -> int:
                      " AND params->>'season' = %s AND params ? 'date_from_nullable'"
                      " AND params->>'date_from_nullable' <> %s",
                      (args.season, jobs[0].params["date_from_nullable"]))
+    if "coaches" in groups:
+        start = int(args.season[:4])
+        seasons = [f"{y}-{(y + 1) % 100:02d}" for y in range(COACHES_FROM, start + 1)]
+        run_jobs(collector, catalog.coach_jobs(seasons, args.season), "coaches", args.refresh)
     if "matchups" in groups:
         base = collector.fetch("LeagueDashPlayerStats", {
             "season": args.season, "season_type_all_star": args.season_type,

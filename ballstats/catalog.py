@@ -117,6 +117,12 @@ def game_jobs(game_ids: list[str]) -> list[Job]:
             for gid in game_ids for ep in GAME_ENDPOINTS]
 
 
+def coach_jobs(seasons: list[str], current: str) -> list[Job]:
+    """Every team's roster and coaching staff per season (CommonTeamRoster's Coaches table). Finished seasons never change."""
+    return [Job("CommonTeamRoster", {"team_id": t["id"], "season": s}, max_age_h=SEASON_MAX_AGE_H if s == current else None)
+            for s in seasons for t in teams.get_teams()]
+
+
 FORM_DAYS = 30   # window of the recent-form rating (ratings.py)
 
 

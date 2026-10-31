@@ -139,7 +139,7 @@ def evaluate(df: pd.DataFrame, cols: list[str]):
         pred[te] = np.c_[np.ones(te.sum()), df.loc[te, cols].to_numpy()] @ b
     p = np.clip(0.5 * (1 + np.vectorize(math.erf)(pred / sig / math.sqrt(2))), 1e-4, 1 - 1e-4)
     win = (df.m > 0).to_numpy()
-    return {"ll": -np.where(win, np.log(p), np.log(1 - p)), "hit": (pred > 0) == win, "brier": (p - win) ** 2}
+    return {"ll": -np.where(win, np.log(p), np.log(1 - p)), "hit": (pred > 0) == win, "brier": (p - win) ** 2, "pred": pred}
 
 
 def coefs(df, cols):
