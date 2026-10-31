@@ -69,6 +69,7 @@ export default function App() {
           <Route path="/rankings" element={<Rankings />} />
           <Route path="/predict" element={<Predict />} />
           <Route path="/predict/record" element={<PredictRecord />} />
+          <Route path="/predict/:gameId" element={<Matchup />} />
           <Route path="/predict/:away/:home" element={<Matchup />} />
           <Route path="*" element={<ComingSoon title={t("走错片场了")} line={t("这一页不存在。回首页看看其他球员吧。")} />} />
         </Routes>

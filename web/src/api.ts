@@ -206,6 +206,7 @@ export interface ScheduledGame {
   completed: boolean; home_score: number | null; away_score: number | null;
   home_win?: number;   // predicted home win probability, games still to play only
   home_ovr: number | null; away_ovr: number | null;   // team ratings
+  has_snapshot: boolean;   // a stored prediction exists, so the game has a /predict/<game_id> page
 }
 export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3") });
 
@@ -222,11 +223,14 @@ export const useRecord = () => useQuery({ queryKey: ["record"], queryFn: () => g
 
 export interface GamePrediction {
   season: string; date: string; away: string; home: string;
+  game_id?: string; snapshot_at?: string;   // set when the prediction is the stored snapshot
   home_edge: number; roster: number; form: number; injury_hit: Record<string, number>; rest: number; back_to_back: Record<string, boolean>; fit: number; matchup: number; margin: number; home_win: number;
   fit_items: Record<string, FitItem[]>; matchup_items: Record<string, MatchupItem[]>; component_cap: number;
   key_players: Record<string, { player_id: number; name: string; ovr: number }[]>;   // the five that count in fit and matchup
   best_player: Record<string, number | null>;   // highest-rated player who can play in full that day
 }
+export const usePredictionById = (gameId: string) =>
+  useQuery({ queryKey: ["predict-game", gameId], queryFn: () => get<GamePrediction>(`/api/predict/game/${gameId}`) });
 export const usePrediction = (away: string, home: string, date: string | null) =>
   useQuery({ queryKey: ["predict", away, home, date], queryFn: () => get<GamePrediction>(`/api/predict/${away}/${home}${date ? `?date=${date}` : ""}`) });
 

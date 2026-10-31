@@ -414,7 +414,9 @@ def schedule(days: int = 3) -> list[dict]:
     Games still to play carry the model's home win probability (predict.py)."""
     today = dt.datetime.now(live.EASTERN).date()
     games = q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
-              " team_score AS home_score, opp_score AS away_score FROM live.game"
+              " team_score AS home_score, opp_score AS away_score,"
+              " EXISTS (SELECT 1 FROM live.prediction_snapshot s WHERE s.game_id = live.game.game_id) AS has_snapshot"
+              " FROM live.game"
               " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
               (today, today + dt.timedelta(days=min(max(days, 1), 7))))
     ovr = {r["team"]: r["ovr"] for r in q("SELECT team, ovr FROM feat.team_profile"
@@ -435,10 +437,9 @@ def schedule(days: int = 3) -> list[dict]:
 @app.get("/api/record")
 def record() -> dict:
     """How the daily snapshots (live.prediction_snapshot, taken at noon ET) fared against the final scores."""
-    games = q("SELECT DISTINCT ON (s.game_id) s.game_id, s.game_date, s.away, s.home, s.margin, s.home_win,"
+    games = q("SELECT s.game_id, s.game_date, s.away, s.home, s.margin, s.home_win,"
               " g.team_score AS home_score, g.opp_score AS away_score FROM live.prediction_snapshot s"
-              " JOIN live.game g ON g.game_id = s.game_id AND g.home AND g.completed AND g.team_score IS NOT NULL"
-              " ORDER BY s.game_id, s.snapshot_date DESC")
+              " JOIN live.game g ON g.game_id = s.game_id AND g.home AND g.completed AND g.team_score IS NOT NULL")
     for g in games:
         g["home_win"] = float(g["home_win"])
         g["pick"] = g["home"] if g["home_win"] >= 0.5 else g["away"]
@@ -463,6 +464,19 @@ def record() -> dict:
             "calibration": bins, "games": games}
 
 
+def _saved(row: dict) -> dict:
+    return {**row["prediction"], "game_id": row["game_id"], "snapshot_at": row["taken_at"].isoformat()}
+
+
+@app.get("/api/predict/game/{game_id}")
+def predict_saved(game_id: str) -> dict:
+    """The stored prediction of one game (live.prediction_snapshot) by its game id."""
+    rows = q("SELECT game_id, prediction, taken_at FROM live.prediction_snapshot WHERE game_id = %s", (game_id,))
+    if not rows:
+        raise HTTPException(404, f"no stored prediction for game {game_id}")
+    return _saved(rows[0])
+
+
 @app.get("/api/predict/{away}/{home}")
 def predict_game(away: str, home: str, date: str | None = None) -> dict:
     """Margin and win probability for one game (predict.py); date = game day, default today (US Eastern)."""
@@ -472,12 +486,11 @@ def predict_game(away: str, home: str, date: str | None = None) -> dict:
         raise HTTPException(400, "date must be YYYY-MM-DD")
     away, home = away.upper(), home.upper()
     # A game with a stored snapshot (live.prediction_snapshot) is read back, not recomputed: a finished game keeps the
-    # prediction it was made with, an upcoming one the latest daily snapshot.
-    saved = q("SELECT s.prediction, s.taken_at FROM live.prediction_snapshot s"
-              " WHERE s.home = %s AND s.away = %s AND s.game_date = %s"
-              " ORDER BY s.snapshot_date DESC LIMIT 1", (home, away, day))
+    # prediction it was made with, an upcoming one the last daily snapshot taken so far.
+    saved = q("SELECT game_id, prediction, taken_at FROM live.prediction_snapshot"
+              " WHERE home = %s AND away = %s AND game_date = %s", (home, away, day))
     if saved:
-        return {**saved[0]["prediction"], "snapshot_at": saved[0]["taken_at"].isoformat()}
+        return _saved(saved[0])
     with pool.connection() as conn:
         try:
             return game_model.predict(conn, away, home, day)

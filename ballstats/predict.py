@@ -254,8 +254,8 @@ AHEAD_DAYS = 3   # the snapshot also covers the games of the next few days
 
 def snapshot(conn: psycopg.Connection, day: dt.date | None = None, ahead: int = AHEAD_DAYS) -> int:
     """Store the prediction for every unfinished game from `day` (default: today, US Eastern) through `ahead` days later,
-    each as the model sees it today, replacing an earlier snapshot of the same game taken the same day. Returns the
-    number of games stored."""
+    each as the model sees it today. A game has one row, updated by every run until it is final (finished games are
+    left alone), so the row that stays is the last one taken before the game. Returns the number of games stored."""
     day = day or dt.datetime.now(live.EASTERN).date()
     games = conn.execute("SELECT game_id, team, opp, game_date FROM live.game WHERE home AND NOT completed"
                          " AND game_date BETWEEN %s AND %s ORDER BY game_date, tipoff, game_id",
@@ -267,7 +267,8 @@ def snapshot(conn: psycopg.Connection, day: dt.date | None = None, ahead: int = 
         conn.execute(
             "INSERT INTO live.prediction_snapshot (game_id, snapshot_date, game_date, season, home, away, margin, home_win,"
             " components, inputs, injuries, prediction) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            " ON CONFLICT (game_id, snapshot_date) DO UPDATE SET taken_at = now(), margin = excluded.margin,"
+            " ON CONFLICT (game_id) DO UPDATE SET snapshot_date = excluded.snapshot_date, game_date = excluded.game_date,"
+            " taken_at = now(), season = excluded.season, home = excluded.home, away = excluded.away, margin = excluded.margin,"
             " home_win = excluded.home_win, components = excluded.components, inputs = excluded.inputs,"
             " injuries = excluded.injuries, prediction = excluded.prediction",
             (gid, day, gd, p["season"], p["home"], p["away"], p["margin"], p["home_win"],

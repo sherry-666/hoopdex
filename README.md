@@ -169,7 +169,7 @@ effective, recent form, back-to-back, constants) and the injury report for both 
 Later, join `game_id` to `live.game` for the final score and fit the coefficients (`INJURY_AMP`, `C_ROSTER`, ...).
 Service `snapshot-cron`, `0 17 * * *` (noon US Eastern in winter, 1 pm in summer; `railway.snapshot.json` has the settings,
 which are set on the service itself), start command `python -m ballstats snapshot`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
-Re-running on the same day replaces that day's snapshot. `/api/predict` reads the latest snapshot of a game back (finished
+A game has a single row, updated by every run until it is final, so what stays is the last snapshot before the game. `/api/predict` reads the latest snapshot of a game back (finished
 or not) instead of recomputing, and falls back to a live computation when the game has none.
 
 ### Nightly nba stats update (second cron)

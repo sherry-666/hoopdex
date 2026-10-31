@@ -43,7 +43,7 @@ function Game({ g }: { g: ScheduledGame }) {
   const { t, lang } = useLang();
   const time = new Date(g.tipoff).toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
   return (
-    <Link to={`/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
+    <Link to={g.has_snapshot ? `/predict/${g.game_id}` : `/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
       style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>

@@ -27,7 +27,7 @@ function Row({ g }: { g: RecordGame }) {
     </span>
   );
   return (
-    <Link to={`/predict/${g.away}/${g.home}?date=${g.game_date}`} className="panel"
+    <Link to={`/predict/${g.game_id}`} className="panel"
       style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto", alignItems: "center", gap: 14, padding: "8px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       {side(g.away, g.away_score, false)}
       <b>VS</b>

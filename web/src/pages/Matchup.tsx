@@ -1,5 +1,5 @@
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, useTeamPage } from "../api";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
+import { GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, usePredictionById, useTeamPage } from "../api";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -158,14 +158,32 @@ function Roster({ data }: { data: TeamPageData }) {
   );
 }
 
-export default function Matchup() {
-  const { t, lang } = useLang();
-  const params = useParams();
-  const away = (params.away ?? "").toUpperCase(), home = (params.home ?? "").toUpperCase();
-  const season = useDefaultSeason();
+/** /predict/<game id>: the stored prediction, which names the two teams. */
+function MatchupById({ gameId }: { gameId: string }) {
+  const pred = usePredictionById(gameId);
+  if (pred.isLoading) return <Loading what="球队" />;
+  if (pred.error || !pred.data) return <Failed error={pred.error} />;
+  return <MatchupView away={pred.data.away} home={pred.data.home} pred={pred} />;
+}
+
+/** /predict/<away>/<home>?date=: moves to the game-id address once the game has a stored prediction. */
+function MatchupByTeams({ away, home }: { away: string; home: string }) {
   const [qs] = useSearchParams();
-  const a = useTeamPage(away, season), h = useTeamPage(home, season);
   const pred = usePrediction(away, home, qs.get("date"));
+  if (pred.data?.game_id) return <Navigate to={`/predict/${pred.data.game_id}`} replace />;
+  return <MatchupView away={away} home={home} pred={pred} />;
+}
+
+export default function Matchup() {
+  const params = useParams();
+  if (params.gameId) return <MatchupById gameId={params.gameId} />;
+  return <MatchupByTeams away={(params.away ?? "").toUpperCase()} home={(params.home ?? "").toUpperCase()} />;
+}
+
+function MatchupView({ away, home, pred }: { away: string; home: string; pred: ReturnType<typeof usePrediction> }) {
+  const { t, lang } = useLang();
+  const season = useDefaultSeason();
+  const a = useTeamPage(away, season), h = useTeamPage(home, season);
   usePageTitle(`${teamName(away, lang, true)} @ ${teamName(home, lang, true)}`);
   if (!season || a.isLoading || h.isLoading || pred.isLoading) return <Loading what="球队" />;
   if (a.error || h.error || !a.data || !h.data) return <Failed error={a.error ?? h.error} />;
