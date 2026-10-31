@@ -106,7 +106,8 @@ def matchup(mine, theirs, mat):
     return predict._cap(sum(np.mean([mat.get((o, x), 0.0) for x in d]) for o in a) / 100 * predict.MATCHUP_POSS * predict.STAR_SHARE)
 
 
-def build():
+def build(extra=None):
+    """extra(y) -> {team: {name: value}}: more per-team features of season y; each game gets d_<name> = home - away."""
     with psycopg.connect(config.DSN) as conn:
         games, sched, rating, stats, first, team_ovr, roles, syn, mat, age = load(conn)
     days = {(r.season, r.team): set() for r in sched.drop_duplicates(["season", "team"]).itertuples()}
@@ -144,6 +145,7 @@ def build():
     for y in range(FIRST, LAST + 1):
         s = season_str(y)
         feat, key, fit = team_features(y, rating, stats, first, roles, syn, mat, age)
+        ex = extra(y) if extra else {}
         lg_age = float(np.nanmean([f["age"] for f in feat.values()]))   # league average of that season's rotations
         for g in games[games.season == s].itertuples():
             if g.h not in feat or g.a not in feat:
@@ -166,6 +168,7 @@ def build():
                 **{f"form{n}": form[(s, g.h, g.date)][n] - form[(s, g.a, g.date)][n] for n in FORM_N},
                 **{f"s20_{k}": form[(s, g.h, g.date)][f"s20_{k}"] - form[(s, g.a, g.date)][f"s20_{k}"] for k in (5, 10, 15, 20, 30)},
                 **{f"sform{n}": form[(s, g.h, g.date)][-n] - form[(s, g.a, g.date)][-n] for n in FORM_N},
+                **{f"d_{k}": ex[g.h][k] - ex[g.a][k] for k in ex.get(g.h, {})},
                 "fit": fit[g.h] - fit[g.a],
                 "match": matchup(key[g.h], key[g.a], mat) - matchup(key[g.a], key[g.h], mat),
             })
