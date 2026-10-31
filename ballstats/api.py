@@ -411,21 +411,27 @@ def matchups() -> dict:
 
 
 @app.get("/api/schedule")
-def schedule(days: int = 3) -> list[dict]:
-    """Games from today (US Eastern) through the next days - 1 days, one row per game, earliest tipoff first.
-    Games still to play carry the model's home win probability (predict.py)."""
+def schedule(days: int = 3, back: int = 0) -> list[dict]:
+    """Games from `back` days before today (US Eastern) through the next days - 1 days, one row per game, earliest
+    tipoff first. Games still to play carry the model's home win probability (predict.py); a game from an earlier
+    day that has not finished yet (late tipoff, the score not in yet) keeps the one it was snapshotted with."""
     today = dt.datetime.now(live.EASTERN).date()
+    start = today - dt.timedelta(days=min(max(back, 0), 3))
     games = q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
               " team_score AS home_score, opp_score AS away_score,"
-              " EXISTS (SELECT 1 FROM live.prediction_snapshot s WHERE s.game_id = live.game.game_id) AS has_snapshot"
+              " EXISTS (SELECT 1 FROM live.prediction_snapshot s WHERE s.game_id = live.game.game_id) AS has_snapshot,"
+              " (SELECT s.home_win FROM live.prediction_snapshot s WHERE s.game_id = live.game.game_id) AS snap_win"
               " FROM live.game"
               " WHERE home AND game_date >= %s AND game_date < %s ORDER BY tipoff, game_id",
-              (today, today + dt.timedelta(days=min(max(days, 1), 7))))
+              (start, today + dt.timedelta(days=min(max(days, 1), 7))))
     ovr = {r["team"]: r["ovr"] for r in q("SELECT team, ovr FROM feat.team_profile"
                                           " WHERE season = (SELECT max(season) FROM feat.team_profile)")}
     for g in games:
         g["home_ovr"], g["away_ovr"] = ovr.get(g["home_team"]), ovr.get(g["away_team"])
-    todo = [g for g in games if not g["completed"]]
+    for g in games:   # started before today and not final: show the pre-game prediction, not a fresh one
+        if not g["completed"] and g["game_date"] < today and g["snap_win"] is not None:
+            g["home_win"] = g["snap_win"]
+    todo = [g for g in games if not g["completed"] and "home_win" not in g]
     try:
         with pool.connection() as conn:
             preds = game_model.predict_many(conn, [(g["away_team"], g["home_team"], g["game_date"]) for g in todo])

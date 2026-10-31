@@ -12,10 +12,10 @@ function dayLabel(iso: string, lang: "zh" | "en") {
   return new Date(y, m - 1, d).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "long" });
 }
 
-/** Today's US Eastern date and the next two, as "YYYY-MM-DD" (the API groups games by Eastern date). */
-function nextDays(n: number): string[] {
+/** US Eastern dates from `back` days ago through the next `ahead` days after today, as "YYYY-MM-DD" (the API groups games by Eastern date). */
+function nearbyDays(back: number, ahead: number): string[] {
   const [y, m, d] = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).split("-").map(Number);
-  return Array.from({ length: n }, (_, i) => new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10));
+  return Array.from({ length: back + 1 + ahead }, (_, i) => new Date(Date.UTC(y, m - 1, d - back + i)).toISOString().slice(0, 10));
 }
 
 /** One side of a game row: [pct] logo name rating on the left, rating name logo [pct] on the right, so the names and
@@ -47,7 +47,7 @@ function Game({ g }: { g: ScheduledGame }) {
       style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>
-        <b>VS</b><br /><small>{g.completed ? t("已结束") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
+        <b>VS</b><br /><small>{g.completed ? t("已结束") : new Date(g.tipoff) < new Date() ? t("进行中") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
       </span>
       <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={g.completed ? g.home_score : null} win={g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
     </Link>
@@ -58,19 +58,20 @@ export default function Predict() {
   const { t, lang } = useLang();
   usePageTitle(t("比赛预测"));
   const sched = useSchedule();
-  const days = nextDays(3);
-  const [pick, setPick] = useState(days[0]);
+  const days = nearbyDays(1, 2);
+  const today = days[1];
+  const [pick, setPick] = useState(today);
   const games = (sched.data ?? []).filter((g) => g.game_date === pick);
   return (
     <>
       <section className="panel halftone" style={{ background: "var(--pop-red)", color: "#fff", borderColor: "#111" }}>
         <h1 style={{ fontSize: "var(--size-h1)" }}>{t("比赛预测")}</h1>
-        <p style={{ margin: "6px 0 0" }}>{t("今天起三天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。")} <Link to="/predict/record" style={{ color: "inherit", fontWeight: 700 }}>{t("预测战绩")} →</Link></p>
+        <p style={{ margin: "6px 0 0" }}>{t("昨天到后天的比赛，标出预测会赢的一方和胜率。点进去看两队对比。")} <Link to="/predict/record" style={{ color: "inherit", fontWeight: 700 }}>{t("预测战绩")} →</Link></p>
       </section>
       <div className="seg seg-lg" role="group" aria-label={t("日期")}>
         {days.map((d) => (
           <button key={d} type="button" aria-pressed={pick === d} onClick={() => setPick(d)}>
-            {dayLabel(d, lang)}{d === days[0] ? ` · ${t("今天")}` : ""}
+            {dayLabel(d, lang)}{d === today ? ` · ${t("今天")}` : d < today ? ` · ${t("昨天")}` : ""}
           </button>
         ))}
       </div>

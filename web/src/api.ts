@@ -213,7 +213,8 @@ export interface ScheduledGame {
   home_ovr: number | null; away_ovr: number | null;   // team ratings
   has_snapshot: boolean;   // a stored prediction exists, so the game has a /predict/<game_id> page
 }
-export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3") });
+/** Games from yesterday through the next two days (yesterday's may still be running when the new day starts). */
+export const useSchedule = () => useQuery({ queryKey: ["schedule"], queryFn: () => get<ScheduledGame[]>("/api/schedule?days=3&back=1") });
 
 export interface RecordGame {
   game_id: string; game_date: string; away: string; home: string; home_win: number; margin: number;
