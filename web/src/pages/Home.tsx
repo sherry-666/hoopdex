@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HallRow, useCareerTop, useDefaultSeason, useHallOfFame, usePlayers } from "../api";
 import { Failed, Loading, PlayerCard } from "../components/comic";
@@ -9,6 +9,26 @@ const ISSUES = [
   { to: "/players", no: "#2", title: "球员名册", line: "每名球员一张卡：超能力、战力数值、风格构成。", tone: "var(--pop-blue)", ink: "var(--on-blue)" },
   { to: "/predict", no: "#3", title: "比赛预测", line: "按上场球员算两队实力，给出胜率和分差。即将登场。", tone: "var(--pop-red)", ink: "var(--on-red)" },
 ];
+
+// One row of cards: as many as fit the width (matches the auto-fill grid below).
+function OneRow({ children }: { children: React.ReactNode[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(children.length);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setCols(Math.max(1, Math.floor((el.clientWidth + 20) / (170 + 20))));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
+      {children.slice(0, cols)}
+    </div>
+  );
+}
 
 function Honors({ p }: { p: HallRow }) {
   const { t } = useLang();
@@ -78,11 +98,11 @@ export default function Home() {
           <h2 style={{ fontSize: "var(--size-h2)", marginBottom: 14 }}>
             {t(sec.title)} <span className="note">{t(sec.note, { season: season ?? "" })}</span>
           </h2>
-          <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
+          <OneRow>
             {sec.list.map((p) => <PlayerCard key={p.player_id} id={p.player_id} name={p.name} team={p.team} style={p.off_style} archetype={p.off_top} season={"career" in sec ? undefined : season} ovr={p.ovr}
               off={"titles" in p ? undefined : p.off} def={"titles" in p ? undefined : p.def}
               extra={"titles" in p ? <Honors p={p as HallRow} /> : undefined} />)}
-          </div>
+          </OneRow>
         </section>
       ))}
     </>
