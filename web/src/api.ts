@@ -235,6 +235,15 @@ export interface GamePrediction {
   key_players: Record<string, { player_id: number; name: string; ovr: number }[]>;   // the five that count in fit and matchup
   best_player: Record<string, number | null>;   // highest-rated player who can play in full that day
 }
+export interface TeamSplit { games: number; ppg: number; opp_ppg: number; ortg: number; drtg: number; pace: number }
+export interface TeamBody { height_cm: number | null; age: number | null; height_cm_healthy: number | null; age_healthy: number | null; missing: string[] }
+export interface TeamCompare {
+  date: string; season: string;
+  body: Record<string, TeamBody>;   // rotation height / age counting only players able to play that day
+  splits: Record<string, { home?: TeamSplit; road?: TeamSplit }>;   // per 100 possessions, games before that day
+}
+export const useCompare = (away: string, home: string, date: string | undefined) =>
+  useQuery({ queryKey: ["compare", away, home, date], queryFn: () => get<TeamCompare>(`/api/compare/${away}/${home}?date=${date}`), enabled: !!date });
 export const usePredictionById = (gameId: string) =>
   useQuery({ queryKey: ["predict-game", gameId], queryFn: () => get<GamePrediction>(`/api/predict/game/${gameId}`) });
 export const usePrediction = (away: string, home: string, date: string | null) =>

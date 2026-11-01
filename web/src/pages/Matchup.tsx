@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import { GamePrediction, MatchupItem, TeamPageData, TeamRosterRow, useDefaultSeason, usePrediction, usePredictionById, useTeamPage } from "../api";
+import { GamePrediction, MatchupItem, TeamCompare, TeamPageData, TeamRosterRow, useCompare, useDefaultSeason, usePrediction, usePredictionById, useTeamPage } from "../api";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -26,21 +26,53 @@ function Head({ data, team, align }: { data: TeamPageData; team: string; align: 
 }
 
 /** One comparison line: left value, label in the middle, right value; the better side is bold. */
-function Line({ label, a, b, higherIsBetter = true, digits = 1 }: { label: string; a: number | null | undefined; b: number | null | undefined; higherIsBetter?: boolean; digits?: number }) {
-  const fmt = (v: number | null | undefined) => (v == null ? "—" : v.toFixed(digits));
-  const better = a == null || b == null || a === b ? 0 : (a > b) === higherIsBetter ? -1 : 1;
+function Line({ label, a, b, higherIsBetter = true, digits = 1, neutral = false, note }: { label: string; a: number | string | null | undefined; b: number | string | null | undefined; higherIsBetter?: boolean; digits?: number; neutral?: boolean; note?: string }) {
+  const fmt = (v: number | string | null | undefined) => (v == null ? "—" : typeof v === "string" ? v : v.toFixed(digits));
+  const better = neutral || typeof a !== "number" || typeof b !== "number" || a === b ? 0 : (a > b) === higherIsBetter ? -1 : 1;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, padding: "6px 0", borderBottom: "1px dashed var(--ink)" }}>
       <span className="num" style={{ textAlign: "right", fontWeight: better === -1 ? 800 : 400 }}>{fmt(a)}</span>
-      <span className="note" style={{ minWidth: 96, textAlign: "center" }}>{label}</span>
+      <span className="note" style={{ minWidth: 96, textAlign: "center" }}>{label}{note && <><br /><small>{note}</small></>}</span>
       <span className="num" style={{ fontWeight: better === 1 ? 800 : 400 }}>{fmt(b)}</span>
     </div>
+  );
+}
+
+/** Height, age, venue splits and the table's records: what the rating does not spell out. Away is the left column. */
+function MoreCompare({ cmp, away, home, sa, sh }: { cmp: TeamCompare; away: string; home: string; sa: TeamPageData["standing"]; sh: TeamPageData["standing"] }) {
+  const { t, lang } = useLang();
+  const ba = cmp.body[away], bh = cmp.body[home];
+  const ra = cmp.splits[away]?.road, rh = cmp.splits[home]?.home;   // each team in the venue of this game
+  const missing = (tm: string, b: TeamCompare["body"][string]) => b.missing.length > 0 && (
+    <div className="note" style={{ margin: "2px 0" }}>{teamName(tm, lang, true)} · {t("轮换缺阵")}：{b.missing.join("、")}</div>);
+  const cm = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
+  const games = (r?: { games: number }) => (r ? r.games : 0);
+  return (
+    <section className="panel">
+      <span className="caption" style={{ fontSize: 20 }}>{t("更多对比")}</span>
+      <p className="note" style={{ margin: "6px 0 2px" }}>{t("轮换 = 能出战球员中出场时间最多的 9 人，按出场时间加权；伤停球员已剔除。")}</p>
+      <Line label={t("轮换平均身高（cm）")} a={cm(ba.height_cm)} b={cm(bh.height_cm)} neutral />
+      <Line label={t("轮换平均年龄")} a={ba.age} b={bh.age} neutral />
+      {missing(away, ba)}{missing(home, bh)}
+      <p className="note" style={{ margin: "12px 0 2px" }}>{t("本场场地表现（客队客场 / 主队主场，每 100 回合，本场之前）")}</p>
+      <Line label={t("百回合得分")} a={ra?.ortg} b={rh?.ortg} />
+      <Line label={t("百回合失分")} a={ra?.drtg} b={rh?.drtg} higherIsBetter={false} />
+      <Line label={t("净效率")} a={ra && ra.ortg - ra.drtg} b={rh && rh.ortg - rh.drtg} />
+      <Line label={t("节奏（回合 / 场）")} a={ra?.pace} b={rh?.pace} neutral />
+      <Line label={t("样本场数")} a={games(ra)} b={games(rh)} digits={0} neutral />
+      {Math.min(games(ra), games(rh)) < LOW_SAMPLE && <p className="note" style={{ margin: "2px 0" }}>{t("场数还少，数字波动大，仅供参考。")}</p>}
+      {(sa || sh) && <p className="note" style={{ margin: "12px 0 2px" }}>{t("战绩")}</p>}
+      <Line label={t("客场 / 主场战绩")} a={sa?.road} b={sh?.home} />
+      <Line label={t("近 10 场")} a={sa?.last10} b={sh?.last10} />
+      <Line label={t("连胜 / 连败")} a={sa?.streak} b={sh?.streak} />
+    </section>
   );
 }
 
 const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
 
 const SHOWN = 4;
+const LOW_SAMPLE = 10;   // venue games below which the per-100 numbers swing too much to read
 
 /** A row of the prediction table that opens to the pairs behind it, the biggest few per team. */
 function Detail({ label, total, lines, cap }: { label: string; total: number; lines: Record<string, { points: number; text: string }[]>; cap: number }) {
@@ -184,6 +216,7 @@ function MatchupView({ away, home, pred }: { away: string; home: string; pred: R
   const { t, lang } = useLang();
   const season = useDefaultSeason();
   const a = useTeamPage(away, season), h = useTeamPage(home, season);
+  const cmp = useCompare(away, home, pred.data?.date).data;
   usePageTitle(`${teamName(away, lang, true)} @ ${teamName(home, lang, true)}`);
   if (!season || a.isLoading || h.isLoading || pred.isLoading) return <Loading what="球队" />;
   if (a.error || h.error || !a.data || !h.data) return <Failed error={a.error ?? h.error} />;
@@ -215,6 +248,8 @@ function MatchupView({ away, home, pred }: { away: string; home: string; pred: R
         {sa && sh && <Line label={t("场均失分")} a={sa.pts_against} b={sh.pts_against} higherIsBetter={false} />}
         {sa && sh && <Line label={t("胜率")} a={sa.win_pct == null ? null : sa.win_pct * 100} b={sh.win_pct == null ? null : sh.win_pct * 100} digits={0} />}
       </section>
+
+      {cmp && <MoreCompare cmp={cmp} away={away} home={home} sa={sa} sh={sh} />}
 
       {(() => {
         const sa2 = bestPlayer(a.data, away, pred.data), sh2 = bestPlayer(h.data, home, pred.data);

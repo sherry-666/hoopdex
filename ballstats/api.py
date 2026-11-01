@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import config, db, live, powers, predict as game_model, roles, seo
+from ballstats import compare as compare_model, config, db, live, powers, predict as game_model, roles, seo
 from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
@@ -483,6 +483,17 @@ def predict_saved(game_id: str) -> dict:
     if not rows:
         raise HTTPException(404, f"no stored prediction for game {game_id}")
     return _saved(rows[0])
+
+
+@app.get("/api/compare/{away}/{home}")
+def compare_teams(away: str, home: str, date: str | None = None) -> dict:
+    """Rotation height / age on the game day and the home / road scoring splits of the two teams (compare.py)."""
+    try:
+        day = dt.date.fromisoformat(date) if date else dt.datetime.now(live.EASTERN).date()
+    except ValueError:
+        raise HTTPException(400, "date must be YYYY-MM-DD")
+    with pool.connection() as conn:
+        return compare_model.compare(conn, away.upper(), home.upper(), day)
 
 
 @app.get("/api/predict/{away}/{home}")
