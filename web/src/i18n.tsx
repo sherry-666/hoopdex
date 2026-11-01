@@ -16,7 +16,7 @@ const UI_EN: Record<string, string> = {
   "越低越好；总猜 50% 是 0.250": "Lower is better; always guessing 50% scores 0.250", "预测胜率准不准": "Are the percentages right?",
   "把预测会赢的一方按胜率分档，看实际赢了多少。两列越接近越准。": "Predicted winners grouped by win probability, with how often they really won. The closer the two columns, the better.",
   "预测胜率": "Predicted", "场数": "Games", "平均预测": "Avg. predicted", "实际赢": "Actually won", "{c} / {n} 场命中": "{c} of {n} right",
-  "更多对比": "More comparison", "轮换缺阵": "Rotation players out",
+  "更多信息": "More info", "轮换缺阵": "Rotation players out",
   "轮换 = 能出战球员中出场时间最多的 9 人，按出场时间加权；伤停球员已剔除。": "Rotation = the 9 available players with the most minutes, weighted by minutes; injured players are left out.",
   "轮换平均身高（cm）": "Rotation avg. height (cm)", "轮换平均年龄": "Rotation avg. age",
   "本场场地表现（客队客场 / 主队主场，每 100 回合，本场之前）": "Venue form for this game (away team on the road / home team at home, per 100 possessions, before this game)",

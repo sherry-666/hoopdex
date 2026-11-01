@@ -48,8 +48,8 @@ function MoreCompare({ cmp, away, home, sa, sh }: { cmp: TeamCompare; away: stri
   const cm = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
   const games = (r?: { games: number }) => (r ? r.games : 0);
   return (
-    <section className="panel">
-      <span className="caption" style={{ fontSize: 20 }}>{t("更多对比")}</span>
+    <details style={{ marginTop: 10 }}>
+      <summary style={{ cursor: "pointer", listStyle: "none" }}><span className="tri" aria-hidden="true">▸</span><span className="note">{t("更多信息")}</span></summary>
       <p className="note" style={{ margin: "6px 0 2px" }}>{t("轮换 = 能出战球员中出场时间最多的 9 人，按出场时间加权；伤停球员已剔除。")}</p>
       <Line label={t("轮换平均身高（cm）")} a={cm(ba.height_cm)} b={cm(bh.height_cm)} neutral />
       <Line label={t("轮换平均年龄")} a={ba.age} b={bh.age} neutral />
@@ -65,7 +65,7 @@ function MoreCompare({ cmp, away, home, sa, sh }: { cmp: TeamCompare; away: stri
       <Line label={t("客场 / 主场战绩")} a={sa?.road} b={sh?.home} />
       <Line label={t("近 10 场")} a={sa?.last10} b={sh?.last10} />
       <Line label={t("连胜 / 连败")} a={sa?.streak} b={sh?.streak} />
-    </section>
+    </details>
   );
 }
 
@@ -247,9 +247,8 @@ function MatchupView({ away, home, pred }: { away: string; home: string; pred: R
         {sa && sh && <Line label={t("场均得分")} a={sa.pts_for} b={sh.pts_for} />}
         {sa && sh && <Line label={t("场均失分")} a={sa.pts_against} b={sh.pts_against} higherIsBetter={false} />}
         {sa && sh && <Line label={t("胜率")} a={sa.win_pct == null ? null : sa.win_pct * 100} b={sh.win_pct == null ? null : sh.win_pct * 100} digits={0} />}
+        {cmp && <MoreCompare cmp={cmp} away={away} home={home} sa={sa} sh={sh} />}
       </section>
-
-      {cmp && <MoreCompare cmp={cmp} away={away} home={home} sa={sa} sh={sh} />}
 
       {(() => {
         const sa2 = bestPlayer(a.data, away, pred.data), sh2 = bestPlayer(h.data, home, pred.data);
