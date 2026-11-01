@@ -244,16 +244,64 @@ export interface TeamCompare {
 }
 export const useCompare = (away: string, home: string, date: string | undefined) =>
   useQuery({ queryKey: ["compare", away, home, date], queryFn: () => get<TeamCompare>(`/api/compare/${away}/${home}?date=${date}`), enabled: !!date });
+/** One game on ESPN's scoreboard: pre = not started, in = playing, post = final. */
+export interface LiveScore {
+  state: "pre" | "in" | "post"; detail: string; period: number;
+  home: { team: string; score: number; periods: number[] }; away: { team: string; score: number; periods: number[] };
+}
+/* Both feeds are read straight from the browser: ESPN's and Polymarket's public APIs allow cross-origin requests. */
+const ESPN_ABBR: Record<string, string> = { NJ: "NJN", UTAH: "UTA", NO: "NOP", NY: "NYK", SA: "SAS", GS: "GSW", WSH: "WAS" };
+
+/** Scores of the current game day by game id (ESPN scoreboard), refreshed every 20 s while the tab is open. */
+export const useScores = () =>
+  useQuery({
+    queryKey: ["scores"], refetchInterval: 20_000, retry: false,
+    queryFn: async () => {
+      const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard");
+      if (!res.ok) throw new Error(`ESPN ${res.status}`);
+      const out: Record<string, LiveScore> = {};
+      for (const e of (await res.json()).events ?? []) {
+        const side: Record<string, LiveScore["home"]> = {};
+        for (const c of e.competitions[0].competitors) {
+          const ab: string = c.team.abbreviation;
+          side[c.homeAway] = { team: ESPN_ABBR[ab] ?? ab, score: Number(c.score) || 0, periods: (c.linescores ?? []).map((p: { value: number }) => Math.round(p.value)) };
+        }
+        out[e.id] = { state: e.status.type.state, detail: e.status.type.shortDetail, period: e.status.period, home: side.home, away: side.away };
+      }
+      return out;
+    },
+  });
+
 /** Polymarket's home win probability for one game; history points are [unix seconds, probability]. */
 export interface GameMarket {
   url: string; start: number; closed: boolean; volume: number | null;
   pregame: number | null; current: number | null; history: [number, number][];
 }
+async function polymarket<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Polymarket ${res.status}`);
+  return res.json() as Promise<T>;
+}
+/** The moneyline market of `nba-<away>-<home>-<ET game day>` (away team first); null when the game has none. */
+async function fetchMarket(away: string, home: string, date: string): Promise<GameMarket | null> {
+  const slug = `nba-${away.toLowerCase()}-${home.toLowerCase()}-${date}`;
+  const events = await polymarket<any[]>(`https://gamma-api.polymarket.com/events?slug=${slug}`);
+  const ev = events[0];
+  const mk = ev?.markets.find((m: any) => m.sportsMarketType === "moneyline");
+  if (!mk) return null;
+  const token: string = JSON.parse(mk.clobTokenIds)[1];   // the home team's share
+  const hist = (await polymarket<{ history: { t: number; p: number }[] }>(`https://clob.polymarket.com/prices-history?market=${token}&interval=max&fidelity=10`)).history;
+  const history = hist.map((h): [number, number] => [h.t, Math.round(h.p * 10000) / 10000]);
+  const iso: string = (mk.gameStartTime ?? ev.startTime).replace(" ", "T");
+  const start = Math.floor(new Date(/[Zz]|[+-]\d\d(:\d\d)?$/.test(iso) ? iso.replace(/([+-]\d\d)$/, "$1:00") : `${iso}Z`).getTime() / 1000);
+  const before = history.filter(([t]) => t <= start);
+  return {
+    url: `https://polymarket.com/event/${slug}`, start, closed: !!ev.closed, volume: ev.volume ?? null,
+    pregame: before.length ? before[before.length - 1][1] : null, current: history.length ? history[history.length - 1][1] : null, history,
+  };
+}
 export const useMarket = (away: string, home: string, date: string | undefined) =>
-  useQuery({
-    queryKey: ["market", away, home, date], enabled: !!date, staleTime: 60_000, retry: false,
-    queryFn: () => get<{ market: GameMarket | null }>(`/api/market/${away}/${home}?date=${date}`).then((r) => r.market),
-  });
+  useQuery({ queryKey: ["market", away, home, date], enabled: !!date, staleTime: 60_000, retry: false, queryFn: () => fetchMarket(away, home, date!) });
 export const usePredictionById = (gameId: string) =>
   useQuery({ queryKey: ["predict-game", gameId], queryFn: () => get<GamePrediction>(`/api/predict/game/${gameId}`) });
 export const usePrediction = (away: string, home: string, date: string | null) =>

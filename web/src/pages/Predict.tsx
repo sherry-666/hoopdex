@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ScheduledGame, useSchedule } from "../api";
+import { LiveScore, ScheduledGame, useSchedule, useScores } from "../api";
 import { Failed, Loading, TeamLogo } from "../components/comic";
 import { OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -39,17 +39,22 @@ function TeamSide({ team, score, win, ovr, side, lang }: { team: string; score: 
   );
 }
 
-function Game({ g }: { g: ScheduledGame }) {
+function Game({ g, live }: { g: ScheduledGame; live?: LiveScore }) {
   const { t, lang } = useLang();
   const time = new Date(g.tipoff).toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
+  const playing = live != null && live.state !== "pre";      // the scoreboard is fresher than the hourly schedule
+  const done = playing ? live.state === "post" : g.completed;
+  const awayScore = playing ? live.away.score : g.completed ? g.away_score : null;
+  const homeScore = playing ? live.home.score : g.completed ? g.home_score : null;
+  const status = done ? t("已结束") : playing ? live.detail : new Date(g.tipoff) < new Date() ? t("进行中") : time;
   return (
     <Link to={g.has_snapshot ? `/predict/${g.game_id}` : `/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
       style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
-      <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={g.completed ? g.away_score : null} win={g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
+      <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={awayScore} win={!playing && g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>
-        <b>VS</b><br /><small>{g.completed ? t("已结束") : new Date(g.tipoff) < new Date() ? t("进行中") : time}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
+        <b>VS</b><br /><small>{status}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
       </span>
-      <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={g.completed ? g.home_score : null} win={g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
+      <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={homeScore} win={!playing && g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
     </Link>
   );
 }
@@ -58,6 +63,7 @@ export default function Predict() {
   const { t, lang } = useLang();
   usePageTitle(t("比赛预测"));
   const sched = useSchedule();
+  const scores = useScores().data;
   const days = nearbyDays(1, 2);
   const today = days[1];
   const [pick, setPick] = useState(today);
@@ -80,7 +86,7 @@ export default function Predict() {
       ) : (
         <section style={{ display: "grid", gap: 10 }}>
           <h2><small>{t("{n} 场", { n: games.length })}</small></h2>
-          {games.map((g) => <Game key={g.game_id} g={g} />)}
+          {games.map((g) => <Game key={g.game_id} g={g} live={scores?.[g.game_id]} />)}
         </section>
       )}
     </>

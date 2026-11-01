@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import { GamePrediction, MatchupItem, TeamCompare, TeamPageData, TeamRosterRow, useCompare, useDefaultSeason, useMarket, usePrediction, usePredictionById, useTeamPage } from "../api";
+import { GamePrediction, LiveScore, MatchupItem, TeamCompare, TeamPageData, TeamRosterRow, useCompare, useDefaultSeason, useMarket, useScores, usePrediction, usePredictionById, useTeamPage } from "../api";
 import { MarketChart } from "../components/charts";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
@@ -99,6 +99,34 @@ function Detail({ label, total, lines, cap }: { label: string; total: number; li
         {capped && <div className="note">{t("单队合计超过上限 ±{cap} 分，按上限计。", { cap })}</div>}
       </div>
     </details>
+  );
+}
+
+/** The score by quarter while the game is on or after it has finished; nothing before tipoff. */
+function Scoreboard({ gameId }: { gameId: string | undefined }) {
+  const { t, lang } = useLang();
+  const live = useScores().data?.[gameId ?? ""];
+  if (!live || live.state === "pre") return null;
+  const n = Math.max(live.home.periods.length, live.away.periods.length, 4);
+  const label = (i: number) => (i < 4 ? `Q${i + 1}` : i === 4 ? "OT" : `${i - 3}OT`);
+  const row = (s: LiveScore["home"]) => (
+    <tr key={s.team}>
+      <td><b>{teamName(s.team, lang, true)}</b></td>
+      {Array.from({ length: n }, (_, i) => <td key={i} className="num-col">{s.periods[i] ?? "—"}</td>)}
+      <td className="num-col"><b className="num" style={{ fontSize: 20 }}>{s.score}</b></td>
+    </tr>
+  );
+  return (
+    <section className="panel">
+      <span className="caption" style={{ fontSize: 20 }}>{live.state === "in" ? t("实时比分") : t("比分")}</span>
+      <span className="note" style={{ marginLeft: 10 }}>{live.state === "in" ? live.detail : t("已结束")}</span>
+      <div className="table-box" style={{ marginTop: 8 }}>
+        <table className="data">
+          <thead><tr><th style={{ textAlign: "left" }}></th>{Array.from({ length: n }, (_, i) => <th key={i} className="num-col">{label(i)}</th>)}<th className="num-col">{t("总分")}</th></tr></thead>
+          <tbody>{row(live.away)}{row(live.home)}</tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -263,6 +291,7 @@ function MatchupView({ away, home, pred }: { away: string; home: string; pred: R
         <Head data={h.data} team={home} align="right" />
       </section>
 
+      <Scoreboard gameId={pred.data?.game_id} />
       {pred.data && <Prediction p={pred.data} />}
       {pred.data && <Market away={away} home={home} p={pred.data} />}
 
