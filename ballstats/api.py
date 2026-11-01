@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from ballstats import compare as compare_model, config, db, live, powers, predict as game_model, roles, seo
+from ballstats import compare as compare_model, config, db, live, market, powers, predict as game_model, roles, seo
 from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
@@ -494,6 +494,19 @@ def compare_teams(away: str, home: str, date: str | None = None) -> dict:
         raise HTTPException(400, "date must be YYYY-MM-DD")
     with pool.connection() as conn:
         return compare_model.compare(conn, away.upper(), home.upper(), day)
+
+
+@app.get("/api/market/{away}/{home}")
+def game_market(away: str, home: str, date: str) -> dict:
+    """Polymarket's home win probability for one game, now, at tipoff and over time (market.py); null without a market."""
+    try:
+        day = dt.date.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(400, "date must be YYYY-MM-DD")
+    try:
+        return {"market": market.game_market(away.upper(), home.upper(), day)}
+    except Exception:
+        raise HTTPException(502, "Polymarket is not answering")
 
 
 @app.get("/api/predict/{away}/{home}")

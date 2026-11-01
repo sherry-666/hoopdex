@@ -1,5 +1,6 @@
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import { GamePrediction, MatchupItem, TeamCompare, TeamPageData, TeamRosterRow, useCompare, useDefaultSeason, usePrediction, usePredictionById, useTeamPage } from "../api";
+import { GamePrediction, MatchupItem, TeamCompare, TeamPageData, TeamRosterRow, useCompare, useDefaultSeason, useMarket, usePrediction, usePredictionById, useTeamPage } from "../api";
+import { MarketChart } from "../components/charts";
 import { Failed, Loading, Portrait, TeamLogo } from "../components/comic";
 import { OffDef, OvrBadge } from "../components/rating";
 import { useLang, usePageTitle } from "../i18n";
@@ -98,6 +99,38 @@ function Detail({ label, total, lines, cap }: { label: string; total: number; li
         {capped && <div className="note">{t("单队合计超过上限 ±{cap} 分，按上限计。", { cap })}</div>}
       </div>
     </details>
+  );
+}
+
+/** Polymarket's win probability for the game next to the model's: what the market thinks now, at tipoff, and how it moved. */
+function Market({ away, home, p }: { away: string; home: string; p: GamePrediction }) {
+  const { t, lang } = useLang();
+  const q = useMarket(away, home, p.date);
+  const m = q.data;
+  if (!m || m.current == null) return null;
+  const done = m.closed || m.current < 0.02 || m.current > 0.98;
+  const shown = done ? m.pregame : m.current;      // a settled market sits at 0 / 100%: show where it stood at tipoff
+  if (shown == null) return null;
+  const homeFav = shown >= 0.5, fav = homeFav ? home : away, win = homeFav ? shown : 1 - shown;
+  const gap = (homeFav ? shown : 1 - shown) - (homeFav ? p.home_win : 1 - p.home_win);
+  return (
+    <section className="panel">
+      <span className="caption" style={{ fontSize: 20 }}>{t("预测市场")}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "12px 0" }}>
+        <TeamLogo team={fav} size={48} />
+        <div>
+          <div className="num" style={{ fontSize: 32 }}>{teamName(fav, lang, true)} {Math.round(win * 100)}%</div>
+          <div className="note">
+            {done ? t("开赛前的市场胜率") : t("市场当前胜率")} · {t("主队 {pct}%", { pct: Math.round((done ? m.pregame! : m.current) * 100) })}
+            {Math.abs(gap) >= 0.005 && <> · {t("模型{dir}市场 {pts} 个百分点", { dir: gap > 0 ? t("低于") : t("高于"), pts: Math.abs(Math.round(gap * 100)) })}</>}
+          </div>
+        </div>
+      </div>
+      <MarketChart history={m.history} start={m.start} model={p.home_win} home={home} away={away} />
+      <p className="note" style={{ margin: "8px 0 0" }}>
+        {t("来自 Polymarket，成交价即胜率；线是主队胜率，红色虚线是模型。")} <a href={m.url} target="_blank" rel="noreferrer">Polymarket ↗</a>
+      </p>
+    </section>
   );
 }
 
@@ -231,6 +264,7 @@ function MatchupView({ away, home, pred }: { away: string; home: string; pred: R
       </section>
 
       {pred.data && <Prediction p={pred.data} />}
+      {pred.data && <Market away={away} home={home} p={pred.data} />}
 
       <section className="panel">
         <span className="caption" style={{ fontSize: 20 }}>{t("球队对比")}</span>

@@ -387,3 +387,71 @@ export function ProfileHeatmap({ side, archetypes, families, pick, onPick }: {
     </div>
   );
 }
+
+/* ---------- prediction market ---------- */
+
+/** The home team's win probability over time, with the tipoff marked and the model's number as a dashed line. */
+export function MarketChart({ history, start, model, home, away }: {
+  history: [number, number][]; start: number; model: number | null; home: string; away: string;
+}) {
+  const [box, width] = useWidth<HTMLDivElement>();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const theme = useThemeTick();
+  const { t, lang } = useLang();
+
+  useEffect(() => {
+    const el = box.current, svgEl = svgRef.current;
+    if (!el || !svgEl || !width || history.length < 2) return;
+    const w = width, h = Math.round(Math.max(200, Math.min(300, w * 0.4)));
+    const m = { l: 40, r: 12, t: 12, b: 26 };
+    const ink = cssColor("--ink"), muted = cssColor("--muted"), rule = cssColor("--rule"), blue = cssColor("--pop-blue"), red = cssColor("--pop-red");
+    const pts = history.map(([ts, p]) => [new Date(ts * 1000), p] as [Date, number]);
+    const x = d3.scaleTime().domain([pts[0][0], pts[pts.length - 1][0]]).range([m.l, w - m.r]);
+    const y = d3.scaleLinear().domain([0, 1]).range([h - m.b, m.t]);
+    const svg = d3.select(svgEl).attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%");
+    svg.selectAll("*").remove();
+
+    svg.append("g").selectAll("line").data([0, 0.25, 0.5, 0.75, 1]).join("line")
+      .attr("x1", m.l).attr("x2", w - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d))
+      .attr("stroke", (d) => (d === 0.5 ? ink : rule)).attr("stroke-width", (d) => (d === 0.5 ? 1.5 : 1));
+    svg.append("g").selectAll("text").data([0, 0.25, 0.5, 0.75, 1]).join("text")
+      .attr("x", m.l - 6).attr("y", (d) => y(d) + 4).attr("text-anchor", "end").attr("font-size", 11).attr("fill", muted)
+      .text((d) => `${d * 100}%`);
+    svg.append("g").attr("transform", `translate(0,${h - m.b})`)
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(w / 110))).tickFormat((d) => d3.timeFormat("%m-%d %H:%M")(d as Date)).tickSize(4))
+      .call((g) => g.select(".domain").attr("stroke", rule)).call((g) => g.selectAll("text").attr("fill", muted).attr("font-size", 10))
+      .call((g) => g.selectAll("line").attr("stroke", rule));
+
+    // above the 50% line the home team is the favourite, below it the visitors
+    svg.append("path").datum(pts).attr("fill", "none").attr("stroke", ink).attr("stroke-width", 2.2).attr("stroke-linejoin", "round")
+      .attr("d", d3.line<[Date, number]>().x((d) => x(d[0])).y((d) => y(d[1])));
+
+    const tip = x(new Date(start * 1000));
+    if (tip > m.l && tip < w - m.r) {
+      svg.append("line").attr("x1", tip).attr("x2", tip).attr("y1", m.t).attr("y2", h - m.b).attr("stroke", muted).attr("stroke-dasharray", "3 3");
+      const late = tip > w * 0.8;   // near the right edge the label goes on the left of the line
+      svg.append("text").attr("x", late ? tip - 4 : tip + 4).attr("y", m.t + 10).attr("text-anchor", late ? "end" : "start").attr("font-size", 11).attr("fill", muted).text(t("开赛"));
+    }
+    if (model != null) {
+      svg.append("line").attr("x1", m.l).attr("x2", w - m.r).attr("y1", y(model)).attr("y2", y(model))
+        .attr("stroke", red).attr("stroke-width", 2).attr("stroke-dasharray", "6 4");
+      svg.append("text").attr("x", w - m.r - 2).attr("y", y(model) + (model > 0.85 ? 14 : -5)).attr("text-anchor", "end").attr("font-size", 11).attr("font-weight", 700)
+        .attr("fill", red).text(`${t("模型")} ${Math.round(model * 100)}%`);
+    }
+    svg.append("text").attr("x", m.l + 4).attr("y", m.t + 10).attr("font-size", 11).attr("fill", blue).text(`↑ ${teamName(home, lang, true)}`);
+    svg.append("text").attr("x", m.l + 4).attr("y", h - m.b - 5).attr("font-size", 11).attr("fill", blue).text(`↓ ${teamName(away, lang, true)}`);
+
+    const dot = svg.append("circle").attr("r", 4).attr("fill", ink).attr("display", "none");
+    const bisect = d3.bisector((d: [Date, number]) => d[0]).center;
+    svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", w - m.l - m.r).attr("height", h - m.t - m.b).attr("fill", "transparent")
+      .on("mousemove", (ev: MouseEvent) => {
+        const [mx] = d3.pointer(ev);
+        const d = pts[bisect(pts, x.invert(mx))];
+        dot.attr("display", null).attr("cx", x(d[0])).attr("cy", y(d[1]));
+        showTip(el, [["", d3.timeFormat("%m-%d %H:%M")(d[0])], [teamName(home, lang, true), `${(d[1] * 100).toFixed(1)}%`], [teamName(away, lang, true), `${((1 - d[1]) * 100).toFixed(1)}%`]], x(d[0]), y(d[1]));
+      })
+      .on("mouseleave", () => { dot.attr("display", "none"); hideTip(el); });
+  }, [history, start, model, home, away, width, theme, lang, t]);
+
+  return <div ref={box} style={{ position: "relative" }}><svg ref={svgRef} role="img" aria-label={t("预测市场胜率走势")} /></div>;
+}

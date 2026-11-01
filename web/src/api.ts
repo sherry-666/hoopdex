@@ -244,6 +244,16 @@ export interface TeamCompare {
 }
 export const useCompare = (away: string, home: string, date: string | undefined) =>
   useQuery({ queryKey: ["compare", away, home, date], queryFn: () => get<TeamCompare>(`/api/compare/${away}/${home}?date=${date}`), enabled: !!date });
+/** Polymarket's home win probability for one game; history points are [unix seconds, probability]. */
+export interface GameMarket {
+  url: string; start: number; closed: boolean; volume: number | null;
+  pregame: number | null; current: number | null; history: [number, number][];
+}
+export const useMarket = (away: string, home: string, date: string | undefined) =>
+  useQuery({
+    queryKey: ["market", away, home, date], enabled: !!date, staleTime: 60_000, retry: false,
+    queryFn: () => get<{ market: GameMarket | null }>(`/api/market/${away}/${home}?date=${date}`).then((r) => r.market),
+  });
 export const usePredictionById = (gameId: string) =>
   useQuery({ queryKey: ["predict-game", gameId], queryFn: () => get<GamePrediction>(`/api/predict/game/${gameId}`) });
 export const usePrediction = (away: string, home: string, date: string | null) =>
