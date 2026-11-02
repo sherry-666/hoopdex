@@ -83,15 +83,15 @@ export default function PredictRecord() {
             </table>
           </section>
           <section className="panel" style={{ margin: 0 }}>
-            <h2>{t("预测胜率准不准")}</h2>
-            <p style={{ margin: "0 0 8px" }}><small>{t("把预测会赢的一方按胜率分档，看实际赢了多少。两列越接近越准。")}</small></p>
+            <h2>{t("胜率校准")}</h2>
+            <p style={{ margin: "0 0 8px" }}><small>{t("把预测会赢的一方按胜率分档，看实际赢了多少。实际赢的比例应落在该档范围内。")}</small></p>
             <table className="num" style={{ width: "100%" }}>
-              <thead><tr><th style={{ textAlign: "left" }}>{t("预测胜率")}</th><th>{t("场数")}</th><th>{t("平均预测")}</th><th>{t("实际赢")}</th></tr></thead>
+              <thead><tr><th style={{ textAlign: "left" }}>{t("预测胜率")}</th><th>{t("场数")}</th><th>{t("实际赢")}</th></tr></thead>
               <tbody>
                 {rec.data.calibration.map((b) => (
                   <tr key={b.lo} style={{ textAlign: "center" }}>
                     <td style={{ textAlign: "left" }}>{Math.round(b.lo * 100)}%–{Math.round(b.hi * 100)}%</td>
-                    <td>{b.games}</td><td>{pct(b.predicted)}</td><td>{pct(b.actual)}</td>
+                    <td>{b.games}</td><td>{pct(b.actual)}</td>
                   </tr>
                 ))}
               </tbody>
