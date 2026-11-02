@@ -81,7 +81,6 @@ export default function PredictRecord() {
                 ))}
               </tbody>
             </table>
-            <p style={{ margin: "8px 0 0" }}><small>{t("2016-17 至 2025-26 回测 11982 场：永远选主队 56.2%，选排名更高 63.0%，模型 65.5%。")}</small></p>
           </section>
           <section className="panel" style={{ margin: 0 }}>
             <h2>{t("预测胜率准不准")}</h2>
