@@ -48,7 +48,7 @@ export function OvrBadgeForm({ ovr, adj, size }: { ovr: number | null | undefine
   );
 }
 
-/** Season rating, last-30-days rating and the adjusted rating as three points. */
+/** Season rating, last-30-days rating and the adjusted rating as three points; the adjusted one is left out when it equals the season rating. */
 function FormTrack({ base, recent, shown, adj }: { base: number; recent: number; shown: number; adj: number }) {
   const { t } = useLang();
   const hot = adj >= 0;
@@ -63,10 +63,12 @@ function FormTrack({ base, recent, shown, adj }: { base: number; recent: number;
       {cell(t("赛季"), base)}
       <span className="note">{"\u2192"}</span>
       {cell(t("近 30 天"), recent)}
-      <span className="note">{"\u2192"}</span>
-      <div style={{ color: hot ? "var(--pop-red)" : "var(--pop-blue)" }}>
-        {cell(t("调整后"), shown, true)}
-      </div>
+      {shown !== base && <>
+        <span className="note">{"\u2192"}</span>
+        <div style={{ color: hot ? "var(--pop-red)" : "var(--pop-blue)" }}>
+          {cell(t("调整后"), shown, true)}
+        </div>
+      </>}
     </div>
   );
 }
