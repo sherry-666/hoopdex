@@ -67,7 +67,7 @@ export default function PredictRecord() {
             <Tile label="Brier" value={rec.data.all.brier?.toFixed(3) ?? "–"} sub={t("越低越好；总猜 50% 是 0.250")} />
           </section>
           <section className="panel" style={{ margin: 0 }}>
-            <h2>{t("和简单猜法比")}</h2>
+            <h2>{t("基准对比")}</h2>
             <p style={{ margin: "0 0 8px" }}><small>{t("同样这些比赛：永远选主队，或选赛前战绩排名更靠前的球队（胜率相同选主队）。")}</small></p>
             <table className="num" style={{ width: "100%" }}>
               <thead><tr><th style={{ textAlign: "left" }}>{t("猜法")}</th><th>{t("全部")}</th><th>{t("近 7 天")}</th></tr></thead>
