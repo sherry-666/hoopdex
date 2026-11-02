@@ -50,6 +50,7 @@ export default function PlayerPage() {
       <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", alignItems: "start" }}>
         <section className="panel" style={{ padding: 10 }}>
           <Portrait id={p.player_id} name={p.name} archetype={off?.mix[0]?.id} play="view" />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 14, marginBottom: 6 }}><UpButton id={p.player_id} /></div>
         </section>
         <section className="panel" style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 14 }}>
           <span className="caption">{t("{season} 赛季 · {family}", { season, family: off ? name(off.family) : t("未分类") })}</span>
@@ -59,7 +60,6 @@ export default function PlayerPage() {
             <FormTag adj={p.rating?.detail.form?.adj_ovr} full />
             <OffDef off={p.rating?.off} def={p.rating?.def} size={18} />
           </div>
-          <UpButton id={p.player_id} />
           <div className="row">
             <span className="tag"><TeamLink team={p.team} season={season} long /></span>
             <span className="tag">{t("{n} 场", { n: p.gp })}</span>
