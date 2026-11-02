@@ -6,7 +6,7 @@ Run: .venv/bin/uvicorn ballstats.api:app --port 8000
 import datetime as dt
 import re
 from functools import lru_cache
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +21,23 @@ from ballstats import teams as team_model
 
 app = FastAPI(title="ballstats")
 WEB_DIST: Path = config.WEB_DIST
+
+
+@app.middleware("http")
+async def canonical_host(request: Request, call_next):
+    """Send pages requested on any other host (bare domain, *.railway.app) to the canonical site.
+
+    One address per page keeps search engines from splitting it across hosts. API calls are left
+    alone so health checks and the app's own requests keep working on whatever host they use.
+    """
+    if config.SITE_URL and not request.url.path.startswith("/api/"):
+        canonical = urlsplit(config.SITE_URL).netloc
+        if request.headers.get("host", canonical).lower() != canonical:
+            query = f"?{request.url.query}" if request.url.query else ""
+            return RedirectResponse(f"{config.SITE_URL}{request.url.path}{query}", status_code=301)
+    return await call_next(request)
+
+
 HEADLINE = ["pts_36", "reb_36", "ast_36", "ts_pct", "usg_pct", "fg3a_36", "stl_36", "blk_36"]
 SIDES = ("offense", "defense")
 
