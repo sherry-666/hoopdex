@@ -110,6 +110,13 @@ export const useTeams = (season: string | undefined) =>
 export const useSeasons = () => useQuery({ queryKey: ["seasons"], queryFn: () => get<SeasonInfo[]>("/api/seasons") });
 export const usePlayerSeasons = (id: number) =>
   useQuery({ queryKey: ["player-seasons", id], queryFn: () => get<string[]>(`/api/player/${id}/seasons`) });
+export const usePlayerUp = (id: number) =>
+  useQuery({ queryKey: ["player-up", id], queryFn: () => get<{ ups: number }>(`/api/player/${id}/up`) });
+export async function postPlayerUp(id: number): Promise<number> {
+  const res = await fetch(`/api/player/${id}/up`, { method: "POST" });
+  if (!res.ok) throw new Error(String(res.status));
+  return (await res.json()).ups;
+}
 export const useCareer = (id: number) =>
   useQuery({ queryKey: ["career", id], queryFn: () => get<Career>(`/api/player/${id}/career`) });
 export interface Standing {

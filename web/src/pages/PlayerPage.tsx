@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, useRecentGames, useSeasons } from "../api";
+import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, usePlayerUp, postPlayerUp, useRecentGames, useSeasons } from "../api";
 import { Burst, TeamLink, Failed, Loading, MixBar, Portrait, PowerBubble, SeasonSelect } from "../components/comic";
 import { useLang, usePageTitle } from "../i18n";
 import { injuryWhere, label } from "../labels";
@@ -58,6 +59,7 @@ export default function PlayerPage() {
             <FormTag adj={p.rating?.detail.form?.adj_ovr} full />
             <OffDef off={p.rating?.off} def={p.rating?.def} size={18} />
           </div>
+          <UpButton id={p.player_id} />
           <div className="row">
             <span className="tag"><TeamLink team={p.team} season={season} long /></span>
             <span className="tag">{t("{n} 场", { n: p.gp })}</span>
@@ -164,6 +166,27 @@ export default function PlayerPage() {
 
       <CareerTable id={p.player_id} season={season} />
     </>
+  );
+}
+
+function UpButton({ id }: { id: number }) {
+  const { t } = useLang();
+  const qc = useQueryClient();
+  const up = usePlayerUp(id);
+  const [limited, setLimited] = useState(false);
+  const tap = () => {
+    // Show the tap at once; the server's count replaces it when it answers.
+    qc.setQueryData(["player-up", id], (d?: { ups: number }) => ({ ups: (d?.ups ?? 0) + 1 }));
+    postPlayerUp(id).then(
+      (ups) => { setLimited(false); qc.setQueryData(["player-up", id], { ups }); },
+      () => { setLimited(true); qc.invalidateQueries({ queryKey: ["player-up", id] }); },
+    );
+  };
+  return (
+    <div className="row" style={{ gap: 10, alignItems: "center" }}>
+      <div className="seg"><button type="button" onClick={tap}>{"\u{1F44D}"} Up <b>{up.data?.ups ?? 0}</b></button></div>
+      {limited && <span className="note">{t("点太快了，歇一会儿再来。")}</span>}
+    </div>
   );
 }
 

@@ -5,6 +5,8 @@ Run: .venv/bin/uvicorn ballstats.api:app --port 8000
 
 import datetime as dt
 import re
+import time
+from collections import defaultdict, deque
 from functools import lru_cache
 from urllib.parse import urlencode, urlsplit
 from pathlib import Path
@@ -51,6 +53,7 @@ def _open_pool() -> None:
     # The live tables are filled by the cron job, but the pages read them from the first request on.
     with pool.connection() as conn:
         db.init_schema(conn, only="007_live.sql")
+        db.init_schema(conn, only="013_player_up.sql")
 
 
 @app.on_event("shutdown")
@@ -637,6 +640,43 @@ def team_page(team: str, season: str) -> dict:
               " FROM live.game WHERE season = %s AND team = %s ORDER BY tipoff", (season, team))
     return {"team": team, "season": season, "profile": prof[0], "standing": standing[0] if standing else None,
             "roster": roster, "games": games, "seasons": team_season_list(team)}
+
+
+# "Up" taps are anonymous, so abuse is limited per client: at most UP_LIMIT taps per UP_WINDOW seconds.
+# Kept in memory (per process), which is enough to stop a script hammering the counter.
+UP_LIMIT, UP_WINDOW = 10, 10.0
+_up_taps: dict[str, deque] = defaultdict(deque)
+
+
+def client_ip(request: Request) -> str:
+    # Behind the platform proxy the last X-Forwarded-For entry is the one it added.
+    forwarded = request.headers.get("x-forwarded-for")
+    return forwarded.split(",")[-1].strip() if forwarded else (request.client.host if request.client else "?")
+
+
+@app.get("/api/player/{player_id}/up")
+def player_up(player_id: int) -> dict:
+    rows = q("SELECT ups FROM live.player_up WHERE player_id = %s", (player_id,))
+    return {"ups": rows[0]["ups"] if rows else 0}
+
+
+@app.post("/api/player/{player_id}/up")
+def player_up_add(player_id: int, request: Request) -> dict:
+    now = time.monotonic()
+    taps = _up_taps[client_ip(request)]
+    while taps and now - taps[0] > UP_WINDOW:
+        taps.popleft()
+    if len(taps) >= UP_LIMIT:
+        raise HTTPException(429, "too many Ups, slow down", headers={"Retry-After": str(int(UP_WINDOW))})
+    if not q("SELECT 1 FROM feat.player_stats WHERE player_id = %s LIMIT 1", (player_id,)):
+        raise HTTPException(404, "player not found")
+    taps.append(now)
+    if len(_up_taps) > 10_000:  # forget clients with no recent taps
+        for ip in [k for k, v in _up_taps.items() if not v or now - v[-1] > UP_WINDOW]:
+            del _up_taps[ip]
+    rows = q("INSERT INTO live.player_up AS u (player_id, ups) VALUES (%s, 1)"
+             " ON CONFLICT (player_id) DO UPDATE SET ups = u.ups + 1 RETURNING ups", (player_id,))
+    return {"ups": rows[0]["ups"]}
 
 
 @app.get("/api/player/{player_id}/seasons")
