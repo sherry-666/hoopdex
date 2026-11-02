@@ -193,8 +193,8 @@ function fireConfetti(from: HTMLElement) {
     e.animate([
       { transform: "translate(0,0) rotate(0)", opacity: 1 },
       { transform: `translate(${x}px,${y}px) rotate(${rnd(100, 400)}deg)`, opacity: 1, offset: 0.4 },
-      { transform: `translate(${x * 1.4}px,${y + reach}px) rotate(${rnd(300, 900)}deg)`, opacity: 0.9 },
-    ], { duration: rnd(1400, 2200), easing: "cubic-bezier(.2,.6,.4,1)" });
+      { transform: `translate(${x * 1.4}px,${y + reach}px) rotate(${rnd(300, 900)}deg)`, opacity: 0 },
+    ], { duration: rnd(1400, 2200), easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" });
   }
   setTimeout(() => layer.remove(), 2300);
 }
