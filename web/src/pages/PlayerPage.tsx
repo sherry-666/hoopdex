@@ -184,7 +184,10 @@ function UpButton({ id }: { id: number }) {
   };
   return (
     <div className="row" style={{ gap: 10, alignItems: "center" }}>
-      <div className="seg"><button type="button" onClick={tap}>{"\u{1F525}"} {t("助威")} <b>{up.data?.ups ?? 0}</b></button></div>
+      <button type="button" onClick={tap} style={{ border: 0, background: "none", padding: 0, cursor: "pointer", color: "inherit",
+        fontFamily: "var(--font-display)", fontSize: 18 }}>
+        {"\u{1F525}"} {t("助威")} <b style={{ color: "var(--pop-red)" }}>{up.data?.ups ?? 0}</b>
+      </button>
       {limited && <span className="note">{t("点太快了，歇一会儿再来。")}</span>}
     </div>
   );
