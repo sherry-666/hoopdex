@@ -50,6 +50,7 @@ const UI_EN: Record<string, string> = {
   "赛季最佳进攻球员": "Best offensive players", "（{season} · 进攻评分）": "({season} · offense rating)",
   "赛季最佳防守球员": "Best defensive players", "（{season} · 防守评分）": "({season} · defense rating)",
   // injuries and recent games
+  "助威": "Hype",
   "点太快了，歇一会儿再来。": "Too fast, give it a moment.",
   "伤停": "Out", "出战成疑": "Day-to-day", "预计 {date} 前后复出": "Expected back around {date}",
   "来源 ESPN，{date} 更新。": "Source: ESPN, updated {date}.", "近期比赛": "Recent games", "日期": "Date", "对手": "Opponent",

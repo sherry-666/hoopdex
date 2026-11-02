@@ -667,7 +667,7 @@ def player_up_add(player_id: int, request: Request) -> dict:
     while taps and now - taps[0] > UP_WINDOW:
         taps.popleft()
     if len(taps) >= UP_LIMIT:
-        raise HTTPException(429, "too many Ups, slow down", headers={"Retry-After": str(int(UP_WINDOW))})
+        raise HTTPException(429, "too many cheers, slow down", headers={"Retry-After": str(int(UP_WINDOW))})
     if not q("SELECT 1 FROM feat.player_stats WHERE player_id = %s LIMIT 1", (player_id,)):
         raise HTTPException(404, "player not found")
     taps.append(now)
