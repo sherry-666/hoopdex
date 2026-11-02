@@ -220,8 +220,9 @@ export interface RecordGame {
   game_id: string; game_date: string; away: string; home: string; home_win: number; margin: number;
   home_score: number; away_score: number; pick: string; pick_win: number; winner: string; correct: boolean;
 }
+export interface RecordStats { games: number; correct: number; home_correct: number; rank_correct: number; brier: number | null }
 export interface PredictionRecord {
-  all: { games: number; correct: number; brier: number | null }; last7: { games: number; correct: number; brier: number | null };
+  all: RecordStats; last7: RecordStats;
   calibration: { lo: number; hi: number; games: number; predicted: number | null; actual: number | null }[];
   games: RecordGame[];
 }

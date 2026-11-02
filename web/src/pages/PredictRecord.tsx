@@ -67,6 +67,23 @@ export default function PredictRecord() {
             <Tile label="Brier" value={rec.data.all.brier?.toFixed(3) ?? "–"} sub={t("越低越好；总猜 50% 是 0.250")} />
           </section>
           <section className="panel" style={{ margin: 0 }}>
+            <h2>{t("和简单猜法比")}</h2>
+            <p style={{ margin: "0 0 8px" }}><small>{t("同样这些比赛：永远选主队，或选赛前战绩排名更靠前的球队（胜率相同选主队）。")}</small></p>
+            <table className="num" style={{ width: "100%" }}>
+              <thead><tr><th style={{ textAlign: "left" }}>{t("猜法")}</th><th>{t("全部")}</th><th>{t("近 7 天")}</th></tr></thead>
+              <tbody>
+                {([[t("预测模型"), "correct"], [t("基准 2：选排名更高的球队"), "rank_correct"], [t("基准 1：永远选主队"), "home_correct"]] as const).map(([label, k]) => (
+                  <tr key={k} style={{ textAlign: "center", fontWeight: k === "correct" ? 700 : 400 }}>
+                    <td style={{ textAlign: "left" }}>{label}</td>
+                    <td>{pct(rec.data.all[k] / rec.data.all.games, 1)} <small>{rec.data.all[k]} / {rec.data.all.games}</small></td>
+                    <td>{rec.data.last7.games ? pct(rec.data.last7[k] / rec.data.last7.games, 1) : "–"} <small>{rec.data.last7[k]} / {rec.data.last7.games}</small></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ margin: "8px 0 0" }}><small>{t("2016-17 至 2025-26 回测 11982 场：永远选主队 56.2%，选排名更高 63.0%，模型 65.5%。")}</small></p>
+          </section>
+          <section className="panel" style={{ margin: 0 }}>
             <h2>{t("预测胜率准不准")}</h2>
             <p style={{ margin: "0 0 8px" }}><small>{t("把预测会赢的一方按胜率分档，看实际赢了多少。两列越接近越准。")}</small></p>
             <table className="num" style={{ width: "100%" }}>

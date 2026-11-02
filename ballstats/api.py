@@ -445,7 +445,7 @@ def schedule(days: int = 3, back: int = 0) -> list[dict]:
 @app.get("/api/record")
 def record() -> dict:
     """How the daily snapshots (live.prediction_snapshot, taken at noon ET) fared against the final scores."""
-    games = q("SELECT s.game_id, s.game_date, s.away, s.home, s.margin, s.home_win,"
+    games = q("SELECT s.game_id, s.game_date, s.season, s.away, s.home, s.margin, s.home_win,"
               " g.team_score AS home_score, g.opp_score AS away_score FROM live.prediction_snapshot s"
               " JOIN live.game g ON g.game_id = s.game_id AND g.home AND g.completed AND g.team_score IS NOT NULL")
     for g in games:
@@ -456,9 +456,27 @@ def record() -> dict:
         g["correct"] = g["pick"] == g["winner"]
     games.sort(key=lambda g: (g["game_date"], g["game_id"]), reverse=True)
 
+    # Benchmarks: always the home team; the team higher in the standings (win% in regular-season games played
+    # before that day, home team on a tie).
+    played: dict[tuple[str, str], list[tuple]] = {}
+    for r in q("SELECT season, team, game_date, team_score > opp_score AS won FROM live.game"
+               " WHERE completed AND season_type = 2 AND team_score IS NOT NULL AND season = ANY(%s)",
+               ([g["season"] for g in games],)):
+        played.setdefault((r["season"], r["team"]), []).append((r["game_date"], r["won"]))
+
+    def win_pct(season: str, team: str, day) -> float:
+        prior = [w for d, w in played.get((season, team), []) if d < day]
+        return sum(prior) / len(prior) if prior else 0.5
+
+    for g in games:
+        g["home_pick_ok"] = g["winner"] == g["home"]
+        g["rank_pick_ok"] = (g["winner"] == g["home"]) == (win_pct(g["season"], g["home"], g["game_date"])
+                                                         >= win_pct(g["season"], g["away"], g["game_date"]))
+
     def stats(rows: list[dict]) -> dict:
         n = len(rows)
         return {"games": n, "correct": sum(g["correct"] for g in rows),
+                "home_correct": sum(g["home_pick_ok"] for g in rows), "rank_correct": sum(g["rank_pick_ok"] for g in rows),
                 "brier": round(sum((g["home_win"] - (g["winner"] == g["home"])) ** 2 for g in rows) / n, 4) if n else None}
 
     recent = dt.datetime.now(live.EASTERN).date() - dt.timedelta(days=7)
