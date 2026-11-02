@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CareerLine, Injury, num, pct, Side, SIDE_LABEL, seriesColor, useCareer, useDefaultSeason, usePlayer, usePlayerSeasons, usePlayerUp, postPlayerUp, useRecentGames, useSeasons } from "../api";
@@ -169,11 +169,19 @@ export default function PlayerPage() {
   );
 }
 
+const CHEER_WORDS = ["燃！", "BAM!", "POW!", "冲！", "ZAP!"];
+const COMBO_GAP_MS = 600;  // taps closer than this chain into a combo
+const COMBO_BLAST = 8;     // a combo this long sets off the full-screen blast
+
 function UpButton({ id }: { id: number }) {
   const { t } = useLang();
   const qc = useQueryClient();
   const up = usePlayerUp(id);
   const [limited, setLimited] = useState(false);
+  const [pops, setPops] = useState<{ key: number; word: string; left: number; tilt: number }[]>([]);
+  const [blast, setBlast] = useState(0);
+  const seq = useRef(0);
+  const combo = useRef({ n: 0, at: 0 });
   const tap = () => {
     // Show the tap at once; the server's count replaces it when it answers.
     qc.setQueryData(["player-up", id], (d?: { ups: number }) => ({ ups: (d?.ups ?? 0) + 1 }));
@@ -181,14 +189,31 @@ function UpButton({ id }: { id: number }) {
       (ups) => { setLimited(false); qc.setQueryData(["player-up", id], { ups }); },
       () => { setLimited(true); qc.invalidateQueries({ queryKey: ["player-up", id] }); },
     );
+    const key = ++seq.current;
+    const word = CHEER_WORDS[Math.floor(Math.random() * CHEER_WORDS.length)];
+    setPops((l) => [...l, { key, word, left: 10 + Math.random() * 80, tilt: Math.random() * 30 - 15 }]);
+    setTimeout(() => setPops((l) => l.filter((x) => x.key !== key)), 800);
+    const now = Date.now();
+    combo.current = { n: now - combo.current.at < COMBO_GAP_MS ? combo.current.n + 1 : 1, at: now };
+    if (combo.current.n >= COMBO_BLAST) {
+      combo.current.n = 0;
+      setBlast(key);
+      setTimeout(() => setBlast((b) => (b === key ? 0 : b)), 1000);
+    }
   };
   return (
     <div className="row" style={{ gap: 10, alignItems: "center" }}>
-      <button type="button" onClick={tap} style={{ border: 0, background: "none", padding: 0, cursor: "pointer", color: "inherit",
-        fontFamily: "var(--font-display)", fontSize: 18 }}>
-        {"\u{1F525}"} {t("助威")} <b style={{ color: "var(--pop-red)" }}>{up.data?.ups ?? 0}</b>
-      </button>
+      <span className="cheer">
+        <button type="button" className="cheer-btn" onClick={tap}>
+          {"\u{1F525}"} {t("助威")} <b>{up.data?.ups ?? 0}</b>
+        </button>
+        {pops.map((p) => (
+          <span key={p.key} className="cheer-pop" aria-hidden="true"
+            style={{ left: `${p.left}%`, "--tilt": `${p.tilt}deg` } as React.CSSProperties}>{p.word}</span>
+        ))}
+      </span>
       {limited && <span className="note">{t("点太快了，歇一会儿再来。")}</span>}
+      {blast > 0 && <div className="cheer-blast" aria-hidden="true"><span>{t("燃爆！")}</span></div>}
     </div>
   );
 }
