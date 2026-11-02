@@ -171,7 +171,33 @@ export default function PlayerPage() {
 
 const CHEER_WORDS = ["燃！", "BAM!", "POW!", "冲！", "ZAP!"];
 const COMBO_GAP_MS = 600;  // taps closer than this chain into a combo
-const COMBO_BLAST = 8;     // a combo this long sets off the full-screen blast
+const COMBO_BLAST = 8;     // a combo this long fires the confetti cannon
+const CONFETTI = ["#e23b2e", "#ffd23f", "#1e5bd8", "#111111"];
+
+/** Paper shot up from `from` that spreads and falls past the bottom of the screen. */
+function fireConfetti(from: HTMLElement) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = from.getBoundingClientRect();
+  const layer = document.createElement("div");
+  layer.style.cssText = "position:fixed;inset:0;z-index:1000;pointer-events:none;overflow:hidden";
+  document.body.appendChild(layer);
+  const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+  const reach = Math.max(window.innerHeight, 500);
+  for (let i = 0; i < 90; i++) {
+    const e = document.createElement("div");
+    e.style.cssText = `position:absolute;left:${r.left + r.width / 2}px;top:${r.top}px;width:${rnd(7, 12)}px;height:${rnd(11, 19)}px;`
+      + `background:${CONFETTI[i % CONFETTI.length]};border:1.5px solid #111`;
+    layer.appendChild(e);
+    const a = rnd(-165, -15) * Math.PI / 180, v = rnd(0.35, 0.95) * reach;
+    const x = Math.cos(a) * v, y = Math.sin(a) * v;
+    e.animate([
+      { transform: "translate(0,0) rotate(0)", opacity: 1 },
+      { transform: `translate(${x}px,${y}px) rotate(${rnd(100, 400)}deg)`, opacity: 1, offset: 0.4 },
+      { transform: `translate(${x * 1.4}px,${y + reach}px) rotate(${rnd(300, 900)}deg)`, opacity: 0.9 },
+    ], { duration: rnd(1400, 2200), easing: "cubic-bezier(.2,.6,.4,1)" });
+  }
+  setTimeout(() => layer.remove(), 2300);
+}
 
 function UpButton({ id }: { id: number }) {
   const { t } = useLang();
@@ -179,8 +205,8 @@ function UpButton({ id }: { id: number }) {
   const up = usePlayerUp(id);
   const [limited, setLimited] = useState(false);
   const [pops, setPops] = useState<{ key: number; word: string; left: number; tilt: number }[]>([]);
-  const [blast, setBlast] = useState(0);
   const seq = useRef(0);
+  const btn = useRef<HTMLButtonElement>(null);
   const combo = useRef({ n: 0, at: 0 });
   const tap = () => {
     // Show the tap at once; the server's count replaces it when it answers.
@@ -197,14 +223,13 @@ function UpButton({ id }: { id: number }) {
     combo.current = { n: now - combo.current.at < COMBO_GAP_MS ? combo.current.n + 1 : 1, at: now };
     if (combo.current.n >= COMBO_BLAST) {
       combo.current.n = 0;
-      setBlast(key);
-      setTimeout(() => setBlast((b) => (b === key ? 0 : b)), 1000);
+      if (btn.current) fireConfetti(btn.current);
     }
   };
   return (
     <div className="row" style={{ gap: 10, alignItems: "center" }}>
       <span className="cheer">
-        <button type="button" className="cheer-btn" onClick={tap}>
+        <button type="button" className="cheer-btn" ref={btn} onClick={tap}>
           {"\u{1F525}"} {t("助威")} <b>{up.data?.ups ?? 0}</b>
         </button>
         {pops.map((p) => (
@@ -213,7 +238,6 @@ function UpButton({ id }: { id: number }) {
         ))}
       </span>
       {limited && <span className="note">{t("点太快了，歇一会儿再来。")}</span>}
-      {blast > 0 && <div className="cheer-blast" aria-hidden="true"><span>{t("燃爆！")}</span></div>}
     </div>
   );
 }
