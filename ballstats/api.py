@@ -692,6 +692,13 @@ def default_season() -> str:
     return seasons()[0]["season"]
 
 
+def with_image(page: seo.Page, image: str) -> seo.Page:
+    """Use a built asset as the page's share image, when it exists (only some players have a portrait)."""
+    if (WEB_DIST / image.lstrip("/")).is_file():
+        page.image = image
+    return page
+
+
 def page_for(path: str, params: dict, lang: str) -> seo.Page:
     """The SEO page for a client-side route; unknown routes and players get a 404."""
     explicit = params.get("season")
@@ -718,7 +725,8 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         if not played or (explicit and explicit not in played):
             return seo.not_found(lang, path)
         season = explicit if explicit else (season if season in played else played[0])
-        return seo.team(lang, season, bool(explicit), team_page(team, season))
+        page = seo.team(lang, season, bool(explicit), team_page(team, season))
+        return with_image(page, f"/team-logos/{team}.webp")
     if path == "/rankings":
         rank_seasons = ranking_seasons()
         if not rank_seasons or (explicit and explicit not in rank_seasons):
@@ -731,7 +739,8 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         if not played or (explicit and explicit not in played):
             return seo.not_found(lang, path)
         season = explicit or (season if season in played else played[0])
-        return seo.player(lang, season, bool(explicit), player(season, pid))
+        page = seo.player(lang, season, bool(explicit), player(season, pid))
+        return with_image(page, f"/portraits/{pid}.webp")
     if path == "/predict":
         return seo.coming_soon(lang, path, "比赛预测", "Game Predictor")
     return seo.not_found(lang, path)

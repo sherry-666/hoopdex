@@ -76,6 +76,7 @@ class Page:
     image: str | None = None        # site-relative image path
     og_type: str = "website"
     jsonld: dict | None = None
+    crumbs: list[tuple[str, str]] = field(default_factory=list)   # (path, name) from the home page down to this page
     body: str = ""                  # fallback HTML inside #root
 
 
@@ -109,8 +110,15 @@ def render(template: str, page: Page, lang: str, base: str) -> str:
                  f'<meta name="twitter:image" content="{e(base + page.image)}" />']
     if not page.index:
         head.append('<meta name="robots" content="noindex" />')
+    blocks = []
     if page.jsonld:
-        data = json.dumps({"@context": "https://schema.org", **page.jsonld}, ensure_ascii=False).replace("</", "<\\/")
+        blocks.append({**page.jsonld, **({"image": base + page.image} if page.image else {})})
+    if page.crumbs:
+        blocks.append({"@type": "BreadcrumbList", "itemListElement": [
+            {"@type": "ListItem", "position": i, "name": name, "item": page_url(base, path, {}, lang)}
+            for i, (path, name) in enumerate(page.crumbs, 1)]})
+    for block in blocks:
+        data = json.dumps({"@context": "https://schema.org", **block}, ensure_ascii=False).replace("</", "<\\/")
         head.append(f'<script type="application/ld+json">{data}</script>')
 
     out = re.sub(r'<html lang="[^"]*"', f'<html lang="{HTML_LANG[lang]}"', template, count=1)
@@ -125,6 +133,11 @@ def render(template: str, page: Page, lang: str, base: str) -> str:
 
 def _link(path: str, text: str, lang: str, query: dict | None = None) -> str:
     return f'<a href="{html.escape(page_url("", path, query or {}, lang))}">{html.escape(text)}</a>'
+
+
+def _crumbs(lang: str, section: str, section_zh: str, section_en: str, path: str, name: str) -> list[tuple[str, str]]:
+    zh = lang == "zh"
+    return [("/", "首页" if zh else "Home"), (section, section_zh if zh else section_en), (path, name)]
 
 
 def _nav(lang: str) -> str:
@@ -219,7 +232,10 @@ def team(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
                       for p in view["roster"] if p.get("ovr") is not None)
     body = (f"<header><h1>{html.escape(title.split(' · ')[0])}</h1>{_nav(lang)}</header>"
             f"<main><p>{html.escape(desc)}</p><ul>{players}</ul></main>")
-    return Page(200, title, desc, f"/teams/{abbr}", {"season": season} if explicit_season else {}, body=body)
+    return Page(200, title, desc, f"/teams/{abbr}", {"season": season} if explicit_season else {}, body=body,
+                jsonld={"@type": "SportsTeam", "name": TEAMS[abbr][1] if abbr in TEAMS else abbr, "sport": "Basketball",
+                        "description": desc},
+                crumbs=_crumbs(lang, "/teams", "球队体系", "Team Systems", f"/teams/{abbr}", name))
 
 
 def rankings(lang: str, season: str, explicit_season: bool, view: dict) -> Page:
@@ -302,7 +318,8 @@ def player(lang: str, season: str, explicit_season: bool, p: dict) -> Page:
     if p.get("team") in TEAMS:
         jsonld["affiliation"] = {"@type": "SportsTeam", "name": TEAMS[p["team"]][1], "sport": "Basketball"}
     return Page(200, title, desc, f"/players/{p['player_id']}", {"season": season} if explicit_season else {},
-                og_type="profile", jsonld=jsonld, body=body)
+                og_type="profile", jsonld=jsonld, body=body,
+                crumbs=_crumbs(lang, "/players", "球员名册", "Player Roster", f"/players/{p['player_id']}", name))
 
 
 def _similar(side: dict | None, lang: str) -> str:
