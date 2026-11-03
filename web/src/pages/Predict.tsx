@@ -47,14 +47,24 @@ function Game({ g, live }: { g: ScheduledGame; live?: LiveScore }) {
   const awayScore = playing ? live.away.score : g.completed ? g.away_score : null;
   const homeScore = playing ? live.home.score : g.completed ? g.home_score : null;
   const status = done ? t("已结束") : playing ? live.detail : new Date(g.tipoff) < new Date() ? t("进行中") : time;
+  // a finished game with a stored prediction says whether the pick was right, like the prediction record
+  const pickHome = g.home_win != null && g.home_win >= 0.5;
+  const verdict = done && g.has_snapshot && g.home_win != null && awayScore != null && homeScore != null && awayScore !== homeScore
+    ? { right: pickHome === (homeScore > awayScore), team: pickHome ? g.home_team : g.away_team, win: pickHome ? g.home_win : 1 - g.home_win! }
+    : null;
   return (
     <Link to={g.has_snapshot ? `/predict/${g.game_id}` : `/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
-      style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
-      <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={awayScore} win={!playing && g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
+      style={{ display: "grid", gridTemplateColumns: verdict ? "1fr auto 1fr auto" : "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
+      <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={awayScore} win={!playing && !g.completed && g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>
         <b>VS</b><br /><small>{status}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
       </span>
-      <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={homeScore} win={!playing && g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
+      <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={homeScore} win={!playing && !g.completed && g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
+      {verdict && (
+        <span className="tag num" style={{ background: verdict.right ? "var(--pop-yellow)" : "transparent", color: verdict.right ? "var(--on-yellow)" : "inherit", fontWeight: 700, minWidth: 92, textAlign: "center" }}>
+          {verdict.right ? "✓" : "✗"} {teamName(verdict.team, lang, true)} {Math.round(verdict.win * 100)}%
+        </span>
+      )}
     </Link>
   );
 }

@@ -433,8 +433,8 @@ def matchups() -> dict:
 @app.get("/api/schedule")
 def schedule(days: int = 3, back: int = 0) -> list[dict]:
     """Games from `back` days before today (US Eastern) through the next days - 1 days, one row per game, earliest
-    tipoff first. Games still to play carry the model's home win probability (predict.py); a game from an earlier
-    day that has not finished yet (late tipoff, the score not in yet) keeps the one it was snapshotted with."""
+    tipoff first. Games still to play carry the model's home win probability (predict.py); a finished game, or one from an
+    earlier day still running (late tipoff, the score not in yet), keeps the one it was snapshotted with."""
     today = dt.datetime.now(live.EASTERN).date()
     start = today - dt.timedelta(days=min(max(back, 0), 3))
     games = q("SELECT game_id, game_date, tipoff, team AS home_team, opp AS away_team, season_type, completed,"
@@ -448,8 +448,8 @@ def schedule(days: int = 3, back: int = 0) -> list[dict]:
                                           " WHERE season = (SELECT max(season) FROM feat.team_profile)")}
     for g in games:
         g["home_ovr"], g["away_ovr"] = ovr.get(g["home_team"]), ovr.get(g["away_team"])
-    for g in games:   # started before today and not final: show the pre-game prediction, not a fresh one
-        if not g["completed"] and g["game_date"] < today and g["snap_win"] is not None:
+    for g in games:   # started before today or final: show the pre-game prediction, not a fresh one
+        if (g["completed"] or g["game_date"] < today) and g["snap_win"] is not None:
             g["home_win"] = g["snap_win"]
     todo = [g for g in games if not g["completed"] and "home_win" not in g]
     try:
@@ -782,7 +782,7 @@ def page_for(path: str, params: dict, lang: str) -> seo.Page:
         page = seo.player(lang, season, bool(explicit), player(season, pid))
         return with_image(page, f"/portraits/{pid}.webp")
     if path == "/predict":
-        return seo.coming_soon(lang, path, "比赛预测", "Game Predictor")
+        return seo.coming_soon(lang, path, "比赛预测", "Game Prediction")
     return seo.not_found(lang, path)
 
 
