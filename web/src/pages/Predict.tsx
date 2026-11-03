@@ -39,7 +39,7 @@ function TeamSide({ team, score, win, ovr, side, lang }: { team: string; score: 
   );
 }
 
-function Game({ g, live }: { g: ScheduledGame; live?: LiveScore }) {
+function Game({ g, live, tagCol }: { g: ScheduledGame; live?: LiveScore; tagCol: boolean }) {
   const { t, lang } = useLang();
   const time = new Date(g.tipoff).toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
   const playing = live != null && live.state !== "pre";      // the scoreboard is fresher than the hourly schedule
@@ -47,24 +47,24 @@ function Game({ g, live }: { g: ScheduledGame; live?: LiveScore }) {
   const awayScore = playing ? live.away.score : g.completed ? g.away_score : null;
   const homeScore = playing ? live.home.score : g.completed ? g.home_score : null;
   const status = done ? t("已结束") : playing ? live.detail : new Date(g.tipoff) < new Date() ? t("进行中") : time;
-  // a finished game with a stored prediction says whether the pick was right, like the prediction record
+  // once a game has tipped off the stored prediction is a tag on the right; a finished one also says whether the pick was right
+  const started = done || playing;
   const pickHome = g.home_win != null && g.home_win >= 0.5;
-  const verdict = done && g.has_snapshot && g.home_win != null && awayScore != null && homeScore != null && awayScore !== homeScore
-    ? { right: pickHome === (homeScore > awayScore), team: pickHome ? g.home_team : g.away_team, win: pickHome ? g.home_win : 1 - g.home_win! }
-    : null;
+  const pick = started && g.has_snapshot && g.home_win != null ? { team: pickHome ? g.home_team : g.away_team, win: pickHome ? g.home_win : 1 - g.home_win } : null;
+  const right = done && pick && awayScore != null && homeScore != null && awayScore !== homeScore ? pickHome === (homeScore > awayScore) : null;
   return (
     <Link to={g.has_snapshot ? `/predict/${g.game_id}` : `/predict/${g.away_team}/${g.home_team}?date=${g.game_date}`} className="panel"
-      style={{ display: "grid", gridTemplateColumns: verdict ? "1fr auto 1fr auto" : "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
+      style={{ display: "grid", gridTemplateColumns: tagCol ? "1fr auto 1fr auto" : "1fr auto 1fr", alignItems: "center", gap: 16, padding: "10px 14px", textDecoration: "none", color: "inherit", margin: 0 }}>
       <TeamSide team={g.away_team} ovr={g.away_ovr} side="left" score={awayScore} win={!playing && !g.completed && g.home_win != null && g.home_win < 0.5 ? 1 - g.home_win : undefined} lang={lang} />
       <span style={{ minWidth: 72, textAlign: "center", lineHeight: 1.2 }}>
         <b>VS</b><br /><small>{status}{g.season_type === 3 ? ` · ${t("季后赛")}` : ""}</small>
       </span>
       <TeamSide team={g.home_team} ovr={g.home_ovr} side="right" score={homeScore} win={!playing && !g.completed && g.home_win != null && g.home_win >= 0.5 ? g.home_win : undefined} lang={lang} />
-      {verdict && (
-        <span className="tag num" style={{ background: verdict.right ? "var(--pop-yellow)" : "transparent", color: verdict.right ? "var(--on-yellow)" : "inherit", fontWeight: 700, minWidth: 92, textAlign: "center" }}>
-          {verdict.right ? "✓" : "✗"} {teamName(verdict.team, lang, true)} {Math.round(verdict.win * 100)}%
+      {tagCol && (pick ? (
+        <span className="tag num" style={{ background: right ? "var(--pop-yellow)" : "transparent", color: right ? "var(--on-yellow)" : "inherit", fontWeight: 700, minWidth: 92, textAlign: "center" }}>
+          {right == null ? "" : right ? "✓ " : "✗ "}{teamName(pick.team, lang, true)} {Math.round(pick.win * 100)}%
         </span>
-      )}
+      ) : <span />)}
     </Link>
   );
 }
@@ -78,6 +78,7 @@ export default function Predict() {
   const today = days[1];
   const [pick, setPick] = useState(today);
   const games = (sched.data ?? []).filter((g) => g.game_date === pick);
+  const tagCol = games.some((g) => g.completed || (scores?.[g.game_id]?.state ?? "pre") !== "pre");   // keeps the rows aligned
   return (
     <>
       <section className="panel halftone" style={{ background: "var(--pop-red)", color: "#fff", borderColor: "#111" }}>
@@ -96,7 +97,7 @@ export default function Predict() {
       ) : (
         <section style={{ display: "grid", gap: 10 }}>
           <h2><small>{t("{n} 场", { n: games.length })}</small></h2>
-          {games.map((g) => <Game key={g.game_id} g={g} live={scores?.[g.game_id]} />)}
+          {games.map((g) => <Game key={g.game_id} g={g} live={scores?.[g.game_id]} tagCol={tagCol} />)}
         </section>
       )}
     </>
